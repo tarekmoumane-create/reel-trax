@@ -86,7 +86,7 @@ export default function Overview() {
       <>
         <TopBar crumbs={["Analytics", "Overview"]} />
         <div className="mx-auto max-w-md px-6 py-24 text-center">
-          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--signal)] text-2xl font-black text-[#231800]">R</div>
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--signal)] text-2xl font-black text-white">R</div>
           <h1 className="font-display text-xl font-bold">Welcome to Reel Trax</h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
             Create your first client from the switcher in the top-left, then add creators to start tracking posting cadence automatically.
@@ -213,7 +213,7 @@ function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; bu
       </div>
 
       {/* activity strip */}
-      <div className="overflow-x-auto"><PostActivity calendar={c.calendar} days={30} dot={10} gap={3} /></div>
+      <div className="overflow-x-auto"><PostActivity calendar={c.calendar} days={30} dot={12} gap={4} /></div>
 
       {/* metrics */}
       <div className="mono text-[13px]">{daysLabel(c.daysSinceLastPost)}</div>

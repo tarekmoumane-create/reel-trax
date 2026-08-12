@@ -103,7 +103,7 @@ export default function CreatorDetail() {
             </span>
           </div>
           <div className="overflow-x-auto">
-            <PostActivity calendar={cadence.calendar} days={30} dot={16} gap={6} />
+            <PostActivity calendar={cadence.calendar} days={30} dot={18} gap={7} />
           </div>
           {creator.lastSyncError && <p className="mt-3 rounded-lg bg-[color:rgba(242,104,95,0.1)] px-3 py-2 text-xs text-[var(--bad)]">Last sync issue: {creator.lastSyncError}</p>}
         </div>

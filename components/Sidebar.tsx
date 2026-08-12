@@ -94,7 +94,7 @@ export function Sidebar() {
         >
           <span
             className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-white"
-            style={{ background: currentClient?.color ?? "#f5a524" }}
+            style={{ background: currentClient?.color ?? "#7c5cff" }}
           >
             {currentClient ? initials(currentClient.name) : "—"}
           </span>

@@ -12,8 +12,8 @@
   --ink: #ece7dd;         /* warm off-white text */
   --muted: #8b8f9c;       /* secondary text */
   --faint: #565b69;       /* tertiary text */
-  --signal: #f5a524;      /* amber signal accent */
-  --signal-2: #ffbf47;
+  --signal: #7c5cff;      /* purple accent */
+  --signal-2: #9d84ff;
   --ok: #57c98a;
   --warn: #f5a524;
   --bad: #f2685f;
@@ -130,7 +130,7 @@ textarea::placeholder {
 .btn-primary {
   background: var(--signal);
   border-color: var(--signal);
-  color: #231800;
+  color: #fff;
 }
 .btn-primary:hover {
   background: var(--signal-2);

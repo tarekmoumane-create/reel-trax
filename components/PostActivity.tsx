@@ -34,7 +34,7 @@ function shade(count: number): string {
 export function PostActivity({
   calendar,
   days = 30,
-  dot = 11,
+  dot = 13,
   gap = 4,
   showWeekdays = true,
   todayIndex,
@@ -74,7 +74,7 @@ export function PostActivity({
             <span
               key={i}
               className="mono text-center text-[var(--faint)]"
-              style={{ width: dot, fontSize: 8, lineHeight: "10px" }}
+              style={{ width: dot, fontSize: 9, lineHeight: "11px" }}
             >
               {WD[weekday(c.date)]}
             </span>
