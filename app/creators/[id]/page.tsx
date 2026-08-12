@@ -220,7 +220,7 @@ function Row({ label, value }: { label: string; value: string }) {
 function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; onDelete: () => void; busy: boolean }) {
   const [f, setF] = useState({
     displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "",
-    source: creator.source, sourceDetail: creator.sourceDetail ?? "", expectedPerWeek: creator.expectedPerWeek,
+    source: creator.source, sourceDetail: creator.sourceDetail ?? "", sideshiftUrl: creator.sideshiftUrl ?? "", expectedPerWeek: creator.expectedPerWeek,
     status: creator.status, phone: creator.phone ?? "", email: creator.email ?? "", contactHandle: creator.contactHandle ?? "",
     discord: creator.discord ?? "", whatsapp: creator.whatsapp ?? "", preferredChannel: creator.preferredChannel ?? "",
   });
@@ -236,6 +236,7 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         <div><label className={label}>Instagram URL</label><input className={field} value={f.instagramUrl} onChange={(e) => set("instagramUrl", e.target.value)} /></div>
         <div><label className={label}>Source</label><select className={field} value={f.source} onChange={(e) => set("source", e.target.value)}>{["sideshift", "referral", "outreach", "agency", "other"].map((s) => <option key={s} value={s}>{SOURCE_LABEL[s] ?? s}</option>)}</select></div>
         <div><label className={label}>Source detail</label><input className={field} value={f.sourceDetail} onChange={(e) => set("sourceDetail", e.target.value)} /></div>
+        <div className="sm:col-span-2 lg:col-span-3"><label className={label}>Sideshift chat URL <span className="text-[var(--faint)]">(pay them here)</span></label><input className={field} value={f.sideshiftUrl} onChange={(e) => set("sideshiftUrl", e.target.value)} placeholder="link to their Sideshift chat" /></div>
         <div><label className={label}>Target posts / week</label><input type="number" min={1} max={21} className={field} value={f.expectedPerWeek} onChange={(e) => set("expectedPerWeek", Number(e.target.value) || 7)} /></div>
         <div><label className={label}>Status</label><select className={field} value={f.status} onChange={(e) => set("status", e.target.value)}>{["active", "paused", "inactive"].map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
         <div><label className={label}>Preferred channel</label><select className={field} value={f.preferredChannel} onChange={(e) => set("preferredChannel", e.target.value)}>{["", "imessage", "instagram", "whatsapp", "discord", "email", "other"].map((s) => <option key={s} value={s}>{s || "—"}</option>)}</select></div>

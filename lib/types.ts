@@ -51,6 +51,7 @@ export interface CreatorDTO {
   instagramUrl: string | null;
   source: string;
   sourceDetail: string | null;
+  sideshiftUrl: string | null;
   phone: string | null;
   email: string | null;
   contactHandle: string | null;

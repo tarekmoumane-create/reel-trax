@@ -10,7 +10,7 @@ import { fmtNum } from "@/lib/ui";
 interface PayoutRow {
   key: string; campaignId: string; campaignName: string; creatorId: string; creatorName: string;
   periodStart: string; periodLabel: string; amount: number; currency: string; status: string;
-  postsCount: number; viewsCount: number;
+  postsCount: number; viewsCount: number; sideshiftUrl: string | null;
 }
 interface PayoutData {
   rows: PayoutRow[];
@@ -69,7 +69,7 @@ export default function PayoutsPage() {
         </div>
 
         <div className="card overflow-hidden">
-          <div className="hidden grid-cols-[minmax(160px,1.4fr)_minmax(140px,1fr)_130px_80px_90px_110px_150px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
+          <div className="hidden grid-cols-[minmax(160px,1.4fr)_minmax(140px,1fr)_130px_80px_90px_110px_210px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
             <div>Creator</div><div>Campaign</div><div>Period</div><div>Posts</div><div>Views</div><div>Amount</div><div className="text-right">Action</div>
           </div>
           {loading ? (
@@ -80,7 +80,7 @@ export default function PayoutsPage() {
             </div>
           ) : (
             rows.map((r) => (
-              <div key={r.key} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(160px,1.4fr)_minmax(140px,1fr)_130px_80px_90px_110px_150px] lg:gap-4">
+              <div key={r.key} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(160px,1.4fr)_minmax(140px,1fr)_130px_80px_90px_110px_210px] lg:gap-4">
                 <Link href={`/creators/${r.creatorId}`} className="font-medium hover:text-[var(--signal)]">{r.creatorName}</Link>
                 <Link href={`/campaigns/${r.campaignId}`} className="truncate text-[13px] text-[var(--muted)] hover:text-[var(--signal)]">{r.campaignName}</Link>
                 <div className="mono text-[12px] text-[var(--muted)]">{r.periodLabel}</div>
@@ -88,6 +88,9 @@ export default function PayoutsPage() {
                 <div className="mono text-[13px]">{fmtNum(r.viewsCount)}</div>
                 <div className="mono text-[15px] font-bold">{money(r.amount, r.currency)}</div>
                 <div className="flex items-center justify-end gap-1.5">
+                  {r.sideshiftUrl && (
+                    <a href={r.sideshiftUrl} target="_blank" rel="noreferrer" title="Open their Sideshift chat" className="btn px-2.5 py-1.5 text-xs">Sideshift</a>
+                  )}
                   {(r.status === "due" || r.status === "upcoming") && (
                     <>
                       <button onClick={() => mark(r, "paid")} disabled={busy === r.key} className="btn btn-primary px-2.5 py-1.5 text-xs disabled:opacity-60">Mark paid</button>

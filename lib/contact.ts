@@ -7,6 +7,7 @@ export interface ContactCreator {
   discord?: string | null;
   email?: string | null;
   contactHandle?: string | null;
+  sideshiftUrl?: string | null;
   preferredChannel?: string | null;
 }
 
@@ -44,6 +45,9 @@ export function contactLinks(c: ContactCreator): ContactLink[] {
   }
   if (c.email) {
     links.push({ channel: "email", label: "Email", href: `mailto:${c.email}`, hint: c.email });
+  }
+  if (c.sideshiftUrl) {
+    links.push({ channel: "sideshift", label: "Sideshift chat", href: c.sideshiftUrl, hint: "open on Sideshift" });
   }
 
   // Surface the preferred channel first.

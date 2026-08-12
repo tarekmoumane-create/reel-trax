@@ -42,6 +42,7 @@ export async function PATCH(
       "displayName",
       "source",
       "sourceDetail",
+      "sideshiftUrl",
       "phone",
       "email",
       "contactHandle",

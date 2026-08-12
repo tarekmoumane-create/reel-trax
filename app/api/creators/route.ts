@@ -46,6 +46,7 @@ export async function POST(request: Request) {
         instagramHandle,
         source: body?.source || "sideshift",
         sourceDetail: body?.sourceDetail || null,
+        sideshiftUrl: body?.sideshiftUrl || null,
         phone: body?.phone || null,
         email: body?.email || null,
         contactHandle: body?.contactHandle || null,

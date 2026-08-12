@@ -37,6 +37,7 @@ export function AddCreatorModal({
     instagramUrl: "",
     source: "sideshift",
     sourceDetail: "",
+    sideshiftUrl: "",
     expectedPerWeek: 7,
     preferredChannel: "",
     phone: "",
@@ -166,6 +167,18 @@ export function AddCreatorModal({
               />
             </div>
           </div>
+
+          {form.source === "sideshift" && (
+            <div>
+              <label className={label}>Sideshift chat URL <span className="text-[var(--faint)]">(where you pay them)</span></label>
+              <input
+                className={field}
+                value={form.sideshiftUrl}
+                onChange={(e) => set("sideshiftUrl", e.target.value)}
+                placeholder="paste the link to their Sideshift chat"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>

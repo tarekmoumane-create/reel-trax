@@ -42,6 +42,7 @@ model Creator {
   // Where this creator came from (Sideshift is the common one)
   source       String  @default("sideshift") // sideshift | referral | outreach | agency | other
   sourceDetail String?
+  sideshiftUrl String? // direct link to this creator's Sideshift chat (where you pay them)
 
   // Contact / comms
   phone         String?

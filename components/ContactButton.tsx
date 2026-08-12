@@ -9,6 +9,7 @@ const ICONS: Record<string, React.ReactNode> = {
   instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.5" /></>,
   discord: <path d="M7 8c3-1.5 7-1.5 10 0M7 16c3 1.5 7 1.5 10 0M8 9c-1 2-1 4 0 6M16 9c1 2 1 4 0 6" />,
   email: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></>,
+  sideshift: <><path d="M7 8l-4 4 4 4" /><path d="M17 8l4 4-4 4" /><path d="M14 4l-4 16" /></>,
 };
 
 export function ContactButton({
