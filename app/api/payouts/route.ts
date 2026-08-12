@@ -63,13 +63,16 @@ export async function GET(request: Request) {
       }
     }
 
-    const sideById = new Map(
-      (await prisma.creator.findMany({ where: { clientId }, select: { id: true, sideshiftUrl: true } }))
-        .map((c) => [c.id, c.sideshiftUrl])
+    const payById = new Map(
+      (await prisma.creator.findMany({ where: { clientId }, select: { id: true, sideshiftUrl: true, paymentMethod: true, paymentHandle: true } }))
+        .map((c) => [c.id, c])
     );
     const rows = [...map.values()]
       .sort((a, b) => (a.periodStart < b.periodStart ? 1 : -1))
-      .map((r) => ({ ...r, sideshiftUrl: sideById.get(r.creatorId) ?? null }));
+      .map((r) => {
+        const p = payById.get(r.creatorId);
+        return { ...r, sideshiftUrl: p?.sideshiftUrl ?? null, paymentMethod: p?.paymentMethod ?? "sideshift", paymentHandle: p?.paymentHandle ?? null };
+      });
     const sum = (st: string) => rows.filter((r) => r.status === st).reduce((s, r) => s + r.amount, 0);
     const summary = {
       due: Math.round(sum("due") * 100) / 100,

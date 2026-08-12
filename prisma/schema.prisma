@@ -44,6 +44,10 @@ model Creator {
   sourceDetail String?
   sideshiftUrl String? // direct link to this creator's Sideshift chat (where you pay them)
 
+  // How you actually pay this creator
+  paymentMethod String  @default("sideshift") // sideshift | venmo | paypal | other
+  paymentHandle String? // Venmo/PayPal username (Sideshift uses sideshiftUrl)
+
   // Contact / comms
   phone         String?
   email         String?

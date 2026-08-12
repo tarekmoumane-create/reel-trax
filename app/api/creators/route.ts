@@ -47,6 +47,8 @@ export async function POST(request: Request) {
         source: body?.source || "sideshift",
         sourceDetail: body?.sourceDetail || null,
         sideshiftUrl: body?.sideshiftUrl || null,
+        paymentMethod: body?.paymentMethod || "sideshift",
+        paymentHandle: body?.paymentHandle || null,
         phone: body?.phone || null,
         email: body?.email || null,
         contactHandle: body?.contactHandle || null,

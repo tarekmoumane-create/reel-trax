@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PAYMENT_METHODS } from "@/lib/pay";
 
 const SOURCES = [
   ["sideshift", "Sideshift"],
@@ -38,6 +39,8 @@ export function AddCreatorModal({
     source: "sideshift",
     sourceDetail: "",
     sideshiftUrl: "",
+    paymentMethod: "sideshift",
+    paymentHandle: "",
     expectedPerWeek: 7,
     preferredChannel: "",
     phone: "",
@@ -168,17 +171,27 @@ export function AddCreatorModal({
             </div>
           </div>
 
-          {form.source === "sideshift" && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={label}>Sideshift chat URL <span className="text-[var(--faint)]">(where you pay them)</span></label>
-              <input
-                className={field}
-                value={form.sideshiftUrl}
-                onChange={(e) => set("sideshiftUrl", e.target.value)}
-                placeholder="paste the link to their Sideshift chat"
-              />
+              <label className={label}>Payment method</label>
+              <select className={field} value={form.paymentMethod} onChange={(e) => set("paymentMethod", e.target.value)}>
+                {PAYMENT_METHODS.map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
             </div>
-          )}
+            {form.paymentMethod === "sideshift" ? (
+              <div>
+                <label className={label}>Sideshift chat URL <span className="text-[var(--faint)]">(pay here)</span></label>
+                <input className={field} value={form.sideshiftUrl} onChange={(e) => set("sideshiftUrl", e.target.value)} placeholder="link to their Sideshift chat" />
+              </div>
+            ) : (form.paymentMethod === "venmo" || form.paymentMethod === "paypal") ? (
+              <div>
+                <label className={label}>{form.paymentMethod === "venmo" ? "Venmo" : "PayPal"} username</label>
+                <input className={field} value={form.paymentHandle} onChange={(e) => set("paymentHandle", e.target.value)} placeholder="@username" />
+              </div>
+            ) : null}
+          </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>

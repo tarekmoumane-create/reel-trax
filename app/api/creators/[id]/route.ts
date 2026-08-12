@@ -43,6 +43,8 @@ export async function PATCH(
       "source",
       "sourceDetail",
       "sideshiftUrl",
+      "paymentMethod",
+      "paymentHandle",
       "phone",
       "email",
       "contactHandle",

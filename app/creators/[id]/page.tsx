@@ -11,6 +11,7 @@ import { ContactButton } from "@/components/ContactButton";
 import { VideoThumb } from "@/components/VideoThumb";
 import { TopBar } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, fmtNum, initials, timeAgo } from "@/lib/ui";
+import { PAYMENT_METHODS, PAYMENT_LABEL, payLink } from "@/lib/pay";
 
 export default function CreatorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -60,6 +61,11 @@ export default function CreatorDetail() {
         crumbs={["Creator Hub", "Creators", creator.displayName]}
         right={
           <>
+            {payLink(creator) && (
+              <a href={payLink(creator)!.href} target="_blank" rel="noreferrer" className="btn" title={`Pay via ${payLink(creator)!.label}`}>
+                Pay · {payLink(creator)!.label}
+              </a>
+            )}
             <ContactButton creator={creator} onContacted={() => patch({ markContactedNow: true })} />
             <button onClick={resync} disabled={busy} className="btn disabled:opacity-60">{busy ? "…" : "Resync"}</button>
             <button onClick={() => setEditing((e) => !e)} className="btn">{editing ? "Close" : "Edit"}</button>
@@ -80,7 +86,8 @@ export default function CreatorDetail() {
               <div className="mono mt-1 flex flex-wrap items-center gap-x-3 text-[12px] text-[var(--muted)]">
                 {creator.tiktokUrl && <a href={creator.tiktokUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">TT @{creator.tiktokHandle}</a>}
                 {creator.instagramUrl && <a href={creator.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">IG @{creator.instagramHandle}</a>}
-                <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[10px]">{SOURCE_LABEL[creator.source] ?? creator.source}{creator.sourceDetail ? ` · ${creator.sourceDetail}` : ""}</span>
+                <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[10px]">from {SOURCE_LABEL[creator.source] ?? creator.source}{creator.sourceDetail ? ` · ${creator.sourceDetail}` : ""}</span>
+                <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[10px] text-[var(--signal)]">pay via {PAYMENT_LABEL[creator.paymentMethod] ?? creator.paymentMethod}</span>
               </div>
             </div>
           </div>
@@ -220,7 +227,8 @@ function Row({ label, value }: { label: string; value: string }) {
 function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; onDelete: () => void; busy: boolean }) {
   const [f, setF] = useState({
     displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "",
-    source: creator.source, sourceDetail: creator.sourceDetail ?? "", sideshiftUrl: creator.sideshiftUrl ?? "", expectedPerWeek: creator.expectedPerWeek,
+    source: creator.source, sourceDetail: creator.sourceDetail ?? "", sideshiftUrl: creator.sideshiftUrl ?? "",
+    paymentMethod: creator.paymentMethod ?? "sideshift", paymentHandle: creator.paymentHandle ?? "", expectedPerWeek: creator.expectedPerWeek,
     status: creator.status, phone: creator.phone ?? "", email: creator.email ?? "", contactHandle: creator.contactHandle ?? "",
     discord: creator.discord ?? "", whatsapp: creator.whatsapp ?? "", preferredChannel: creator.preferredChannel ?? "",
   });
@@ -237,6 +245,10 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         <div><label className={label}>Source</label><select className={field} value={f.source} onChange={(e) => set("source", e.target.value)}>{["sideshift", "referral", "outreach", "agency", "other"].map((s) => <option key={s} value={s}>{SOURCE_LABEL[s] ?? s}</option>)}</select></div>
         <div><label className={label}>Source detail</label><input className={field} value={f.sourceDetail} onChange={(e) => set("sourceDetail", e.target.value)} /></div>
         <div className="sm:col-span-2 lg:col-span-3"><label className={label}>Sideshift chat URL <span className="text-[var(--faint)]">(pay them here)</span></label><input className={field} value={f.sideshiftUrl} onChange={(e) => set("sideshiftUrl", e.target.value)} placeholder="link to their Sideshift chat" /></div>
+        <div><label className={label}>Payment method</label><select className={field} value={f.paymentMethod} onChange={(e) => set("paymentMethod", e.target.value)}>{PAYMENT_METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+        {(f.paymentMethod === "venmo" || f.paymentMethod === "paypal") && (
+          <div><label className={label}>{f.paymentMethod === "venmo" ? "Venmo" : "PayPal"} username</label><input className={field} value={f.paymentHandle} onChange={(e) => set("paymentHandle", e.target.value)} placeholder="@username" /></div>
+        )}
         <div><label className={label}>Target posts / week</label><input type="number" min={1} max={21} className={field} value={f.expectedPerWeek} onChange={(e) => set("expectedPerWeek", Number(e.target.value) || 7)} /></div>
         <div><label className={label}>Status</label><select className={field} value={f.status} onChange={(e) => set("status", e.target.value)}>{["active", "paused", "inactive"].map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
         <div><label className={label}>Preferred channel</label><select className={field} value={f.preferredChannel} onChange={(e) => set("preferredChannel", e.target.value)}>{["", "imessage", "instagram", "whatsapp", "discord", "email", "other"].map((s) => <option key={s} value={s}>{s || "—"}</option>)}</select></div>

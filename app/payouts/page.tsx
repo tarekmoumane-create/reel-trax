@@ -5,12 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useClients } from "../providers";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { money } from "@/lib/payouts";
+import { payLink } from "@/lib/pay";
 import { fmtNum } from "@/lib/ui";
 
 interface PayoutRow {
   key: string; campaignId: string; campaignName: string; creatorId: string; creatorName: string;
   periodStart: string; periodLabel: string; amount: number; currency: string; status: string;
-  postsCount: number; viewsCount: number; sideshiftUrl: string | null;
+  postsCount: number; viewsCount: number; sideshiftUrl: string | null; paymentMethod: string; paymentHandle: string | null;
 }
 interface PayoutData {
   rows: PayoutRow[];
@@ -88,8 +89,8 @@ export default function PayoutsPage() {
                 <div className="mono text-[13px]">{fmtNum(r.viewsCount)}</div>
                 <div className="mono text-[15px] font-bold">{money(r.amount, r.currency)}</div>
                 <div className="flex items-center justify-end gap-1.5">
-                  {r.sideshiftUrl && (
-                    <a href={r.sideshiftUrl} target="_blank" rel="noreferrer" title="Open their Sideshift chat" className="btn px-2.5 py-1.5 text-xs">Sideshift</a>
+                  {payLink(r) && (
+                    <a href={payLink(r)!.href} target="_blank" rel="noreferrer" title={`Pay via ${payLink(r)!.label}`} className="btn whitespace-nowrap px-2.5 py-1.5 text-xs">Pay · {payLink(r)!.label}</a>
                   )}
                   {(r.status === "due" || r.status === "upcoming") && (
                     <>
