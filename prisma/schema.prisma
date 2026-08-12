@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  // Neon direct (unpooled) connection — set by the Vercel↔Neon integration.
+  url      = env("DATABASE_URL_UNPOOLED")
 }
 
 // A client = one of the brands/accounts you run creators for.
