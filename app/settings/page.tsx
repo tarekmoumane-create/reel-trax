@@ -23,6 +23,9 @@ interface SettingsData {
   hasApiKey: boolean;
   apiKeyMasked: string | null;
   apiKeyFromEnv: boolean;
+  hasAnthropicKey: boolean;
+  anthropicKeyMasked: string | null;
+  anthropicKeyFromEnv: boolean;
   timeZone: string;
 }
 
@@ -31,7 +34,9 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [tz, setTz] = useState("America/New_York");
+  const [anthropicKey, setAnthropicKey] = useState("");
   const [savingKey, setSavingKey] = useState(false);
+  const [savingAnthropic, setSavingAnthropic] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
 
   async function loadSettings() {
@@ -59,6 +64,18 @@ export default function SettingsPage() {
     await loadSettings();
   }
 
+  async function saveAnthropic() {
+    setSavingAnthropic(true);
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ anthropicApiKey: anthropicKey }),
+    });
+    setAnthropicKey("");
+    setSavingAnthropic(false);
+    await loadSettings();
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 md:px-6">
       <h1 className="mb-5 text-xl font-semibold">Settings</h1>
@@ -68,7 +85,7 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold">ScrapeCreators API key</h2>
         <p className="mt-1 text-xs text-[var(--muted)]">
           Powers automatic posting-cadence tracking. Get one at{" "}
-          <a href="https://scrapecreators.com" target="_blank" rel="noreferrer" className="text-[var(--accent)]">
+          <a href="https://scrapecreators.com" target="_blank" rel="noreferrer" className="text-[var(--signal)]">
             scrapecreators.com
           </a>
           . Stored server-side and never shown in full.
@@ -98,12 +115,33 @@ export default function SettingsPage() {
           <button
             onClick={saveKey}
             disabled={savingKey || !apiKey.trim()}
-            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-lg bg-[var(--signal)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {savingKey ? "Saving…" : "Save"}
           </button>
         </div>
         {savedMsg && <p className="mt-2 text-xs text-green-400">{savedMsg}</p>}
+      </section>
+
+      {/* Anthropic key (copilot) */}
+      <section className="card mb-4 p-5">
+        <h2 className="text-sm font-semibold">Anthropic API key <span className="font-normal text-[var(--muted)]">· powers the Copilot</span></h2>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Lets the Copilot answer questions about your creators and payouts. Get one at{" "}
+          <a href="https://console.anthropic.com" target="_blank" rel="noreferrer" className="text-[var(--signal)]">console.anthropic.com</a>. Stored server-side, never shown in full.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-2.5 py-1 text-xs ${settings?.hasAnthropicKey ? "bg-green-500/12 text-green-400" : "bg-red-500/12 text-red-400"}`}>
+            {settings?.hasAnthropicKey ? `Connected · ${settings.anthropicKeyMasked}` : "Not set"}
+          </span>
+          {settings?.anthropicKeyFromEnv && <span className="text-xs text-[var(--muted)]">(from environment variable)</span>}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <input type="password" value={anthropicKey} onChange={(e) => setAnthropicKey(e.target.value)} placeholder="sk-ant-…" className="flex-1 px-3 py-2 text-sm" />
+          <button onClick={saveAnthropic} disabled={savingAnthropic || !anthropicKey.trim()} className="btn btn-primary disabled:opacity-50">
+            {savingAnthropic ? "Saving…" : "Save"}
+          </button>
+        </div>
       </section>
 
       {/* timezone */}
@@ -207,7 +245,7 @@ function ClientRow({
         {client._count?.creators ?? 0} creators
       </span>
       {dirty && (
-        <button onClick={save} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white">
+        <button onClick={save} className="rounded-lg bg-[var(--signal)] px-3 py-1.5 text-xs font-medium text-white">
           Save
         </button>
       )}

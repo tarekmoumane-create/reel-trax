@@ -49,6 +49,8 @@ export async function POST(request: Request) {
         phone: body?.phone || null,
         email: body?.email || null,
         contactHandle: body?.contactHandle || null,
+        discord: body?.discord || null,
+        whatsapp: body?.whatsapp || null,
         preferredChannel: body?.preferredChannel || null,
         expectedPerWeek: Number.isFinite(body?.expectedPerWeek)
           ? Math.max(1, Math.min(21, Math.round(body.expectedPerWeek)))

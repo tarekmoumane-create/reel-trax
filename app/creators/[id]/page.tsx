@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { CreatorDetailResponse, CreatorDTO, PostDTO } from "@/lib/types";
 import { PostActivity } from "@/components/PostActivity";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ContactButton } from "@/components/ContactButton";
 import { TopBar } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, fmtNum, initials, timeAgo } from "@/lib/ui";
 
@@ -57,6 +58,7 @@ export default function CreatorDetail() {
         crumbs={["Creator Hub", "Creators", creator.displayName]}
         right={
           <>
+            <ContactButton creator={creator} onContacted={() => patch({ markContactedNow: true })} />
             <button onClick={resync} disabled={busy} className="btn disabled:opacity-60">{busy ? "…" : "Resync"}</button>
             <button onClick={() => setEditing((e) => !e)} className="btn">{editing ? "Close" : "Edit"}</button>
           </>
@@ -175,7 +177,8 @@ function CommsPanel({ creator, onSave, busy }: { creator: CreatorDTO; onSave: (b
         <Row label="Last contacted" value={timeAgo(creator.lastContactedAt)} />
         <Row label="Preferred" value={creator.preferredChannel || "—"} />
         <Row label="Phone" value={creator.phone || "—"} />
-        <Row label="Handle" value={creator.contactHandle || "—"} />
+        <Row label="WhatsApp" value={creator.whatsapp || "—"} />
+        <Row label="Discord" value={creator.discord || "—"} />
         <Row label="Email" value={creator.email || "—"} />
       </dl>
       <button onClick={() => onSave({ markContactedNow: true })} disabled={busy} className="btn btn-primary mt-3 w-full justify-center disabled:opacity-60">Mark contacted now</button>
@@ -210,7 +213,8 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
   const [f, setF] = useState({
     displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "",
     source: creator.source, sourceDetail: creator.sourceDetail ?? "", expectedPerWeek: creator.expectedPerWeek,
-    status: creator.status, phone: creator.phone ?? "", email: creator.email ?? "", contactHandle: creator.contactHandle ?? "", preferredChannel: creator.preferredChannel ?? "",
+    status: creator.status, phone: creator.phone ?? "", email: creator.email ?? "", contactHandle: creator.contactHandle ?? "",
+    discord: creator.discord ?? "", whatsapp: creator.whatsapp ?? "", preferredChannel: creator.preferredChannel ?? "",
   });
   const field = "w-full px-3 py-2 text-sm";
   const label = "mb-1 block text-xs font-medium text-[var(--muted)]";
@@ -226,8 +230,10 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         <div><label className={label}>Source detail</label><input className={field} value={f.sourceDetail} onChange={(e) => set("sourceDetail", e.target.value)} /></div>
         <div><label className={label}>Target posts / week</label><input type="number" min={1} max={21} className={field} value={f.expectedPerWeek} onChange={(e) => set("expectedPerWeek", Number(e.target.value) || 7)} /></div>
         <div><label className={label}>Status</label><select className={field} value={f.status} onChange={(e) => set("status", e.target.value)}>{["active", "paused", "inactive"].map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
-        <div><label className={label}>Preferred channel</label><select className={field} value={f.preferredChannel} onChange={(e) => set("preferredChannel", e.target.value)}>{["", "sms", "imessage", "instagram", "whatsapp", "email", "other"].map((s) => <option key={s} value={s}>{s || "—"}</option>)}</select></div>
-        <div><label className={label}>Phone</label><input className={field} value={f.phone} onChange={(e) => set("phone", e.target.value)} /></div>
+        <div><label className={label}>Preferred channel</label><select className={field} value={f.preferredChannel} onChange={(e) => set("preferredChannel", e.target.value)}>{["", "imessage", "instagram", "whatsapp", "discord", "email", "other"].map((s) => <option key={s} value={s}>{s || "—"}</option>)}</select></div>
+        <div><label className={label}>Phone (iMessage/SMS)</label><input className={field} value={f.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+1…" /></div>
+        <div><label className={label}>WhatsApp <span className="text-[var(--faint)]">(if different)</span></label><input className={field} value={f.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="+1…" /></div>
+        <div><label className={label}>Discord <span className="text-[var(--faint)]">(user id or link)</span></label><input className={field} value={f.discord} onChange={(e) => set("discord", e.target.value)} placeholder="user id / invite link" /></div>
         <div><label className={label}>Contact handle</label><input className={field} value={f.contactHandle} onChange={(e) => set("contactHandle", e.target.value)} /></div>
         <div><label className={label}>Email</label><input className={field} value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
       </div>

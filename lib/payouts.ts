@@ -10,6 +10,35 @@ export interface CampaignRules {
   bonus: number;
   minViews: number;
   payoutCap: number | null;
+  flatDeal?: number | null; // fixed total for the period, ignores all other rules
+}
+
+// Per-creator overrides (null = inherit the campaign value).
+export interface RuleOverride {
+  baseFee?: number | null;
+  perPost?: number | null;
+  cpmRate?: number | null;
+  bonus?: number | null;
+  minViews?: number | null;
+  payoutCap?: number | null;
+  flatDeal?: number | null;
+}
+
+/** Merge a campaign's rules with one creator's overrides. */
+export function effectiveRules(base: CampaignRules, o?: RuleOverride | null): CampaignRules {
+  if (!o) return base;
+  const pick = <T>(ov: T | null | undefined, b: T): T => (ov == null ? b : ov);
+  return {
+    period: base.period,
+    targetVideos: base.targetVideos,
+    baseFee: pick(o.baseFee, base.baseFee),
+    perPost: pick(o.perPost, base.perPost),
+    cpmRate: pick(o.cpmRate, base.cpmRate),
+    bonus: pick(o.bonus, base.bonus),
+    minViews: pick(o.minViews, base.minViews),
+    payoutCap: o.payoutCap === undefined ? base.payoutCap : o.payoutCap,
+    flatDeal: o.flatDeal === undefined ? base.flatDeal : o.flatDeal,
+  };
 }
 
 export interface EarningPost {
@@ -73,6 +102,18 @@ export function computeEarnings(
   const qCount = qualifying.length;
   const qViews = qualifying.reduce((s, p) => s + p.views, 0);
   const targetMet = rules.targetVideos != null && qCount >= rules.targetVideos;
+
+  // Flat deal short-circuits all other rules.
+  if (rules.flatDeal != null) {
+    return {
+      amount: Math.round(rules.flatDeal * 100) / 100,
+      qualifyingPosts: qCount,
+      qualifyingViews: qViews,
+      targetMet,
+      breakdown: [{ label: "Flat deal", amount: rules.flatDeal }],
+      capped: false,
+    };
+  }
 
   const breakdown: { label: string; amount: number }[] = [];
   if (rules.baseFee) breakdown.push({ label: "Base fee", amount: rules.baseFee });

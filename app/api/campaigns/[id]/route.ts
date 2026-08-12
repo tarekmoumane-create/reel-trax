@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
-import { periodBounds, computeEarnings, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, computeEarnings, effectiveRules, type CampaignRules } from "@/lib/payouts";
 
 function rulesOf(c: {
   period: string;
@@ -36,13 +36,22 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
     if (!campaign) return bad("Campaign not found", 404);
 
     const bounds = periodBounds(campaign.period);
-    const rules = rulesOf(campaign);
+    const baseRules = rulesOf(campaign);
     const creators = campaign.assignments.map((a) => {
+      const rules = effectiveRules(baseRules, a);
       const earnings = computeEarnings(rules, a.creator.posts, bounds);
+      const overridden =
+        a.baseFee != null || a.perPost != null || a.cpmRate != null ||
+        a.bonus != null || a.minViews != null || a.payoutCap != null || a.flatDeal != null;
       return {
         creatorId: a.creator.id,
         displayName: a.creator.displayName,
         earnings,
+        overridden,
+        override: {
+          baseFee: a.baseFee, perPost: a.perPost, cpmRate: a.cpmRate, bonus: a.bonus,
+          minViews: a.minViews, payoutCap: a.payoutCap, flatDeal: a.flatDeal, note: a.note,
+        },
       };
     });
     const periodTotal = creators.reduce((s, c) => s + c.earnings.amount, 0);

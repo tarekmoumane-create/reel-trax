@@ -47,7 +47,9 @@ model Creator {
   phone         String?
   email         String?
   contactHandle String? // preferred DM handle / channel
-  preferredChannel String? // sms | imessage | instagram | whatsapp | email | other
+  discord       String? // Discord user id (numeric) or username
+  whatsapp      String? // WhatsApp number if different from phone
+  preferredChannel String? // sms | imessage | instagram | whatsapp | discord | email | other
 
   // Cadence expectation → drives the "behind / on track" flags
   expectedPerWeek Int    @default(7) // target posts per week
@@ -109,6 +111,17 @@ model CampaignCreator {
   creatorId  String
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  // Per-creator overrides — null means "inherit the campaign rule".
+  // Lets each creator run a completely different pay structure in one campaign.
+  baseFee   Float?
+  perPost   Float?
+  cpmRate   Float?
+  bonus     Float?
+  minViews  Int?
+  payoutCap Float?
+  flatDeal  Float? // a fixed total for the period, ignoring all other rules
+  note      String? // free text, e.g. "hybrid: $200 + rev share"
 
   @@unique([campaignId, creatorId])
   @@index([creatorId])

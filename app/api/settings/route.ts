@@ -4,6 +4,7 @@ import {
   getSetting,
   setSetting,
   getScrapeCreatorsKey,
+  getAnthropicKey,
   getTimeZone,
 } from "@/lib/settings";
 
@@ -17,11 +18,16 @@ export async function GET() {
   try {
     const dbKey = await getSetting(SETTING_KEYS.scrapeCreatorsApiKey);
     const effectiveKey = await getScrapeCreatorsKey();
+    const dbAnthropic = await getSetting(SETTING_KEYS.anthropicApiKey);
+    const effectiveAnthropic = await getAnthropicKey();
     const timeZone = await getTimeZone();
     return ok({
       hasApiKey: !!effectiveKey,
       apiKeyMasked: mask(effectiveKey),
       apiKeyFromEnv: !dbKey && !!process.env.SCRAPECREATORS_API_KEY,
+      hasAnthropicKey: !!effectiveAnthropic,
+      anthropicKeyMasked: mask(effectiveAnthropic),
+      anthropicKeyFromEnv: !dbAnthropic && !!process.env.ANTHROPIC_API_KEY,
       timeZone,
     });
   } catch (e) {
@@ -37,6 +43,9 @@ export async function POST(request: Request) {
         SETTING_KEYS.scrapeCreatorsApiKey,
         body.scrapeCreatorsApiKey.trim()
       );
+    }
+    if (typeof body.anthropicApiKey === "string") {
+      await setSetting(SETTING_KEYS.anthropicApiKey, body.anthropicApiKey.trim());
     }
     if (typeof body.timeZone === "string" && body.timeZone.trim()) {
       await setSetting(SETTING_KEYS.timeZone, body.timeZone.trim());

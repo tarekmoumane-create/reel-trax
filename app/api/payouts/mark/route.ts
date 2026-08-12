@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
-import { periodBounds, computeEarnings, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, computeEarnings, effectiveRules, type CampaignRules } from "@/lib/payouts";
 
 // Mark a computed payout period as paid/cancelled (stores a record), or revert
 // to "due" (removes the record so it re-computes live).
@@ -24,18 +24,21 @@ export async function POST(request: Request) {
 
     const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
     if (!campaign) return bad("Campaign not found", 404);
+    const link = await prisma.campaignCreator.findUnique({
+      where: { campaignId_creatorId: { campaignId, creatorId } },
+    });
     const posts = await prisma.post.findMany({
       where: { creatorId, creator: { campaignLinks: { some: { campaignId } } } },
       select: { postedAt: true, views: true },
     });
 
     const bounds = periodBounds(campaign.period, periodStart);
-    const rules: CampaignRules = {
+    const baseRules: CampaignRules = {
       period: campaign.period, targetVideos: campaign.targetVideos, baseFee: campaign.baseFee,
       perPost: campaign.perPost, cpmRate: campaign.cpmRate, bonus: campaign.bonus,
       minViews: campaign.minViews, payoutCap: campaign.payoutCap,
     };
-    const e = computeEarnings(rules, posts, bounds);
+    const e = computeEarnings(effectiveRules(baseRules, link), posts, bounds);
 
     const record = await prisma.payout.upsert({
       where: { campaignId_creatorId_periodStart: { campaignId, creatorId, periodStart: bounds.start } },

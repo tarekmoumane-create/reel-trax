@@ -45,6 +45,8 @@ export async function PATCH(
       "phone",
       "email",
       "contactHandle",
+      "discord",
+      "whatsapp",
       "preferredChannel",
       "status",
       "notes",

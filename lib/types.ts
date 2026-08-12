@@ -54,6 +54,8 @@ export interface CreatorDTO {
   phone: string | null;
   email: string | null;
   contactHandle: string | null;
+  discord: string | null;
+  whatsapp: string | null;
   preferredChannel: string | null;
   expectedPerWeek: number;
   status: string;

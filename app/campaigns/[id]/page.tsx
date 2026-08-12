@@ -17,7 +17,13 @@ interface Detail {
     baseFee: number; perPost: number; cpmRate: number; bonus: number; minViews: number; payoutCap: number | null; currency: string;
   };
   period: { label: string; total: number; start: string; end: string };
-  creators: { creatorId: string; displayName: string; earnings: Earnings }[];
+  creators: {
+    creatorId: string;
+    displayName: string;
+    earnings: Earnings;
+    overridden: boolean;
+    override: { baseFee: number | null; perPost: number | null; cpmRate: number | null; bonus: number | null; minViews: number | null; payoutCap: number | null; flatDeal: number | null; note: string | null };
+  }[];
 }
 
 export default function CampaignDetail() {
@@ -27,6 +33,7 @@ export default function CampaignDetail() {
   const [loading, setLoading] = useState(true);
   const [showAssign, setShowAssign] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [editRates, setEditRates] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/campaigns/${id}`);
@@ -87,19 +94,25 @@ export default function CampaignDetail() {
             <h2 className="text-sm font-semibold">Assigned creators <span className="text-[var(--muted)]">· {d.period.label}</span></h2>
             <Link href="/payouts" className="text-xs text-[var(--signal)]">View payouts →</Link>
           </div>
-          <div className="hidden grid-cols-[minmax(200px,2fr)_100px_110px_1fr_110px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
-            <div>Creator</div><div>Posts</div><div>Views</div><div>Breakdown</div><div>Earned</div>
+          <div className="hidden grid-cols-[minmax(200px,2fr)_100px_110px_1fr_110px_80px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
+            <div>Creator</div><div>Posts</div><div>Views</div><div>Breakdown</div><div>Earned</div><div className="text-right">Pay</div>
           </div>
           {d.creators.length === 0 ? (
             <div className="py-14 text-center text-sm text-[var(--muted)]">No creators assigned yet. Use “Assign creators”.</div>
           ) : (
             d.creators.map((cr) => (
-              <div key={cr.creatorId} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 md:grid-cols-[minmax(200px,2fr)_100px_110px_1fr_110px] md:gap-4">
-                <Link href={`/creators/${cr.creatorId}`} className="font-medium hover:text-[var(--signal)]">{cr.displayName}</Link>
+              <div key={cr.creatorId} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 md:grid-cols-[minmax(200px,2fr)_100px_110px_1fr_110px_80px] md:gap-4">
+                <div className="flex items-center gap-2">
+                  <Link href={`/creators/${cr.creatorId}`} className="font-medium hover:text-[var(--signal)]">{cr.displayName}</Link>
+                  {cr.overridden && <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--signal)]">custom</span>}
+                </div>
                 <div className="mono text-[13px]">{cr.earnings.qualifyingPosts}{c.targetVideos ? `/${c.targetVideos}` : ""}{cr.earnings.targetMet ? " ✓" : ""}</div>
                 <div className="mono text-[13px]">{fmtNum(cr.earnings.qualifyingViews)}</div>
                 <div className="mono truncate text-[11px] text-[var(--muted)]">{cr.earnings.breakdown.map((b) => `${b.label} ${money(b.amount, cur)}`).join(" + ") || "—"}{cr.earnings.capped ? " (capped)" : ""}</div>
                 <div className="mono text-[15px] font-bold text-[var(--signal)]">{money(cr.earnings.amount, cur)}</div>
+                <div className="text-right">
+                  <button onClick={() => setEditRates(cr.creatorId)} className="btn px-2.5 py-1.5 text-xs">Rates</button>
+                </div>
               </div>
             ))
           )}
@@ -112,6 +125,11 @@ export default function CampaignDetail() {
 
       {showAssign && <AssignModal campaignId={c.id} clientId={c.clientId} assigned={d.creators.map((x) => x.creatorId)} onClose={() => setShowAssign(false)} onSaved={() => { setShowAssign(false); load(); }} />}
       {showEdit && <EditModal campaign={c} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load(); }} />}
+      {editRates && (() => {
+        const cr = d.creators.find((x) => x.creatorId === editRates);
+        if (!cr) return null;
+        return <RatesModal campaignId={c.id} creatorId={cr.creatorId} name={cr.displayName} currency={cur} override={cr.override} onClose={() => setEditRates(null)} onSaved={() => { setEditRates(null); load(); }} />;
+      })()}
     </>
   );
 }
@@ -207,6 +225,63 @@ function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"
         <div className="mt-5 flex justify-end gap-2">
           <button onClick={onClose} className="btn">Cancel</button>
           <button onClick={save} disabled={saving} className="btn btn-primary disabled:opacity-60">{saving ? "Saving…" : "Save"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RatesModal({ campaignId, creatorId, name, currency, override, onClose, onSaved }: {
+  campaignId: string; creatorId: string; name: string; currency: string;
+  override: Detail["creators"][number]["override"]; onClose: () => void; onSaved: () => void;
+}) {
+  const s = (v: number | null) => (v == null ? "" : String(v));
+  const [f, setF] = useState({
+    baseFee: s(override.baseFee), perPost: s(override.perPost), cpmRate: s(override.cpmRate),
+    bonus: s(override.bonus), minViews: s(override.minViews), payoutCap: s(override.payoutCap),
+    flatDeal: s(override.flatDeal), note: override.note ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  function set<K extends keyof typeof f>(k: K, v: (typeof f)[K]) { setF((p) => ({ ...p, [k]: v })); }
+  async function save() {
+    setSaving(true);
+    await fetch(`/api/campaigns/${campaignId}/creator/${creatorId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
+    onSaved();
+  }
+  async function clearAll() {
+    setSaving(true);
+    await fetch(`/api/campaigns/${campaignId}/creator/${creatorId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    onSaved();
+  }
+  const field = "w-full px-3 py-2 text-sm";
+  const label = "mb-1 block text-xs font-medium text-[var(--muted)]";
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+      <div className="card my-8 w-full max-w-lg p-5" onMouseDown={(e) => e.stopPropagation()}>
+        <h2 className="font-display text-lg font-bold">Custom pay · {name}</h2>
+        <p className="mt-1 text-xs text-[var(--muted)]">Leave a field blank to inherit the campaign rule. Set a <span className="text-[var(--ink)]">flat deal</span> to pay a fixed total and ignore everything else. Currency: {currency}.</p>
+        <div className="mt-4 rounded-xl border border-[var(--line)] p-3">
+          <div className="mb-2 text-xs font-semibold text-[var(--muted)]">Flat deal (overrides all rules)</div>
+          <input type="number" className={field} value={f.flatDeal} onChange={(e) => set("flatDeal", e.target.value)} placeholder="e.g. 500 total for the period" />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div><label className={label}>Base fee</label><input type="number" className={field} value={f.baseFee} onChange={(e) => set("baseFee", e.target.value)} placeholder="inherit" /></div>
+          <div><label className={label}>Per post</label><input type="number" className={field} value={f.perPost} onChange={(e) => set("perPost", e.target.value)} placeholder="inherit" /></div>
+          <div><label className={label}>CPM</label><input type="number" className={field} value={f.cpmRate} onChange={(e) => set("cpmRate", e.target.value)} placeholder="inherit" /></div>
+          <div><label className={label}>Bonus</label><input type="number" className={field} value={f.bonus} onChange={(e) => set("bonus", e.target.value)} placeholder="inherit" /></div>
+          <div><label className={label}>Min views</label><input type="number" className={field} value={f.minViews} onChange={(e) => set("minViews", e.target.value)} placeholder="inherit" /></div>
+          <div><label className={label}>Cap</label><input type="number" className={field} value={f.payoutCap} onChange={(e) => set("payoutCap", e.target.value)} placeholder="inherit" /></div>
+        </div>
+        <div className="mt-3">
+          <label className={label}>Note</label>
+          <input className={field} value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="e.g. hybrid: $200 + rev share" />
+        </div>
+        <div className="mt-5 flex items-center justify-between">
+          <button onClick={clearAll} disabled={saving} className="btn text-xs">Reset to campaign</button>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="btn">Cancel</button>
+            <button onClick={save} disabled={saving} className="btn btn-primary disabled:opacity-60">{saving ? "Saving…" : "Save"}</button>
+          </div>
         </div>
       </div>
     </div>

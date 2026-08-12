@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
-import { periodBounds, computeEarnings, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, computeEarnings, effectiveRules, type CampaignRules } from "@/lib/payouts";
 
 function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
@@ -48,11 +48,11 @@ export async function GET(request: Request) {
     for (const c of campaigns) {
       if (c.status !== "active") continue;
       const bounds = periodBounds(c.period, now);
-      const rules = rulesOf(c);
+      const baseRules = rulesOf(c);
       for (const a of c.assignments) {
         const key = `${c.id}|${a.creatorId}|${bounds.start.toISOString()}`;
         if (map.has(key)) continue; // stored wins
-        const e = computeEarnings(rules, a.creator.posts, bounds);
+        const e = computeEarnings(effectiveRules(baseRules, a), a.creator.posts, bounds);
         map.set(key, {
           key, campaignId: c.id, campaignName: c.name, creatorId: a.creatorId, creatorName: a.creator.displayName,
           periodStart: bounds.start.toISOString(), periodEnd: bounds.end.toISOString(), periodLabel: bounds.label,

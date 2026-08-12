@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useClients } from "@/app/providers";
 import { initials } from "@/lib/ui";
+import { Copilot } from "./Copilot";
 
 type Item = { href: string; label: string; icon: React.ReactNode; soon?: boolean };
 
@@ -160,6 +161,11 @@ export function Sidebar() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* copilot */}
+      <div className="px-3 pb-2">
+        <Copilot />
       </div>
 
       {/* nav */}

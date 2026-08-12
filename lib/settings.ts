@@ -5,6 +5,7 @@ import { prisma } from "./db";
 
 export const SETTING_KEYS = {
   scrapeCreatorsApiKey: "scrapecreators_api_key",
+  anthropicApiKey: "anthropic_api_key",
   timeZone: "time_zone",
   cronSecret: "cron_secret",
 } as const;
@@ -27,6 +28,15 @@ export async function getScrapeCreatorsKey(): Promise<string | null> {
   return (
     (await getSetting(SETTING_KEYS.scrapeCreatorsApiKey)) ||
     process.env.SCRAPECREATORS_API_KEY ||
+    null
+  );
+}
+
+/** Anthropic key for the AI copilot: DB setting wins, else env var. */
+export async function getAnthropicKey(): Promise<string | null> {
+  return (
+    (await getSetting(SETTING_KEYS.anthropicApiKey)) ||
+    process.env.ANTHROPIC_API_KEY ||
     null
   );
 }
