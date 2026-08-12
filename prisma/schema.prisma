@@ -71,8 +71,24 @@ model Creator {
 
   campaignLinks CampaignCreator[]
   payouts       Payout[]
+  followerSnapshots FollowerSnapshot[]
 
   @@index([clientId])
+}
+
+// Daily follower count per creator+platform, captured during sync, so we can
+// chart follower growth over time.
+model FollowerSnapshot {
+  id         String   @id @default(cuid())
+  creatorId  String
+  creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  platform   String // tiktok | instagram
+  day        String // YYYY-MM-DD in the app timezone
+  followers  Int
+  capturedAt DateTime @default(now())
+
+  @@unique([creatorId, platform, day])
+  @@index([creatorId])
 }
 
 // A campaign groups creators under a target + payout rules for one client.

@@ -5,6 +5,7 @@ import {
   setSetting,
   getScrapeCreatorsKey,
   getAnthropicKey,
+  getLightReelKey,
   getTimeZone,
 } from "@/lib/settings";
 
@@ -20,6 +21,8 @@ export async function GET() {
     const effectiveKey = await getScrapeCreatorsKey();
     const dbAnthropic = await getSetting(SETTING_KEYS.anthropicApiKey);
     const effectiveAnthropic = await getAnthropicKey();
+    const dbLightReel = await getSetting(SETTING_KEYS.lightReelApiKey);
+    const effectiveLightReel = await getLightReelKey();
     const timeZone = await getTimeZone();
     return ok({
       hasApiKey: !!effectiveKey,
@@ -28,6 +31,9 @@ export async function GET() {
       hasAnthropicKey: !!effectiveAnthropic,
       anthropicKeyMasked: mask(effectiveAnthropic),
       anthropicKeyFromEnv: !dbAnthropic && !!process.env.ANTHROPIC_API_KEY,
+      hasLightReelKey: !!effectiveLightReel,
+      lightReelKeyMasked: mask(effectiveLightReel),
+      lightReelKeyFromEnv: !dbLightReel && !!process.env.LIGHTREEL_API_KEY,
       timeZone,
     });
   } catch (e) {
@@ -46,6 +52,9 @@ export async function POST(request: Request) {
     }
     if (typeof body.anthropicApiKey === "string") {
       await setSetting(SETTING_KEYS.anthropicApiKey, body.anthropicApiKey.trim());
+    }
+    if (typeof body.lightReelApiKey === "string") {
+      await setSetting(SETTING_KEYS.lightReelApiKey, body.lightReelApiKey.trim());
     }
     if (typeof body.timeZone === "string" && body.timeZone.trim()) {
       await setSetting(SETTING_KEYS.timeZone, body.timeZone.trim());

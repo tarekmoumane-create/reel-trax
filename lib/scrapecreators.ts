@@ -24,6 +24,8 @@ export interface FetchResult {
   posts: NormalizedPost[];
   /** platform user id we discovered (cache it for faster future lookups) */
   userId?: string | null;
+  /** follower count if present in the payload (for growth charts) */
+  followers?: number | null;
   rawCount: number;
 }
 
@@ -158,7 +160,10 @@ export async function fetchTikTok(
       shares: num(pick(it, ["statistics.share_count"])),
     });
   }
-  return { posts, userId, rawCount: list.length };
+  const followers = list.length
+    ? num(pick(list[0], ["author.follower_count", "author.followerCount"])) || null
+    : null;
+  return { posts, userId, followers, rawCount: list.length };
 }
 
 // ---------- Instagram ----------
@@ -216,5 +221,14 @@ export async function fetchInstagram(
       shares: num(pick(it, ["reshare_count", "share_count"])),
     });
   }
-  return { posts, rawCount: Array.isArray(list) ? list.length : 0 };
+  const followers =
+    num(
+      pick(data, [
+        "user.follower_count",
+        "user.edge_followed_by.count",
+        "data.user.follower_count",
+        "follower_count",
+      ])
+    ) || null;
+  return { posts, followers, rawCount: Array.isArray(list) ? list.length : 0 };
 }

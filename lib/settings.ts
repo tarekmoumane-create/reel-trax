@@ -6,6 +6,7 @@ import { prisma } from "./db";
 export const SETTING_KEYS = {
   scrapeCreatorsApiKey: "scrapecreators_api_key",
   anthropicApiKey: "anthropic_api_key",
+  lightReelApiKey: "lightreel_api_key",
   timeZone: "time_zone",
   cronSecret: "cron_secret",
 } as const;
@@ -37,6 +38,15 @@ export async function getAnthropicKey(): Promise<string | null> {
   return (
     (await getSetting(SETTING_KEYS.anthropicApiKey)) ||
     process.env.ANTHROPIC_API_KEY ||
+    null
+  );
+}
+
+/** LightReel key for the Discover / research feature. */
+export async function getLightReelKey(): Promise<string | null> {
+  return (
+    (await getSetting(SETTING_KEYS.lightReelApiKey)) ||
+    process.env.LIGHTREEL_API_KEY ||
     null
   );
 }

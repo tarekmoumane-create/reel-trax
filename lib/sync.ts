@@ -6,7 +6,24 @@ import {
   parseInstagramHandle,
   type NormalizedPost,
 } from "./scrapecreators";
+import { dayKey } from "./cadence";
+import { getTimeZone } from "./settings";
 import type { Creator } from "@prisma/client";
+
+async function snapshotFollowers(
+  creatorId: string,
+  platform: string,
+  followers: number | null | undefined,
+  tz: string
+) {
+  if (!followers || followers <= 0) return;
+  const day = dayKey(new Date(), tz);
+  await prisma.followerSnapshot.upsert({
+    where: { creatorId_platform_day: { creatorId, platform, day } },
+    create: { creatorId, platform, day, followers },
+    update: { followers },
+  });
+}
 
 export interface PlatformSyncResult {
   platform: "tiktok" | "instagram";
@@ -70,6 +87,7 @@ export async function syncCreator(
   apiKey: string
 ): Promise<CreatorSyncResult> {
   const results: PlatformSyncResult[] = [];
+  const tz = await getTimeZone();
 
   // ---- TikTok ----
   const tiktokHandle =
@@ -83,6 +101,7 @@ export async function syncCreator(
         apiKey
       );
       const upserted = await upsertPosts(creator.id, r.posts);
+      await snapshotFollowers(creator.id, "tiktok", r.followers, tz);
       // cache discovered user id for faster future calls
       if (r.userId && r.userId !== creator.tiktokUserId) {
         await prisma.creator.update({
@@ -116,6 +135,7 @@ export async function syncCreator(
     try {
       const r = await fetchInstagram({ handle: igHandle }, apiKey);
       const upserted = await upsertPosts(creator.id, r.posts);
+      await snapshotFollowers(creator.id, "instagram", r.followers, tz);
       results.push({
         platform: "instagram",
         ok: true,

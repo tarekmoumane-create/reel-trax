@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CreatorDetailResponse, CreatorDTO, PostDTO } from "@/lib/types";
 import { PostActivity } from "@/components/PostActivity";
+import { Chart } from "@/components/Chart";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ContactButton } from "@/components/ContactButton";
 import { VideoThumb } from "@/components/VideoThumb";
@@ -110,6 +111,14 @@ export default function CreatorDetail() {
           </div>
           {creator.lastSyncError && <p className="mt-3 rounded-lg bg-[color:rgba(242,104,95,0.1)] px-3 py-2 text-xs text-[var(--bad)]">Last sync issue: {creator.lastSyncError}</p>}
         </div>
+
+        {/* trend */}
+        {posts.length > 0 && (
+          <div className="card mb-4 p-5">
+            <h2 className="mb-3 text-sm font-semibold">Views trend <span className="text-[var(--muted)]">· last 30 days</span></h2>
+            <CreatorTrend posts={posts} />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="card p-5 lg:col-span-1"><CommsPanel creator={creator} onSave={patch} busy={busy} /></div>
@@ -242,4 +251,28 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
       </div>
     </div>
   );
+}
+
+function CreatorTrend({ posts }: { posts: PostDTO[] }) {
+  const { labels, views } = useMemo(() => {
+    const days = 30;
+    const now = new Date();
+    const labels: string[] = [];
+    const map = new Map<string, number>();
+    for (let i = days - 1; i >= 0; i--) {
+      const k = new Date(now.getTime() - i * 86400000).toISOString().slice(0, 10);
+      labels.push(k);
+      map.set(k, 0);
+    }
+    for (const p of posts) {
+      const k = new Date(p.postedAt).toISOString().slice(0, 10);
+      if (map.has(k)) map.set(k, map.get(k)! + p.views);
+    }
+    return { labels, views: labels.map((k) => map.get(k)!) };
+  }, [posts]);
+  const fmtDate = (d: string) => {
+    const [, m, day] = d.split("-").map(Number);
+    return new Date(2000, m - 1, day).toLocaleDateString("en", { month: "short", day: "numeric" });
+  };
+  return <Chart labels={labels} series={[{ name: "Views", color: "#7c5cff", values: views, area: true }]} format={fmtNum} formatX={fmtDate} height={170} />;
 }

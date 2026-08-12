@@ -26,6 +26,9 @@ interface SettingsData {
   hasAnthropicKey: boolean;
   anthropicKeyMasked: string | null;
   anthropicKeyFromEnv: boolean;
+  hasLightReelKey: boolean;
+  lightReelKeyMasked: string | null;
+  lightReelKeyFromEnv: boolean;
   timeZone: string;
 }
 
@@ -35,8 +38,10 @@ export default function SettingsPage() {
   const [apiKey, setApiKey] = useState("");
   const [tz, setTz] = useState("America/New_York");
   const [anthropicKey, setAnthropicKey] = useState("");
+  const [lightReelKey, setLightReelKey] = useState("");
   const [savingKey, setSavingKey] = useState(false);
   const [savingAnthropic, setSavingAnthropic] = useState(false);
+  const [savingLightReel, setSavingLightReel] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
 
   async function loadSettings() {
@@ -73,6 +78,18 @@ export default function SettingsPage() {
     });
     setAnthropicKey("");
     setSavingAnthropic(false);
+    await loadSettings();
+  }
+
+  async function saveLightReel() {
+    setSavingLightReel(true);
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lightReelApiKey: lightReelKey }),
+    });
+    setLightReelKey("");
+    setSavingLightReel(false);
     await loadSettings();
   }
 
@@ -140,6 +157,27 @@ export default function SettingsPage() {
           <input type="password" value={anthropicKey} onChange={(e) => setAnthropicKey(e.target.value)} placeholder="sk-ant-…" className="flex-1 px-3 py-2 text-sm" />
           <button onClick={saveAnthropic} disabled={savingAnthropic || !anthropicKey.trim()} className="btn btn-primary disabled:opacity-50">
             {savingAnthropic ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </section>
+
+      {/* LightReel key (discover) */}
+      <section className="card mb-4 p-5">
+        <h2 className="text-sm font-semibold">LightReel API key <span className="font-normal text-[var(--muted)]">· powers Discover</span></h2>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Powers the Discover research console (competitor hooks, trends, creator finding). Get one at{" "}
+          <a href="https://lightreel.ai/docs" target="_blank" rel="noreferrer" className="text-[var(--signal)]">lightreel.ai</a>. Stored server-side, never shown in full.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-2.5 py-1 text-xs ${settings?.hasLightReelKey ? "bg-green-500/12 text-green-400" : "bg-red-500/12 text-red-400"}`}>
+            {settings?.hasLightReelKey ? `Connected · ${settings.lightReelKeyMasked}` : "Not set"}
+          </span>
+          {settings?.lightReelKeyFromEnv && <span className="text-xs text-[var(--muted)]">(from environment variable)</span>}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <input type="password" value={lightReelKey} onChange={(e) => setLightReelKey(e.target.value)} placeholder="lr_live_…" className="flex-1 px-3 py-2 text-sm" />
+          <button onClick={saveLightReel} disabled={savingLightReel || !lightReelKey.trim()} className="btn btn-primary disabled:opacity-50">
+            {savingLightReel ? "Saving…" : "Save"}
           </button>
         </div>
       </section>

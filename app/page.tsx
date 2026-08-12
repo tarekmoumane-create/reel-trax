@@ -8,6 +8,7 @@ import type { CadenceStatus } from "@/lib/cadence";
 import { PostActivity } from "@/components/PostActivity";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
+import { AnalyticsPanel } from "@/components/AnalyticsPanel";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, initials, timeAgo } from "@/lib/ui";
 
@@ -126,6 +127,9 @@ export default function Overview() {
             <Kpi label="Follow-ups due" value={s.needFollowUp} tone="var(--signal)" active={filter === "follow_up"} onClick={() => setFilter("follow_up")} />
           </div>
         )}
+
+        {/* analytics */}
+        {currentClientId && <AnalyticsPanel clientId={currentClientId} />}
 
         {/* toolbar */}
         <div className="mb-3 flex items-center gap-2">
