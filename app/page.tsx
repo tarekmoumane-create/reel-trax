@@ -9,6 +9,7 @@ import { PostActivity } from "@/components/PostActivity";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
 import { AnalyticsPanel } from "@/components/AnalyticsPanel";
+import { Avatar } from "@/components/Avatar";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, initials, timeAgo } from "@/lib/ui";
 
@@ -200,9 +201,7 @@ function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; bu
     <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(200px,1.6fr)_auto_84px_72px_64px_104px_150px] lg:gap-4">
       {/* identity */}
       <div className="flex min-w-0 items-center gap-3">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--panel2)] text-xs font-semibold text-[var(--muted)]">
-          {initials(row.displayName)}
-        </div>
+        <Avatar name={row.displayName} src={row.avatarUrl} size={36} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Link href={`/creators/${row.id}`} className="truncate text-sm font-medium hover:text-[var(--signal)]">{row.displayName}</Link>

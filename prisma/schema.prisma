@@ -29,6 +29,7 @@ model Creator {
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   displayName String
+  avatarUrl   String? // profile picture pulled from TikTok/IG during sync
 
   // TikTok
   tiktokHandle String?

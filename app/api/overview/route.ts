@@ -36,6 +36,7 @@ export async function GET(request: Request) {
       return {
         id: c.id,
         displayName: c.displayName,
+        avatarUrl: c.avatarUrl,
         status: c.status,
         source: c.source,
         tiktokHandle: c.tiktokHandle,

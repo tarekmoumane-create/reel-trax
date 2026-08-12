@@ -88,6 +88,7 @@ export async function syncCreator(
 ): Promise<CreatorSyncResult> {
   const results: PlatformSyncResult[] = [];
   const tz = await getTimeZone();
+  let avatarUrl: string | null = null;
 
   // ---- TikTok ----
   const tiktokHandle =
@@ -102,6 +103,7 @@ export async function syncCreator(
       );
       const upserted = await upsertPosts(creator.id, r.posts);
       await snapshotFollowers(creator.id, "tiktok", r.followers, tz);
+      if (r.avatarUrl) avatarUrl = r.avatarUrl;
       // cache discovered user id for faster future calls
       if (r.userId && r.userId !== creator.tiktokUserId) {
         await prisma.creator.update({
@@ -136,6 +138,7 @@ export async function syncCreator(
       const r = await fetchInstagram({ handle: igHandle }, apiKey);
       const upserted = await upsertPosts(creator.id, r.posts);
       await snapshotFollowers(creator.id, "instagram", r.followers, tz);
+      if (r.avatarUrl && !avatarUrl) avatarUrl = r.avatarUrl;
       results.push({
         platform: "instagram",
         ok: true,
@@ -163,6 +166,7 @@ export async function syncCreator(
       lastSyncedAt: new Date(),
       lastSyncStatus: !anyTried ? "never" : anyOk && !errors.length ? "ok" : anyOk ? "partial" : "error",
       lastSyncError: errors.length ? errors.join(" | ") : null,
+      ...(avatarUrl ? { avatarUrl } : {}),
     },
   });
 

@@ -7,7 +7,8 @@ import type { OverviewResponse } from "@/lib/types";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
-import { SOURCE_LABEL, daysLabel, initials, timeAgo } from "@/lib/ui";
+import { Avatar } from "@/components/Avatar";
+import { SOURCE_LABEL, daysLabel, timeAgo } from "@/lib/ui";
 
 export default function CreatorsPage() {
   const { currentClientId, currentClient, reloadClients } = useClients();
@@ -54,7 +55,7 @@ export default function CreatorsPage() {
                 className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 hover:bg-[var(--panel2)] md:grid-cols-[minmax(220px,2fr)_110px_1fr_120px_100px_90px] md:gap-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--panel2)] text-xs font-semibold text-[var(--muted)]">{initials(r.displayName)}</div>
+                  <Avatar name={r.displayName} src={r.avatarUrl} size={36} />
                   <span className="truncate text-sm font-medium">{r.displayName}</span>
                 </div>
                 <div><StatusBadge status={r.cadence.status} /></div>

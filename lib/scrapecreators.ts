@@ -26,6 +26,8 @@ export interface FetchResult {
   userId?: string | null;
   /** follower count if present in the payload (for growth charts) */
   followers?: number | null;
+  /** profile picture URL if present in the payload */
+  avatarUrl?: string | null;
   rawCount: number;
 }
 
@@ -163,7 +165,15 @@ export async function fetchTikTok(
   const followers = list.length
     ? num(pick(list[0], ["author.follower_count", "author.followerCount"])) || null
     : null;
-  return { posts, userId, followers, rawCount: list.length };
+  const avatarUrl = list.length
+    ? (pick(list[0], [
+        "author.avatar_medium.url_list.0",
+        "author.avatar_168x168.url_list.0",
+        "author.avatar_thumb.url_list.0",
+        "author.avatar_larger.url_list.0",
+      ]) as string) || null
+    : null;
+  return { posts, userId, followers, avatarUrl, rawCount: list.length };
 }
 
 // ---------- Instagram ----------
@@ -230,5 +240,11 @@ export async function fetchInstagram(
         "follower_count",
       ])
     ) || null;
-  return { posts, followers, rawCount: Array.isArray(list) ? list.length : 0 };
+  const avatarUrl =
+    (pick(data, [
+      "user.profile_pic_url",
+      "user.profile_pic_url_hd",
+      "data.user.profile_pic_url",
+    ]) as string) || null;
+  return { posts, followers, avatarUrl, rawCount: Array.isArray(list) ? list.length : 0 };
 }

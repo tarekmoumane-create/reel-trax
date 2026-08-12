@@ -12,6 +12,7 @@ export interface ClientDTO {
 export interface OverviewRow {
   id: string;
   displayName: string;
+  avatarUrl: string | null;
   status: string;
   source: string;
   tiktokHandle: string | null;
@@ -45,6 +46,7 @@ export interface CreatorDTO {
   id: string;
   clientId: string;
   displayName: string;
+  avatarUrl: string | null;
   tiktokHandle: string | null;
   tiktokUrl: string | null;
   instagramHandle: string | null;

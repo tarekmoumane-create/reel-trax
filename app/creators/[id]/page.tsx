@@ -9,8 +9,9 @@ import { Chart } from "@/components/Chart";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ContactButton } from "@/components/ContactButton";
 import { VideoThumb } from "@/components/VideoThumb";
+import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/PageHeader";
-import { SOURCE_LABEL, daysLabel, fmtNum, initials, timeAgo } from "@/lib/ui";
+import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
 import { PAYMENT_METHODS, PAYMENT_LABEL, payLink } from "@/lib/pay";
 
 export default function CreatorDetail() {
@@ -77,7 +78,8 @@ export default function CreatorDetail() {
         {/* header */}
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--panel2)] text-lg font-semibold text-[var(--muted)]">{initials(creator.displayName)}</div>
+            <Avatar name={creator.displayName} src={creator.avatarUrl} size={56} rounded="16px" />
+
             <div>
               <div className="flex items-center gap-2.5">
                 <h1 className="font-display text-2xl font-bold">{creator.displayName}</h1>
