@@ -3,7 +3,8 @@
 /* ============ Warm Studio theme ============
    Warm bone paper, espresso ink, one confident coral accent.
    Numbers use tabular sans figures — never monospace. */
-:root {
+:root,
+:root[data-theme="light"] {
   color-scheme: light;
   --bg: #faf5ee;          /* warm bone paper */
   --rail: #f4ecdf;        /* sidebar, a touch warmer */
@@ -21,6 +22,67 @@
   --bad: #d0473a;
   --tt: #2a231c;
   --ig: #d6438f;
+  --field: #fdfbf7;       /* input fill */
+  --scroll: #ddd2c0;      /* scrollbar thumb */
+  --card-shadow: 0 1px 2px rgba(42, 35, 28, 0.04), 0 10px 30px -20px rgba(42, 35, 28, 0.18);
+  --scrim: rgba(42, 35, 28, 0.45);
+  --chip-tt: rgba(42, 35, 28, 0.07);
+}
+
+/* ============ Warm Studio — after dark ============
+   Same room, lights down. Roasted espresso, not cold slate;
+   the coral warms a touch to hold its glow on a dark ground. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17130f;          /* deep roasted espresso */
+  --rail: #1e1913;        /* sidebar, a shade up from the floor */
+  --panel: #241d16;       /* cards lift off the background */
+  --panel2: #2e261d;      /* insets, hovers */
+  --line: #383025;        /* borders */
+  --line2: #2c251c;       /* subtle dividers */
+  --ink: #f3ecdf;         /* warm bone text */
+  --muted: #a99d89;       /* secondary text */
+  --faint: #766c5b;       /* tertiary text */
+  --signal: #ff6a44;      /* coral, warmed to glow on dark */
+  --signal-2: #ff835f;
+  --ok: #4bbd86;
+  --warn: #e0a03f;
+  --bad: #ec6a5c;
+  --tt: #f3ecdf;
+  --ig: #f06bab;
+  --field: #1c160f;       /* input fill, recessed */
+  --scroll: #443a2c;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 34px -22px rgba(0, 0, 0, 0.7);
+  --scrim: rgba(10, 8, 5, 0.62);
+  --chip-tt: rgba(243, 236, 223, 0.10);
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Respect the OS only until the user makes an explicit choice. */
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg: #17130f;
+    --rail: #1e1913;
+    --panel: #241d16;
+    --panel2: #2e261d;
+    --line: #383025;
+    --line2: #2c251c;
+    --ink: #f3ecdf;
+    --muted: #a99d89;
+    --faint: #766c5b;
+    --signal: #ff6a44;
+    --signal-2: #ff835f;
+    --ok: #4bbd86;
+    --warn: #e0a03f;
+    --bad: #ec6a5c;
+    --tt: #f3ecdf;
+    --ig: #f06bab;
+    --field: #1c160f;
+    --scroll: #443a2c;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 34px -22px rgba(0, 0, 0, 0.7);
+    --scrim: rgba(10, 8, 5, 0.62);
+  --chip-tt: rgba(243, 236, 223, 0.10);
+  }
 }
 
 @theme inline {
@@ -74,7 +136,7 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #ddd2c0;
+  background: var(--scroll);
   border-radius: 8px;
   border: 2px solid var(--bg);
 }
@@ -87,7 +149,7 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 18px;
-  box-shadow: 0 1px 2px rgba(42, 35, 28, 0.04), 0 10px 30px -20px rgba(42, 35, 28, 0.18);
+  box-shadow: var(--card-shadow);
 }
 .tile-ico {
   display: grid;
@@ -101,7 +163,7 @@ body {
 input,
 select,
 textarea {
-  background: #fdfbf7;
+  background: var(--field);
   border: 1px solid var(--line);
   border-radius: 11px;
   color: var(--ink);

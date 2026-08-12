@@ -7,6 +7,7 @@ import { useClients } from "@/app/providers";
 import { Copilot } from "./Copilot";
 import { ClientLogo } from "./ClientLogo";
 import { AddClientModal } from "./AddClientModal";
+import { ThemeToggle } from "./ThemeToggle";
 
 type Item = { href: string; label: string; icon: React.ReactNode; soon?: boolean };
 
@@ -176,6 +177,7 @@ export function Sidebar() {
           <div className="truncate font-medium">Reel Trax</div>
           <div className="truncate text-[var(--faint)]">The Reel Work</div>
         </div>
+        <ThemeToggle />
         <button
           onClick={async () => {
             await fetch("/api/logout", { method: "POST" });

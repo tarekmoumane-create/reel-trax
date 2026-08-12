@@ -20,9 +20,15 @@ export const metadata: Metadata = {
     "Track every creator across every client — posting cadence, sourcing, comms and payouts in one place.",
 };
 
+// Apply the saved theme before first paint so there's no flash of the wrong palette.
+const themeInit = `(function(){try{var t=localStorage.getItem("rt-theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${hanken.variable} ${bricolage.variable} h-full`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
       </body>

@@ -42,7 +42,7 @@ export function VideoThumb({
       ) : (
         <div
           className="grid h-full w-full place-items-center"
-          style={{ background: isTT ? "rgba(42,35,28,0.06)" : "rgba(214,67,143,0.12)" }}
+          style={{ background: isTT ? "var(--chip-tt)" : "rgba(214,67,143,0.12)" }}
         >
           <span className="mono text-[10px] font-bold" style={{ color: isTT ? "var(--muted)" : "var(--ig)" }}>
             {isTT ? "TT" : "IG"}
