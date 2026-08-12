@@ -1,0 +1,40 @@
+import { prisma } from "./db";
+
+// App config lives in the Setting table (key/value) so it's editable from the
+// UI, with env vars as a fallback for secrets set on the host (Vercel).
+
+export const SETTING_KEYS = {
+  scrapeCreatorsApiKey: "scrapecreators_api_key",
+  timeZone: "time_zone",
+  cronSecret: "cron_secret",
+} as const;
+
+export async function getSetting(key: string): Promise<string | null> {
+  const row = await prisma.setting.findUnique({ where: { key } });
+  return row?.value ?? null;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  await prisma.setting.upsert({
+    where: { key },
+    create: { key, value },
+    update: { value },
+  });
+}
+
+/** ScrapeCreators key: DB setting wins, else env var. */
+export async function getScrapeCreatorsKey(): Promise<string | null> {
+  return (
+    (await getSetting(SETTING_KEYS.scrapeCreatorsApiKey)) ||
+    process.env.SCRAPECREATORS_API_KEY ||
+    null
+  );
+}
+
+export async function getTimeZone(): Promise<string> {
+  return (
+    (await getSetting(SETTING_KEYS.timeZone)) ||
+    process.env.APP_TIMEZONE ||
+    "America/New_York"
+  );
+}

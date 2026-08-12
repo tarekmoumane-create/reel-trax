@@ -1,0 +1,100 @@
+// Reel Trax — creator tracking OS
+// Schema is intentionally portable: SQLite for local dev, Postgres for prod.
+// No Prisma enums / Json columns so `provider` can be flipped with zero edits.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A client = one of the brands/accounts you run creators for.
+// The whole app scopes to the "current" client (the toggle in the top bar).
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  color     String    @default("#6366f1") // accent used in the switcher
+  archived  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  creators  Creator[]
+}
+
+model Creator {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  displayName String
+
+  // TikTok
+  tiktokHandle String?
+  tiktokUrl    String?
+  tiktokUserId String? // cached for faster ScrapeCreators lookups
+
+  // Instagram
+  instagramHandle String?
+  instagramUrl    String?
+
+  // Where this creator came from (Sideshift is the common one)
+  source       String  @default("sideshift") // sideshift | referral | outreach | agency | other
+  sourceDetail String?
+
+  // Contact / comms
+  phone         String?
+  email         String?
+  contactHandle String? // preferred DM handle / channel
+  preferredChannel String? // sms | imessage | instagram | whatsapp | email | other
+
+  // Cadence expectation → drives the "behind / on track" flags
+  expectedPerWeek Int    @default(7) // target posts per week
+  status          String @default("active") // active | paused | inactive
+
+  notes String?
+
+  // Comms tracking (the "who do I need to text" layer)
+  lastContactedAt DateTime?
+  followUpAt      DateTime?
+
+  // Sync bookkeeping so you always know if data is fresh/stale
+  lastSyncedAt   DateTime?
+  lastSyncStatus String? // ok | error | never
+  lastSyncError  String?
+
+  createdAt DateTime @default(now())
+  posts     Post[]
+
+  @@index([clientId])
+}
+
+model Post {
+  id             String  @id @default(cuid())
+  creatorId      String
+  creator        Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  platform       String // tiktok | instagram
+  platformPostId String
+
+  url          String?
+  caption      String?
+  thumbnailUrl String?
+
+  postedAt DateTime
+  views    Int @default(0)
+  likes    Int @default(0)
+  comments Int @default(0)
+  shares   Int @default(0)
+
+  source    String   @default("auto") // auto | manual
+  fetchedAt DateTime @default(now())
+
+  @@unique([platform, platformPostId])
+  @@index([creatorId, postedAt])
+}
+
+// Key/value app config: ScrapeCreators API key, cron secret, sync cadence, etc.
+model Setting {
+  key   String @id
+  value String
+}
