@@ -4,6 +4,8 @@ export interface ClientDTO {
   id: string;
   name: string;
   color: string;
+  website: string | null;
+  logoUrl: string | null;
   archived: boolean;
   createdAt: string;
   _count?: { creators: number };

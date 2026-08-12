@@ -1,24 +1,26 @@
 @import "tailwindcss";
 
-/* ============ Signal Desk theme ============ */
+/* ============ Warm Studio theme ============
+   Warm bone paper, espresso ink, one confident coral accent.
+   Numbers use tabular sans figures — never monospace. */
 :root {
-  color-scheme: dark;
-  --bg: #0e0f14;          /* content background */
-  --rail: #0a0b0f;        /* sidebar, a touch darker */
-  --panel: #15171f;       /* cards */
-  --panel2: #1b1e28;      /* insets, hovers */
-  --line: #242833;        /* borders */
-  --line2: #1c1f28;       /* subtle dividers */
-  --ink: #ece7dd;         /* warm off-white text */
-  --muted: #8b8f9c;       /* secondary text */
-  --faint: #565b69;       /* tertiary text */
-  --signal: #7c5cff;      /* purple accent */
-  --signal-2: #9d84ff;
-  --ok: #57c98a;
-  --warn: #f5a524;
-  --bad: #f2685f;
-  --tt: #e7eaf3;
-  --ig: #f26fb2;
+  color-scheme: light;
+  --bg: #faf5ee;          /* warm bone paper */
+  --rail: #f4ecdf;        /* sidebar, a touch warmer */
+  --panel: #ffffff;       /* cards */
+  --panel2: #f3ebdd;      /* insets, hovers */
+  --line: #e8dfd0;        /* borders */
+  --line2: #f0e8db;       /* subtle dividers */
+  --ink: #2a231c;         /* warm espresso text */
+  --muted: #8a8074;       /* secondary text */
+  --faint: #b3a897;       /* tertiary text */
+  --signal: #ec5a35;      /* warm coral accent */
+  --signal-2: #ff6f4c;
+  --ok: #2f9464;          /* legible on light */
+  --warn: #c98419;
+  --bad: #d0473a;
+  --tt: #2a231c;
+  --ig: #d6438f;
 }
 
 @theme inline {
@@ -31,9 +33,8 @@
   --color-muted: var(--muted);
   --color-faint: var(--faint);
   --color-signal: var(--signal);
-  --font-display: var(--font-archivo);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jbmono);
+  --font-display: var(--font-bricolage);
+  --font-sans: var(--font-hanken);
 }
 
 * {
@@ -45,29 +46,35 @@ html,
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .font-display {
-  font-family: var(--font-archivo), sans-serif;
+  font-family: var(--font-bricolage), sans-serif;
   letter-spacing: -0.02em;
 }
+
+/* "mono" is now warm tabular sans — the number treatment, NOT monospace */
 .mono {
-  font-family: var(--font-jbmono), ui-monospace, monospace;
+  font-family: var(--font-hanken), sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv01" 1;
+  letter-spacing: -0.005em;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--signal) 35%, transparent);
+  background: color-mix(in srgb, var(--signal) 22%, transparent);
 }
 
-/* scrollbars */
+/* scrollbars — warm, subtle */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a3040;
+  background: #ddd2c0;
   border-radius: 8px;
   border: 2px solid var(--bg);
 }
@@ -75,11 +82,12 @@ body {
   background: transparent;
 }
 
-/* shared building blocks */
+/* building blocks */
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(42, 35, 28, 0.04), 0 10px 30px -20px rgba(42, 35, 28, 0.18);
 }
 .tile-ico {
   display: grid;
@@ -93,9 +101,9 @@ body {
 input,
 select,
 textarea {
-  background: var(--panel2);
+  background: #fdfbf7;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 11px;
   color: var(--ink);
   outline: none;
 }
@@ -103,7 +111,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--signal);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 16%, transparent);
 }
 input::placeholder,
 textarea::placeholder {
@@ -117,20 +125,24 @@ textarea::placeholder {
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
-  border-radius: 10px;
+  border-radius: 11px;
   padding: 8px 13px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background 0.12s, border-color 0.12s, transform 0.04s;
 }
 .btn:hover {
   background: var(--panel2);
+}
+.btn:active {
+  transform: translateY(0.5px);
 }
 .btn-primary {
   background: var(--signal);
   border-color: var(--signal);
   color: #fff;
+  box-shadow: 0 1px 2px rgba(236, 90, 53, 0.25);
 }
 .btn-primary:hover {
   background: var(--signal-2);

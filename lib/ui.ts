@@ -6,27 +6,27 @@ export const STATUS_STYLE: Record<
 > = {
   on_track: {
     label: "On track",
-    text: "#4ade80",
-    bg: "rgba(74,222,128,0.12)",
-    dot: "#22c55e",
+    text: "#1f7a4d",
+    bg: "rgba(47,148,100,0.13)",
+    dot: "#2f9464",
   },
   behind: {
     label: "Behind",
-    text: "#fbbf24",
-    bg: "rgba(251,191,36,0.12)",
-    dot: "#f59e0b",
+    text: "#a86a10",
+    bg: "rgba(201,132,25,0.15)",
+    dot: "#c98419",
   },
   quiet: {
     label: "Gone quiet",
-    text: "#f87171",
-    bg: "rgba(248,113,113,0.12)",
-    dot: "#ef4444",
+    text: "#b83a2e",
+    bg: "rgba(208,71,58,0.13)",
+    dot: "#d0473a",
   },
   no_data: {
     label: "No posts yet",
-    text: "#94a3b8",
-    bg: "rgba(148,163,184,0.10)",
-    dot: "#64748b",
+    text: "#8a8074",
+    bg: "rgba(42,35,28,0.06)",
+    dot: "#b3a897",
   },
 };
 

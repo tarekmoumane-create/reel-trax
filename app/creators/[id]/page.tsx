@@ -289,5 +289,5 @@ function CreatorTrend({ posts }: { posts: PostDTO[] }) {
     const [, m, day] = d.split("-").map(Number);
     return new Date(2000, m - 1, day).toLocaleDateString("en", { month: "short", day: "numeric" });
   };
-  return <Chart labels={labels} series={[{ name: "Views", color: "#7c5cff", values: views, area: true }]} format={fmtNum} formatX={fmtDate} height={170} />;
+  return <Chart labels={labels} series={[{ name: "Views", color: "#ec5a35", values: views, area: true }]} format={fmtNum} formatX={fmtDate} height={170} />;
 }

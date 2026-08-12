@@ -11,7 +11,7 @@ import { AddCreatorModal } from "@/components/AddCreatorModal";
 import { AnalyticsPanel } from "@/components/AnalyticsPanel";
 import { Avatar } from "@/components/Avatar";
 import { TopBar, PageTitle } from "@/components/PageHeader";
-import { SOURCE_LABEL, daysLabel, initials, timeAgo } from "@/lib/ui";
+import { SOURCE_LABEL, daysLabel, timeAgo } from "@/lib/ui";
 
 type Filter = "all" | CadenceStatus | "follow_up";
 

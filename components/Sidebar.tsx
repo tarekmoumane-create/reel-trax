@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useClients } from "@/app/providers";
-import { initials } from "@/lib/ui";
 import { Copilot } from "./Copilot";
+import { ClientLogo } from "./ClientLogo";
+import { AddClientModal } from "./AddClientModal";
 
 type Item = { href: string; label: string; icon: React.ReactNode; soon?: boolean };
 
@@ -56,36 +57,16 @@ export function Sidebar() {
   const { clients, currentClient, setCurrentClientId, reloadClients } = useClients();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
+  const [showAddClient, setShowAddClient] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setCreating(false);
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
-
-  async function createClient() {
-    const name = newName.trim();
-    if (!name) return;
-    const res = await fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    const client = await res.json();
-    await reloadClients();
-    setCurrentClientId(client.id);
-    setNewName("");
-    setCreating(false);
-    setOpen(false);
-  }
 
   return (
     <aside className="flex w-[228px] shrink-0 flex-col border-r border-[var(--line)] bg-[var(--rail)]">
@@ -95,12 +76,11 @@ export function Sidebar() {
           onClick={() => setOpen((o) => !o)}
           className="flex w-full items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-left hover:border-[var(--signal)]"
         >
-          <span
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-white"
-            style={{ background: currentClient?.color ?? "#7c5cff" }}
-          >
-            {currentClient ? initials(currentClient.name) : "—"}
-          </span>
+          {currentClient ? (
+            <ClientLogo name={currentClient.name} logoUrl={currentClient.logoUrl} color={currentClient.color} size={32} radius={9} />
+          ) : (
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--panel2)] text-xs font-bold text-[var(--muted)]">—</span>
+          )}
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold">
               {currentClient?.name ?? "Select client"}
@@ -128,38 +108,20 @@ export function Sidebar() {
                     c.id === currentClient?.id ? "bg-[var(--panel2)]" : ""
                   }`}
                 >
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[10px] font-bold text-white" style={{ background: c.color }}>
-                    {initials(c.name)}
-                  </span>
+                  <ClientLogo name={c.name} logoUrl={c.logoUrl} color={c.color} size={24} radius={7} />
                   <span className="flex-1 truncate">{c.name}</span>
                   <span className="mono text-[11px] text-[var(--faint)]">{c._count?.creators ?? 0}</span>
                 </button>
               ))}
             </div>
             <div className="border-t border-[var(--line)] p-1">
-              {creating ? (
-                <div className="flex items-center gap-1.5 p-1">
-                  <input
-                    autoFocus
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && createClient()}
-                    placeholder="Client name"
-                    className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
-                  />
-                  <button onClick={createClient} className="btn-primary shrink-0 rounded-lg px-2.5 py-1.5 text-[12px]">
-                    Add
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setCreating(true)}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--ink)]"
-                >
-                  <span className="grid h-6 w-6 place-items-center rounded-md border border-[var(--line)] text-[var(--muted)]">+</span>
-                  New client
-                </button>
-              )}
+              <button
+                onClick={() => { setOpen(false); setShowAddClient(true); }}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--ink)]"
+              >
+                <span className="grid h-6 w-6 place-items-center rounded-md border border-[var(--line)] text-[var(--muted)]">+</span>
+                New client
+              </button>
             </div>
           </div>
         )}
@@ -227,6 +189,17 @@ export function Sidebar() {
           </svg>
         </button>
       </div>
+
+      {showAddClient && (
+        <AddClientModal
+          onClose={() => setShowAddClient(false)}
+          onCreated={async (client) => {
+            setShowAddClient(false);
+            await reloadClients();
+            setCurrentClientId(client.id);
+          }}
+        />
+      )}
     </aside>
   );
 }

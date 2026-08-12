@@ -56,7 +56,7 @@ export default function AccountsPage() {
           ) : (
             rows.map((a) => (
               <div key={`${a.creatorId}-${a.platform}`} className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] lg:gap-4">
-                <span className="mono w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: a.platform === "tiktok" ? "rgba(255,255,255,0.08)" : "rgba(242,111,178,0.14)", color: a.platform === "tiktok" ? "var(--ink)" : "var(--ig)" }}>
+                <span className="mono w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: a.platform === "tiktok" ? "rgba(42,35,28,0.07)" : "rgba(214,67,143,0.12)", color: a.platform === "tiktok" ? "var(--ink)" : "var(--ig)" }}>
                   {a.platform === "tiktok" ? "TT" : "IG"}
                 </span>
                 <div className="min-w-0">

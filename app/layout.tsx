@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
-const archivo = Archivo({
-  variable: "--font-archivo",
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
-});
-const jbmono = JetBrains_Mono({
-  variable: "--font-jbmono",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -23,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${archivo.variable} ${jbmono.variable} h-full`}>
+    <html lang="en" className={`${hanken.variable} ${bricolage.variable} h-full`}>
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
       </body>

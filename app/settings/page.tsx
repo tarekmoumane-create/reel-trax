@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useClients } from "../providers";
-import { initials } from "@/lib/ui";
+import { ClientLogo } from "@/components/ClientLogo";
 
 const TIMEZONES = [
   "America/New_York",
@@ -241,17 +241,18 @@ function ClientRow({
   client,
   onChange,
 }: {
-  client: { id: string; name: string; color: string; _count?: { creators: number } };
+  client: { id: string; name: string; color: string; website?: string | null; logoUrl?: string | null; _count?: { creators: number } };
   onChange: () => Promise<unknown>;
 }) {
   const [name, setName] = useState(client.name);
+  const [website, setWebsite] = useState(client.website ?? "");
   const [color, setColor] = useState(client.color);
 
   async function save() {
     await fetch(`/api/clients/${client.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, color }),
+      body: JSON.stringify({ name, color, website }),
     });
     await onChange();
   }
@@ -261,33 +262,27 @@ function ClientRow({
     await onChange();
   }
 
-  const dirty = name !== client.name || color !== client.color;
+  const dirty = name !== client.name || color !== client.color || website !== (client.website ?? "");
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border p-2">
-      <span
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-[11px] font-bold text-white"
-        style={{ background: color }}
-      >
-        {initials(name || "?")}
-      </span>
-      <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 px-2.5 py-1.5 text-sm" />
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border p-2.5">
+      <ClientLogo name={name || "?"} logoUrl={client.logoUrl} color={color} size={32} radius={9} />
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" className="min-w-[120px] flex-1 px-2.5 py-1.5 text-sm" />
+      <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="website.com" className="min-w-[120px] flex-1 px-2.5 py-1.5 text-sm" />
       <input
         type="color"
         value={color}
         onChange={(e) => setColor(e.target.value)}
         className="h-8 w-10 cursor-pointer rounded-md border-0 bg-transparent p-0"
-        title="Accent color"
+        title="Fallback color"
       />
       <span className="w-16 text-right text-xs text-[var(--muted)]">
         {client._count?.creators ?? 0} creators
       </span>
       {dirty && (
-        <button onClick={save} className="rounded-lg bg-[var(--signal)] px-3 py-1.5 text-xs font-medium text-white">
-          Save
-        </button>
+        <button onClick={save} className="btn btn-primary px-3 py-1.5 text-xs">Save</button>
       )}
-      <button onClick={del} className="rounded-lg border border-red-500/40 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/10">
+      <button onClick={del} className="rounded-lg border border-[color:rgba(208,71,58,0.4)] px-2.5 py-1.5 text-xs text-[var(--bad)] hover:bg-[color:rgba(208,71,58,0.1)]">
         Delete
       </button>
     </div>

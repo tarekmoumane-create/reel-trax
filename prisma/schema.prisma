@@ -17,7 +17,9 @@ datasource db {
 model Client {
   id        String    @id @default(cuid())
   name      String
-  color     String     @default("#6366f1") // accent used in the switcher
+  color     String     @default("#ec5a35") // fallback accent when there's no logo
+  website   String? // client's site — used to auto-fetch their logo
+  logoUrl   String? // client profile picture / brand logo
   archived  Boolean    @default(false)
   createdAt DateTime   @default(now())
   creators  Creator[]

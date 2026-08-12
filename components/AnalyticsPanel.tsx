@@ -40,9 +40,9 @@ export function AnalyticsPanel({ clientId }: { clientId: string }) {
   const chart = useMemo(() => {
     if (!data) return null;
     const labels = data.series.map((s) => s.date);
-    if (metric === "views") return { labels, values: data.series.map((s) => s.views), color: "#7c5cff", fmt: fmtNum };
-    if (metric === "posts") return { labels, values: data.series.map((s) => s.posts), color: "#57c98a", fmt: (n: number) => `${Math.round(n)}` };
-    return { labels: data.followers.map((f) => f.date), values: data.followers.map((f) => f.followers), color: "#f5a524", fmt: fmtNum };
+    if (metric === "views") return { labels, values: data.series.map((s) => s.views), color: "#ec5a35", fmt: fmtNum };
+    if (metric === "posts") return { labels, values: data.series.map((s) => s.posts), color: "#2f9464", fmt: (n: number) => `${Math.round(n)}` };
+    return { labels: data.followers.map((f) => f.date), values: data.followers.map((f) => f.followers), color: "#c98419", fmt: fmtNum };
   }, [data, metric]);
 
   if (!data) return <div className="card mb-5 p-5 text-sm text-[var(--muted)]">Loading analytics…</div>;
