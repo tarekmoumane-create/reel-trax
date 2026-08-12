@@ -7,6 +7,7 @@ import type { CreatorDetailResponse, CreatorDTO, PostDTO } from "@/lib/types";
 import { PostActivity } from "@/components/PostActivity";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ContactButton } from "@/components/ContactButton";
+import { VideoThumb } from "@/components/VideoThumb";
 import { TopBar } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, fmtNum, initials, timeAgo } from "@/lib/ui";
 
@@ -154,9 +155,7 @@ function PostRow({ post }: { post: PostDTO }) {
   const dt = new Date(post.postedAt);
   return (
     <a href={post.url ?? "#"} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[var(--panel2)]">
-      <span className="mono rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: post.platform === "tiktok" ? "rgba(255,255,255,0.08)" : "rgba(242,111,178,0.14)", color: post.platform === "tiktok" ? "var(--ink)" : "var(--ig)" }}>
-        {post.platform === "tiktok" ? "TT" : "IG"}
-      </span>
+      <VideoThumb url={post.url} thumbnailUrl={post.thumbnailUrl} platform={post.platform} w={32} h={44} asLink={false} />
       <span className="mono w-24 shrink-0 text-[11px] text-[var(--muted)]">{dt.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" })}</span>
       <span className="min-w-0 flex-1 truncate text-sm">{post.caption || <span className="text-[var(--faint)]">(no caption)</span>}</span>
       <span className="mono shrink-0 text-[11px] text-[var(--muted)]">▶ {fmtNum(post.views)}</span>

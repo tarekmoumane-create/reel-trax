@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useClients } from "../providers";
 import { TopBar, PageTitle } from "@/components/PageHeader";
+import { VideoThumb } from "@/components/VideoThumb";
 import { fmtNum } from "@/lib/ui";
 
 interface VideoRow {
@@ -11,6 +12,7 @@ interface VideoRow {
   platform: string;
   url: string | null;
   caption: string | null;
+  thumbnailUrl: string | null;
   postedAt: string;
   views: number;
   likes: number;
@@ -55,8 +57,8 @@ export default function VideosPage() {
         </div>
 
         <div className="card overflow-hidden">
-          <div className="hidden grid-cols-[52px_minmax(240px,2fr)_150px_110px_90px_90px_90px] items-center gap-3 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
-            <div>Type</div><div>Caption</div><div>Creator</div><div>Posted</div><div>Views</div><div>Likes</div><div>Comments</div>
+          <div className="hidden grid-cols-[48px_minmax(240px,2fr)_150px_110px_90px_90px_90px] items-center gap-3 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
+            <div>Video</div><div>Caption</div><div>Creator</div><div>Posted</div><div>Views</div><div>Likes</div><div>Comments</div>
           </div>
           {loading ? (
             <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
@@ -66,10 +68,8 @@ export default function VideosPage() {
             rows.map((p) => {
               const dt = new Date(p.postedAt);
               return (
-                <div key={p.id} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-2.5 last:border-0 hover:bg-[var(--panel2)] md:grid-cols-[52px_minmax(240px,2fr)_150px_110px_90px_90px_90px] md:gap-3">
-                  <span className="mono w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: p.platform === "tiktok" ? "rgba(255,255,255,0.08)" : "rgba(242,111,178,0.14)", color: p.platform === "tiktok" ? "var(--ink)" : "var(--ig)" }}>
-                    {p.platform === "tiktok" ? "TT" : "IG"}
-                  </span>
+                <div key={p.id} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-2.5 last:border-0 hover:bg-[var(--panel2)] md:grid-cols-[48px_minmax(240px,2fr)_150px_110px_90px_90px_90px] md:gap-3">
+                  <VideoThumb url={p.url} thumbnailUrl={p.thumbnailUrl} platform={p.platform} w={40} h={56} />
                   <a href={p.url ?? "#"} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm hover:text-[var(--signal)]">
                     {p.caption || <span className="text-[var(--faint)]">(no caption)</span>}
                   </a>
