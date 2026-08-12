@@ -1,35 +1,36 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ClientsProvider } from "./providers";
-import { TopBar } from "@/components/TopBar";
+import { Sidebar } from "@/components/Sidebar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jbmono = JetBrains_Mono({
+  variable: "--font-jbmono",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Reel Trax — creator tracking OS",
+  title: "Reel Trax",
   description:
-    "Track every creator across every client in one place: posting cadence, sourcing, comms and payouts.",
+    "Track every creator across every client — posting cadence, sourcing, comms and payouts in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className={`${inter.variable} ${archivo.variable} ${jbmono.variable} h-full`}>
+      <body className="min-h-full">
         <ClientsProvider>
-          <TopBar />
-          <main className="flex-1">{children}</main>
+          <div className="flex h-screen overflow-hidden">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto">{children}</main>
+          </div>
         </ClientsProvider>
       </body>
     </html>

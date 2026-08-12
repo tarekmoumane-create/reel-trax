@@ -1,45 +1,67 @@
 @import "tailwindcss";
 
+/* ============ Signal Desk theme ============ */
 :root {
   color-scheme: dark;
-  --bg: #0a0c12;
-  --panel: #12151f;
-  --panel-2: #171b28;
-  --border: #232838;
-  --text: #e7eaf3;
-  --muted: #8a92a6;
-  --accent: #7c5cff;
-  --accent-2: #9d84ff;
+  --bg: #0e0f14;          /* content background */
+  --rail: #0a0b0f;        /* sidebar, a touch darker */
+  --panel: #15171f;       /* cards */
+  --panel2: #1b1e28;      /* insets, hovers */
+  --line: #242833;        /* borders */
+  --line2: #1c1f28;       /* subtle dividers */
+  --ink: #ece7dd;         /* warm off-white text */
+  --muted: #8b8f9c;       /* secondary text */
+  --faint: #565b69;       /* tertiary text */
+  --signal: #f5a524;      /* amber signal accent */
+  --signal-2: #ffbf47;
+  --ok: #57c98a;
+  --warn: #f5a524;
+  --bad: #f2685f;
+  --tt: #e7eaf3;
+  --ig: #f26fb2;
 }
 
 @theme inline {
   --color-bg: var(--bg);
+  --color-rail: var(--rail);
   --color-panel: var(--panel);
-  --color-panel2: var(--panel-2);
-  --color-border: var(--border);
-  --color-text: var(--text);
+  --color-panel2: var(--panel2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
   --color-muted: var(--muted);
-  --color-accent: var(--accent);
+  --color-faint: var(--faint);
+  --color-signal: var(--signal);
+  --font-display: var(--font-archivo);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jbmono);
 }
 
 * {
-  border-color: var(--border);
+  border-color: var(--line);
+  min-width: 0;
 }
 
 html,
 body {
   background: var(--bg);
-  color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-::selection {
-  background: color-mix(in srgb, var(--accent) 40%, transparent);
+.font-display {
+  font-family: var(--font-archivo), sans-serif;
+  letter-spacing: -0.02em;
+}
+.mono {
+  font-family: var(--font-jbmono), ui-monospace, monospace;
 }
 
-/* thin scrollbars */
+::selection {
+  background: color-mix(in srgb, var(--signal) 35%, transparent);
+}
+
+/* scrollbars */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -53,28 +75,63 @@ body {
   background: transparent;
 }
 
+/* shared building blocks */
 .card {
   background: var(--panel);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 14px;
+}
+.tile-ico {
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--muted);
 }
 
 input,
 select,
 textarea {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
+  background: var(--panel2);
+  border: 1px solid var(--line);
   border-radius: 10px;
-  color: var(--text);
+  color: var(--ink);
   outline: none;
 }
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 18%, transparent);
 }
 input::placeholder,
 textarea::placeholder {
-  color: #5c6478;
+  color: var(--faint);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 8px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.btn:hover {
+  background: var(--panel2);
+}
+.btn-primary {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: #231800;
+}
+.btn-primary:hover {
+  background: var(--signal-2);
 }
