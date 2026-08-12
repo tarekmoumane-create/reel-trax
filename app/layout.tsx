@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { ClientsProvider } from "./providers";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const archivo = Archivo({
@@ -26,12 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${inter.variable} ${archivo.variable} ${jbmono.variable} h-full`}>
       <body className="min-h-full">
-        <ClientsProvider>
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto">{children}</main>
-          </div>
-        </ClientsProvider>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
