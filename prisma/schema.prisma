@@ -16,10 +16,11 @@ datasource db {
 model Client {
   id        String    @id @default(cuid())
   name      String
-  color     String    @default("#6366f1") // accent used in the switcher
-  archived  Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  color     String     @default("#6366f1") // accent used in the switcher
+  archived  Boolean    @default(false)
+  createdAt DateTime   @default(now())
   creators  Creator[]
+  campaigns Campaign[]
 }
 
 model Creator {
@@ -66,7 +67,73 @@ model Creator {
   createdAt DateTime @default(now())
   posts     Post[]
 
+  campaignLinks CampaignCreator[]
+  payouts       Payout[]
+
   @@index([clientId])
+}
+
+// A campaign groups creators under a target + payout rules for one client.
+model Campaign {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  name   String
+  status String @default("active") // active | paused | ended
+  period String @default("monthly") // weekly | monthly — the billing cadence
+
+  targetVideos Int? // target posts per period (optional)
+  startDate    DateTime?
+  endDate      DateTime?
+
+  // Payout rules (per creator, per billing period)
+  baseFee   Float  @default(0) // flat base
+  perPost   Float  @default(0) // flat per qualifying post
+  cpmRate   Float  @default(0) // $ per 1000 views
+  bonus     Float  @default(0) // flat bonus when target met
+  minViews  Int    @default(0) // min views for a post to qualify
+  payoutCap Float? // max per creator per period
+  currency  String @default("USD")
+
+  createdAt   DateTime          @default(now())
+  assignments CampaignCreator[]
+  payouts     Payout[]
+
+  @@index([clientId])
+}
+
+model CampaignCreator {
+  id         String   @id @default(cuid())
+  campaignId String
+  creatorId  String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorId])
+  @@index([creatorId])
+}
+
+// A settled payout for one creator, one campaign, one billing period.
+// Computed periods are shown live; a row is stored once you mark it paid/cancelled.
+model Payout {
+  id          String   @id @default(cuid())
+  campaignId  String
+  creatorId   String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator     Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  amount      Float
+  currency    String    @default("USD")
+  status      String    @default("paid") // paid | cancelled
+  postsCount  Int       @default(0)
+  viewsCount  Int       @default(0)
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([campaignId, creatorId, periodStart])
+  @@index([creatorId])
 }
 
 model Post {

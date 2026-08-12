@@ -1,17 +1,78 @@
 "use client";
-import { ComingSoon } from "@/components/ComingSoon";
+
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { useClients } from "../providers";
+import { TopBar, PageTitle } from "@/components/PageHeader";
+import { PostActivity } from "@/components/PostActivity";
+import { StatusBadge } from "@/components/StatusBadge";
+import type { CadenceStatus, CadenceResult } from "@/lib/cadence";
+import { daysLabel, fmtNum } from "@/lib/ui";
+
+interface AccountRow {
+  creatorId: string;
+  creatorName: string;
+  platform: "tiktok" | "instagram";
+  handle: string;
+  url: string | null;
+  postsCount: number;
+  viewsSum: number;
+  daysSinceLastPost: number | null;
+  status: CadenceStatus;
+  calendar: CadenceResult["calendar"];
+}
 
 export default function AccountsPage() {
+  const { currentClientId, currentClient } = useClients();
+  const [rows, setRows] = useState<AccountRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!currentClientId) return;
+    setLoading(true);
+    const res = await fetch(`/api/accounts?clientId=${currentClientId}`);
+    if (res.ok) setRows((await res.json()).rows);
+    setLoading(false);
+  }, [currentClientId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
   return (
-    <ComingSoon
-      crumbs={["Analytics", "Accounts"]}
-      title="Accounts"
-      sub="Every tracked TikTok & Instagram account across your creators."
-      bullets={[
-        "One row per social account with its own post-activity strip and follower / view counts.",
-        "Filter by platform, tag, or the creator it belongs to.",
-        "Jump straight into an account's full analytics and video history.",
-      ]}
-    />
+    <>
+      <TopBar crumbs={["Analytics", "Accounts"]} />
+      <div className="px-6 py-6">
+        <PageTitle title="Accounts" sub={`Every tracked social account across ${currentClient?.name ?? "this client"}'s creators.`} />
+
+        <div className="card overflow-hidden">
+          <div className="hidden grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
+            <div>Type</div><div>Account</div><div>Post activity · 30d</div><div>Posts</div><div>Views</div><div>Last post</div><div>Status</div>
+          </div>
+          {loading ? (
+            <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
+          ) : rows.length === 0 ? (
+            <div className="py-16 text-center text-sm text-[var(--muted)]">No accounts tracked yet. Add a creator with a TikTok or Instagram URL.</div>
+          ) : (
+            rows.map((a) => (
+              <div key={`${a.creatorId}-${a.platform}`} className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] lg:gap-4">
+                <span className="mono w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: a.platform === "tiktok" ? "rgba(255,255,255,0.08)" : "rgba(242,111,178,0.14)", color: a.platform === "tiktok" ? "var(--ink)" : "var(--ig)" }}>
+                  {a.platform === "tiktok" ? "TT" : "IG"}
+                </span>
+                <div className="min-w-0">
+                  <a href={a.url ?? "#"} target="_blank" rel="noreferrer" className="mono block truncate text-sm hover:text-[var(--signal)]">@{a.handle}</a>
+                  <Link href={`/creators/${a.creatorId}`} className="truncate text-[11px] text-[var(--faint)] hover:text-[var(--signal)]">{a.creatorName}</Link>
+                </div>
+                <div className="overflow-x-auto"><PostActivity calendar={a.calendar} days={30} dot={12} gap={4} showWeekdays={false} /></div>
+                <div className="mono text-[13px]">{a.postsCount}</div>
+                <div className="mono text-[13px]">{fmtNum(a.viewsSum)}</div>
+                <div className="mono text-[13px]">{daysLabel(a.daysSinceLastPost)}</div>
+                <div><StatusBadge status={a.status} /></div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </>
   );
 }

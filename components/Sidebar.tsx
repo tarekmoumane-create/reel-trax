@@ -23,16 +23,16 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Analytics",
     items: [
       { href: "/", label: "Overview", icon: I.grid },
-      { href: "/accounts", label: "Accounts", icon: I.at, soon: true },
-      { href: "/videos", label: "Videos", icon: I.video, soon: true },
+      { href: "/accounts", label: "Accounts", icon: I.at },
+      { href: "/videos", label: "Videos", icon: I.video },
     ],
   },
   {
     title: "Creator Hub",
     items: [
       { href: "/creators", label: "Creators", icon: I.users },
-      { href: "/campaigns", label: "Campaigns", icon: I.target, soon: true },
-      { href: "/payouts", label: "Payouts", icon: I.wallet, soon: true },
+      { href: "/campaigns", label: "Campaigns", icon: I.target },
+      { href: "/payouts", label: "Payouts", icon: I.wallet },
     ],
   },
   {
