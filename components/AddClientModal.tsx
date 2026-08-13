@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ClientLogo } from "./ClientLogo";
 import { logoFromWebsite } from "@/lib/brand";
+import { PayStructureEditor, emptyPayForm, payFormToRules } from "./PayStructureEditor";
 
 const COLORS = ["#8b5cf6", "#4d8dff", "#ec5a35", "#2f9464", "#c98419", "#d6438f", "#0f766e", "#b83a2e"];
 
@@ -24,6 +25,8 @@ export function AddClientModal({
   const [website, setWebsite] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [color, setColor] = useState(COLORS[0]);
+  const [payMode, setPayMode] = useState("uniform");
+  const [payForm, setPayForm] = useState(emptyPayForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +39,7 @@ export function AddClientModal({
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, website, logoUrl, color }),
+      body: JSON.stringify({ name, website, logoUrl, color, payMode, defaultPayRules: payFormToRules(payForm) }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -52,7 +55,7 @@ export function AddClientModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 backdrop-blur-sm" onMouseDown={onClose}>
-      <div className="card my-8 w-full max-w-md p-5" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="card my-8 w-full max-w-lg p-5" onMouseDown={(e) => e.stopPropagation()}>
         <h2 className="font-display text-lg font-bold">Add client</h2>
         <p className="text-xs text-[var(--muted)]">Add their website and we&apos;ll pull their logo automatically.</p>
 
@@ -84,6 +87,36 @@ export function AddClientModal({
               ))}
             </div>
           </div>
+          <div className="rounded-xl border border-[var(--line)] p-3">
+            <div className="mb-1 text-xs font-semibold text-[var(--muted)]">Payment structure</div>
+            <p className="mb-2.5 text-[11px] text-[var(--faint)]">
+              This is how payouts get calculated for this client&apos;s creators — you can refine it later per campaign.
+            </p>
+            <div className="mb-3 grid grid-cols-2 gap-1.5">
+              {[
+                ["uniform", "Same for all creators", "Every creator is paid on the structure below."],
+                ["individual", "Individualized per creator", "Each creator gets their own deal — the structure below is the starting point."],
+              ].map(([v, l, d]) => (
+                <button
+                  key={v}
+                  onClick={() => setPayMode(v)}
+                  className={`rounded-lg border p-2.5 text-left ${
+                    payMode === v
+                      ? "border-[var(--signal)] bg-[var(--panel2)]"
+                      : "border-[var(--line)] hover:bg-[var(--panel2)]"
+                  }`}
+                >
+                  <div className="text-xs font-semibold">{l}</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-[var(--faint)]">{d}</div>
+                </button>
+              ))}
+            </div>
+            <div className="mb-1.5 text-[11px] font-medium text-[var(--muted)]">
+              {payMode === "individual" ? "Default structure (starting point for each creator)" : "Structure for every creator"}
+            </div>
+            <PayStructureEditor value={payForm} onChange={setPayForm} />
+          </div>
+
           {error && <p className="rounded-lg bg-[color:rgba(208,71,58,0.1)] px-3 py-2 text-sm text-[var(--bad)]">{error}</p>}
         </div>
 

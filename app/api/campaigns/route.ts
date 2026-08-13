@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
+import { parseViewTiers } from "@/lib/payouts";
 
 export async function GET(request: Request) {
   try {
@@ -39,6 +40,12 @@ export async function POST(request: Request) {
         baseFee: NUM(b.baseFee),
         perPost: NUM(b.perPost),
         cpmRate: NUM(b.cpmRate),
+        cpmBasis: b.cpmBasis === "perVideo" ? "perVideo" : "aggregate",
+        cpmCapPerVideo: b.cpmCapPerVideo != null && b.cpmCapPerVideo !== "" ? NUM(b.cpmCapPerVideo) : null,
+        viewTiers: (() => {
+          const tiers = parseViewTiers(JSON.stringify(b.viewTiers ?? null));
+          return tiers.length ? JSON.stringify(tiers) : null;
+        })(),
         bonus: NUM(b.bonus),
         minViews: NUM(b.minViews),
         payoutCap: b.payoutCap != null && b.payoutCap !== "" ? NUM(b.payoutCap) : null,

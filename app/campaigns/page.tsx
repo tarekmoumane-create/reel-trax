@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useClients } from "../providers";
 import { TopBar, PageTitle } from "@/components/PageHeader";
-import { money } from "@/lib/payouts";
+import { money, parsePayRules, parseViewTiers } from "@/lib/payouts";
+import { PayStructureEditor, payFormFromRules, payFormToRules } from "@/components/PayStructureEditor";
 
 interface CampaignRow {
   id: string;
@@ -15,6 +16,8 @@ interface CampaignRow {
   baseFee: number;
   perPost: number;
   cpmRate: number;
+  cpmBasis: string;
+  viewTiers: string | null;
   currency: string;
   _count?: { assignments: number };
 }
@@ -41,7 +44,9 @@ export default function CampaignsPage() {
     const parts: string[] = [];
     if (c.baseFee) parts.push(`${money(c.baseFee, c.currency)} base`);
     if (c.perPost) parts.push(`${money(c.perPost, c.currency)}/post`);
-    if (c.cpmRate) parts.push(`${money(c.cpmRate, c.currency)} CPM`);
+    if (c.cpmRate) parts.push(`${money(c.cpmRate, c.currency)} CPM${c.cpmBasis === "perVideo" ? "/video" : ""}`);
+    const tiers = parseViewTiers(c.viewTiers);
+    if (tiers.length) parts.push(`${tiers.length} view tier${tiers.length > 1 ? "s" : ""}`);
     return parts.join(" · ") || "No payout rules";
   }
 
@@ -85,6 +90,7 @@ export default function CampaignsPage() {
         <CreateCampaign
           clientId={currentClientId}
           clientName={currentClient?.name ?? ""}
+          defaultPayRules={currentClient?.defaultPayRules ?? null}
           onClose={() => setShowCreate(false)}
           onCreated={() => {
             setShowCreate(false);
@@ -96,18 +102,25 @@ export default function CampaignsPage() {
   );
 }
 
-function CreateCampaign({ clientId, clientName, onClose, onCreated }: { clientId: string; clientName: string; onClose: () => void; onCreated: () => void }) {
-  const [f, setF] = useState({
-    name: "", period: "monthly", targetVideos: "", baseFee: "", perPost: "", cpmRate: "", bonus: "", minViews: "", payoutCap: "", currency: "USD",
-  });
+function CreateCampaign({ clientId, clientName, defaultPayRules, onClose, onCreated }: { clientId: string; clientName: string; defaultPayRules: string | null; onClose: () => void; onCreated: () => void }) {
+  const clientDefault = parsePayRules(defaultPayRules);
+  const [name, setName] = useState("");
+  const [targetVideos, setTargetVideos] = useState("");
+  const [currency, setCurrency] = useState(clientDefault?.currency ?? "USD");
+  // Payout rules prefill from the client's default structure.
+  const [payForm, setPayForm] = useState(() => payFormFromRules(clientDefault));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  function set<K extends keyof typeof f>(k: K, v: (typeof f)[K]) { setF((p) => ({ ...p, [k]: v })); }
 
   async function submit() {
-    if (!f.name.trim()) { setError("Campaign name is required"); return; }
+    if (!name.trim()) { setError("Campaign name is required"); return; }
     setSaving(true);
-    const res = await fetch("/api/campaigns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, clientId }) });
+    const rules = payFormToRules(payForm);
+    const res = await fetch("/api/campaigns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, name, targetVideos, currency, ...rules, period: payForm.period }),
+    });
     setSaving(false);
     if (!res.ok) { setError((await res.json()).error || "Failed"); return; }
     onCreated();
@@ -121,25 +134,17 @@ function CreateCampaign({ clientId, clientName, onClose, onCreated }: { clientId
       <div className="card my-8 w-full max-w-lg p-5" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4">
           <h2 className="font-display text-lg font-bold">New campaign</h2>
-          <p className="text-xs text-[var(--muted)]">for {clientName}</p>
+          <p className="text-xs text-[var(--muted)]">for {clientName}{clientDefault ? " · payout rules prefilled from the client's payment structure" : ""}</p>
         </div>
         <div className="space-y-3">
-          <div><label className={label}>Campaign name *</label><input autoFocus className={field} value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Summer UGC push" /></div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className={label}>Billing period</label><select className={field} value={f.period} onChange={(e) => set("period", e.target.value)}><option value="monthly">Monthly</option><option value="weekly">Weekly</option></select></div>
-            <div><label className={label}>Target posts</label><input type="number" className={field} value={f.targetVideos} onChange={(e) => set("targetVideos", e.target.value)} placeholder="e.g. 20" /></div>
-            <div><label className={label}>Currency</label><select className={field} value={f.currency} onChange={(e) => set("currency", e.target.value)}>{["USD", "EUR", "GBP", "CAD", "AUD"].map((c) => <option key={c}>{c}</option>)}</select></div>
+          <div><label className={label}>Campaign name *</label><input autoFocus className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Summer UGC push" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={label}>Target posts / period</label><input type="number" className={field} value={targetVideos} onChange={(e) => setTargetVideos(e.target.value)} placeholder="e.g. 20" /></div>
+            <div><label className={label}>Currency</label><select className={field} value={currency} onChange={(e) => setCurrency(e.target.value)}>{["USD", "EUR", "GBP", "CAD", "AUD"].map((c) => <option key={c}>{c}</option>)}</select></div>
           </div>
           <div className="rounded-xl border border-[var(--line)] p-3">
             <div className="mb-2 text-xs font-semibold text-[var(--muted)]">Payout rules (per creator, per period)</div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div><label className={label}>Base fee</label><input type="number" className={field} value={f.baseFee} onChange={(e) => set("baseFee", e.target.value)} placeholder="0" /></div>
-              <div><label className={label}>Per post</label><input type="number" className={field} value={f.perPost} onChange={(e) => set("perPost", e.target.value)} placeholder="0" /></div>
-              <div><label className={label}>CPM ($/1k views)</label><input type="number" className={field} value={f.cpmRate} onChange={(e) => set("cpmRate", e.target.value)} placeholder="0" /></div>
-              <div><label className={label}>Target bonus</label><input type="number" className={field} value={f.bonus} onChange={(e) => set("bonus", e.target.value)} placeholder="0" /></div>
-              <div><label className={label}>Min views/post</label><input type="number" className={field} value={f.minViews} onChange={(e) => set("minViews", e.target.value)} placeholder="0" /></div>
-              <div><label className={label}>Payout cap</label><input type="number" className={field} value={f.payoutCap} onChange={(e) => set("payoutCap", e.target.value)} placeholder="none" /></div>
-            </div>
+            <PayStructureEditor value={payForm} onChange={setPayForm} />
           </div>
           {error && <p className="rounded-lg bg-[color:rgba(242,104,95,0.1)] px-3 py-2 text-sm text-[var(--bad)]">{error}</p>}
         </div>

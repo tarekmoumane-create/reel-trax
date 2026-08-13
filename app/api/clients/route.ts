@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { isDeadLogoUrl, logoFromWebsite } from "@/lib/brand";
+import { sanitizePayRules } from "@/lib/payouts";
 
 export async function GET() {
   try {
@@ -37,8 +38,16 @@ export async function POST(request: Request) {
     const website = (body?.website ?? "").trim() || null;
     let logoUrl = (body?.logoUrl ?? "").trim() || null;
     if (!logoUrl && website) logoUrl = logoFromWebsite(website);
+    const defaultPayRules = sanitizePayRules(body?.defaultPayRules);
     const client = await prisma.client.create({
-      data: { name, color: body?.color || "#ec5a35", website, logoUrl },
+      data: {
+        name,
+        color: body?.color || "#ec5a35",
+        website,
+        logoUrl,
+        payMode: body?.payMode === "individual" ? "individual" : "uniform",
+        defaultPayRules: defaultPayRules ? JSON.stringify(defaultPayRules) : null,
+      },
     });
     return ok(client, { status: 201 });
   } catch (e) {

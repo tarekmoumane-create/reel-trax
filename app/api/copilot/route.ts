@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence } from "@/lib/cadence";
 import { getAnthropicKey, getTimeZone } from "@/lib/settings";
-import { periodBounds, computeEarnings, effectiveRules, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
 
 export const maxDuration = 60;
 
@@ -45,11 +45,12 @@ async function buildSnapshot(clientId: string) {
     const bounds = periodBounds(c.period, now);
     const base: CampaignRules = {
       period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
-      cpmRate: c.cpmRate, bonus: c.bonus, minViews: c.minViews, payoutCap: c.payoutCap,
+      cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
+      bonus: c.bonus, minViews: c.minViews, payoutCap: c.payoutCap,
     };
     const creatorsPay = c.assignments.map((a) => ({
       name: a.creator.displayName,
-      earned: computeEarnings(effectiveRules(base, a), a.creator.posts, bounds).amount,
+      earned: computeEarnings(effectiveRules(base, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds).amount,
     }));
     return {
       name: c.name, status: c.status, period: c.period, targetVideos: c.targetVideos,

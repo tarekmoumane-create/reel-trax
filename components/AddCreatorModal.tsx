@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { PAYMENT_METHODS } from "@/lib/pay";
+import { parsePayRules } from "@/lib/payouts";
+import { useClients } from "@/app/providers";
+import { PayStructureEditor, payFormFromRules, payFormToRules, payFormSummary } from "./PayStructureEditor";
 
 const SOURCES = [
   ["sideshift", "Sideshift"],
@@ -32,6 +35,15 @@ export function AddCreatorModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { clients } = useClients();
+  const client = clients.find((c) => c.id === clientId);
+  const individualized = client?.payMode === "individual";
+  const clientDefault = parsePayRules(client?.defaultPayRules);
+
+  // Individualized clients: the creator's deal starts from the client default
+  // and can be customized right here. Uniform clients skip this entirely.
+  const [customPay, setCustomPay] = useState(false);
+  const [payForm, setPayForm] = useState(() => payFormFromRules(clientDefault));
   const [form, setForm] = useState({
     displayName: "",
     tiktokUrl: "",
@@ -66,10 +78,13 @@ export function AddCreatorModal({
       return;
     }
     setSaving(true);
+    // Store a personal deal only when it deviates from the client default —
+    // creators on the default keep inheriting future changes to it.
+    const payRules = individualized && customPay ? payFormToRules(payForm) : null;
     const res = await fetch("/api/creators", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, clientId }),
+      body: JSON.stringify({ ...form, clientId, payRules }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -227,6 +242,40 @@ export function AddCreatorModal({
               />
             </div>
           </div>
+
+          {individualized && (
+            <div className="rounded-xl border border-[var(--line)] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold text-[var(--muted)]">Pay structure</div>
+                  <p className="mt-0.5 text-[11px] text-[var(--faint)]">
+                    {clientName} pays creators individually.{" "}
+                    {customPay
+                      ? "This creator gets the custom deal below."
+                      : `Currently on the client default: ${payFormSummary(payFormFromRules(clientDefault))}.`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (customPay) setPayForm(payFormFromRules(clientDefault));
+                    setCustomPay(!customPay);
+                  }}
+                  className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
+                    customPay
+                      ? "border-[var(--line)] text-[var(--muted)] hover:bg-[var(--panel2)]"
+                      : "border-[var(--signal)] text-[var(--signal)] hover:bg-[var(--panel2)]"
+                  }`}
+                >
+                  {customPay ? "Use client default" : "Customize deal"}
+                </button>
+              </div>
+              {customPay && (
+                <div className="mt-3">
+                  <PayStructureEditor value={payForm} onChange={setPayForm} showPeriod={false} />
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className={label}>Notes</label>

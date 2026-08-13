@@ -1,12 +1,17 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
-import { periodBounds, computeEarnings, effectiveRules, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
 
 function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
-  cpmRate: number; bonus: number; minViews: number; payoutCap: number | null;
+  cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null; viewTiers: string | null;
+  bonus: number; minViews: number; payoutCap: number | null;
 }): CampaignRules {
-  return { period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost, cpmRate: c.cpmRate, bonus: c.bonus, minViews: c.minViews, payoutCap: c.payoutCap };
+  return {
+    period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
+    cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
+    bonus: c.bonus, minViews: c.minViews, payoutCap: c.payoutCap,
+  };
 }
 
 export async function GET(request: Request) {
@@ -52,7 +57,7 @@ export async function GET(request: Request) {
       for (const a of c.assignments) {
         const key = `${c.id}|${a.creatorId}|${bounds.start.toISOString()}`;
         if (map.has(key)) continue; // stored wins
-        const e = computeEarnings(effectiveRules(baseRules, a), a.creator.posts, bounds);
+        const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds);
         map.set(key, {
           key, campaignId: c.id, campaignName: c.name, creatorId: a.creatorId, creatorName: a.creator.displayName,
           periodStart: bounds.start.toISOString(), periodEnd: bounds.end.toISOString(), periodLabel: bounds.label,

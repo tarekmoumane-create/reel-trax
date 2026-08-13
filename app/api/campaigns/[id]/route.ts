@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
-import { periodBounds, computeEarnings, effectiveRules, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
 
 function rulesOf(c: {
   period: string;
@@ -8,6 +8,9 @@ function rulesOf(c: {
   baseFee: number;
   perPost: number;
   cpmRate: number;
+  cpmBasis: string;
+  cpmCapPerVideo: number | null;
+  viewTiers: string | null;
   bonus: number;
   minViews: number;
   payoutCap: number | null;
@@ -18,6 +21,9 @@ function rulesOf(c: {
     baseFee: c.baseFee,
     perPost: c.perPost,
     cpmRate: c.cpmRate,
+    cpmBasis: c.cpmBasis,
+    cpmCapPerVideo: c.cpmCapPerVideo,
+    viewTiers: parseViewTiers(c.viewTiers),
     bonus: c.bonus,
     minViews: c.minViews,
     payoutCap: c.payoutCap,
@@ -38,10 +44,12 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
     const bounds = periodBounds(campaign.period);
     const baseRules = rulesOf(campaign);
     const creators = campaign.assignments.map((a) => {
-      const rules = effectiveRules(baseRules, a);
+      const overrideTiers = parseViewTiers(a.viewTiers);
+      const rules = effectiveRules(baseRules, { ...a, viewTiers: overrideTiers });
       const earnings = computeEarnings(rules, a.creator.posts, bounds);
       const overridden =
         a.baseFee != null || a.perPost != null || a.cpmRate != null ||
+        a.cpmBasis != null || a.cpmCapPerVideo != null || overrideTiers.length > 0 ||
         a.bonus != null || a.minViews != null || a.payoutCap != null || a.flatDeal != null;
       return {
         creatorId: a.creator.id,
@@ -49,8 +57,9 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
         earnings,
         overridden,
         override: {
-          baseFee: a.baseFee, perPost: a.perPost, cpmRate: a.cpmRate, bonus: a.bonus,
-          minViews: a.minViews, payoutCap: a.payoutCap, flatDeal: a.flatDeal, note: a.note,
+          baseFee: a.baseFee, perPost: a.perPost, cpmRate: a.cpmRate,
+          cpmBasis: a.cpmBasis, cpmCapPerVideo: a.cpmCapPerVideo, viewTiers: overrideTiers,
+          bonus: a.bonus, minViews: a.minViews, payoutCap: a.payoutCap, flatDeal: a.flatDeal, note: a.note,
         },
       };
     });
@@ -76,6 +85,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if ("startDate" in b) data.startDate = b.startDate ? new Date(b.startDate) : null;
     if ("endDate" in b) data.endDate = b.endDate ? new Date(b.endDate) : null;
     for (const f of ["baseFee", "perPost", "cpmRate", "bonus", "minViews"]) if (f in b) data[f] = NUM(b[f]);
+    if ("cpmBasis" in b) data.cpmBasis = b.cpmBasis === "perVideo" ? "perVideo" : "aggregate";
+    if ("cpmCapPerVideo" in b) data.cpmCapPerVideo = b.cpmCapPerVideo === "" || b.cpmCapPerVideo == null ? null : NUM(b.cpmCapPerVideo);
+    if ("viewTiers" in b) {
+      const tiers = parseViewTiers(JSON.stringify(b.viewTiers ?? null));
+      data.viewTiers = tiers.length ? JSON.stringify(tiers) : null;
+    }
     if ("payoutCap" in b) data.payoutCap = b.payoutCap === "" || b.payoutCap == null ? null : NUM(b.payoutCap);
     if ("currency" in b) data.currency = b.currency;
 

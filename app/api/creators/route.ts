@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
+import { sanitizePayRules } from "@/lib/payouts";
 import { parseTikTokHandle, parseInstagramHandle } from "@/lib/scrapecreators";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreator } from "@/lib/sync";
@@ -49,6 +50,10 @@ export async function POST(request: Request) {
         sideshiftUrl: body?.sideshiftUrl || null,
         paymentMethod: body?.paymentMethod || "sideshift",
         paymentHandle: body?.paymentHandle || null,
+        payRules: (() => {
+          const rules = sanitizePayRules(body?.payRules);
+          return rules ? JSON.stringify(rules) : null;
+        })(),
         phone: body?.phone || null,
         email: body?.email || null,
         contactHandle: body?.contactHandle || null,

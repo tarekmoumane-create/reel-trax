@@ -69,15 +69,19 @@ export function Copilot() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-[13px] font-medium hover:border-[var(--signal)]"
-      >
-        <span className="grid h-5 w-5 place-items-center rounded-md bg-gradient-to-br from-[var(--signal)] to-[var(--signal-2)] text-white">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /></svg>
-        </span>
-        Copilot
-      </button>
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          title="Copilot"
+          aria-label="Open copilot"
+          className="fixed bottom-5 right-5 z-40 grid h-[52px] w-[52px] place-items-center rounded-full bg-gradient-to-br from-[var(--signal)] to-[var(--signal-2)] text-white shadow-xl transition-transform hover:scale-105 active:scale-95"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            <path d="M12 8l1 2.7 2.7 1-2.7 1-1 2.7-1-2.7-2.7-1 2.7-1z" fill="currentColor" stroke="none" />
+          </svg>
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex justify-end bg-[var(--scrim)] backdrop-blur-sm" onMouseDown={() => setOpen(false)}>

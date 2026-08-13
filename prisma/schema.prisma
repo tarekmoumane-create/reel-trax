@@ -20,6 +20,13 @@ model Client {
   color     String     @default("#ec5a35") // fallback accent when there's no logo
   website   String? // client's site — used to auto-fetch their logo
   logoUrl   String? // client profile picture / brand logo
+
+  // How this client pays creators.
+  // "uniform": every creator is on the same structure (the default below).
+  // "individual": each creator gets their own deal, starting from the default.
+  payMode         String  @default("uniform") // uniform | individual
+  defaultPayRules String? // JSON PayRulesJson — the client's default structure
+
   archived  Boolean    @default(false)
   createdAt DateTime   @default(now())
   creators  Creator[]
@@ -57,6 +64,11 @@ model Creator {
   // How you actually pay this creator
   paymentMethod String  @default("sideshift") // sideshift | venmo | paypal | other
   paymentHandle String? // Venmo/PayPal username (Sideshift uses sideshiftUrl)
+
+  // This creator's personal deal (JSON PayRulesJson), for clients on
+  // individualized pay. Seeds their campaign overrides on assignment;
+  // null = they're on the client/campaign default.
+  payRules String?
 
   // Contact / comms
   phone         String?
@@ -145,6 +157,14 @@ model Campaign {
   baseFee   Float  @default(0) // flat base
   perPost   Float  @default(0) // flat per qualifying post
   cpmRate   Float  @default(0) // $ per 1000 views
+  // "aggregate": CPM on total qualifying views for the period.
+  // "perVideo": CPM per video, each capped at cpmCapPerVideo when set —
+  // that cap is what makes per-video CPM differ from aggregate.
+  cpmBasis       String  @default("aggregate") // aggregate | perVideo
+  cpmCapPerVideo Float? // max CPM earnings per video (perVideo basis)
+  // JSON [{"views":100000,"bonus":50}] — a video reaching a tier pays that
+  // tier's bonus (highest tier reached only). Alternative to CPM.
+  viewTiers String?
   bonus     Float  @default(0) // flat bonus when target met
   minViews  Int    @default(0) // min views for a post to qualify
   payoutCap Float? // max per creator per period
@@ -166,14 +186,17 @@ model CampaignCreator {
 
   // Per-creator overrides — null means "inherit the campaign rule".
   // Lets each creator run a completely different pay structure in one campaign.
-  baseFee   Float?
-  perPost   Float?
-  cpmRate   Float?
-  bonus     Float?
-  minViews  Int?
-  payoutCap Float?
-  flatDeal  Float? // a fixed total for the period, ignoring all other rules
-  note      String? // free text, e.g. "hybrid: $200 + rev share"
+  baseFee        Float?
+  perPost        Float?
+  cpmRate        Float?
+  cpmBasis       String? // aggregate | perVideo
+  cpmCapPerVideo Float?
+  viewTiers      String? // JSON [{"views":n,"bonus":n}]
+  bonus          Float?
+  minViews       Int?
+  payoutCap      Float?
+  flatDeal       Float? // a fixed total for the period, ignoring all other rules
+  note           String? // free text, e.g. "hybrid: $200 + rev share"
 
   @@unique([campaignId, creatorId])
   @@index([creatorId])

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { TopBar } from "@/components/PageHeader";
-import { money } from "@/lib/payouts";
+import { money, parseViewTiers, type ViewTier } from "@/lib/payouts";
 import { fmtNum } from "@/lib/ui";
+import { PayStructureEditor, TierEditor, payFormFromRules, payFormToRules } from "@/components/PayStructureEditor";
 
 interface Earnings {
   amount: number; qualifyingPosts: number; qualifyingViews: number; targetMet: boolean;
@@ -14,7 +15,8 @@ interface Earnings {
 interface Detail {
   campaign: {
     id: string; clientId: string; name: string; status: string; period: string; targetVideos: number | null;
-    baseFee: number; perPost: number; cpmRate: number; bonus: number; minViews: number; payoutCap: number | null; currency: string;
+    baseFee: number; perPost: number; cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null;
+    viewTiers: string | null; bonus: number; minViews: number; payoutCap: number | null; currency: string;
   };
   period: { label: string; total: number; start: string; end: string };
   creators: {
@@ -22,7 +24,11 @@ interface Detail {
     displayName: string;
     earnings: Earnings;
     overridden: boolean;
-    override: { baseFee: number | null; perPost: number | null; cpmRate: number | null; bonus: number | null; minViews: number | null; payoutCap: number | null; flatDeal: number | null; note: string | null };
+    override: {
+      baseFee: number | null; perPost: number | null; cpmRate: number | null;
+      cpmBasis: string | null; cpmCapPerVideo: number | null; viewTiers: ViewTier[];
+      bonus: number | null; minViews: number | null; payoutCap: number | null; flatDeal: number | null; note: string | null;
+    };
   }[];
 }
 
@@ -53,10 +59,12 @@ export default function CampaignDetail() {
 
   const c = d.campaign;
   const cur = c.currency;
+  const campaignTiers = parseViewTiers(c.viewTiers);
   const rules = [
     c.baseFee && `${money(c.baseFee, cur)} base`,
     c.perPost && `${money(c.perPost, cur)}/post`,
-    c.cpmRate && `${money(c.cpmRate, cur)} CPM`,
+    c.cpmRate && `${money(c.cpmRate, cur)} CPM${c.cpmBasis === "perVideo" ? `/video${c.cpmCapPerVideo ? ` (cap ${money(c.cpmCapPerVideo, cur)})` : ""}` : ""}`,
+    campaignTiers.length > 0 && campaignTiers.map((t) => `${fmtNum(t.views)}→${money(t.bonus, cur)}`).join(", "),
     c.bonus && `${money(c.bonus, cur)} bonus @ target`,
     c.minViews && `min ${fmtNum(c.minViews)} views`,
     c.payoutCap && `cap ${money(c.payoutCap, cur)}`,
@@ -185,17 +193,33 @@ function AssignModal({ campaignId, clientId, assigned, onClose, onSaved }: { cam
 }
 
 function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"]; onClose: () => void; onSaved: () => void }) {
-  const [f, setF] = useState({
-    name: campaign.name, status: campaign.status, period: campaign.period,
-    targetVideos: campaign.targetVideos?.toString() ?? "", baseFee: String(campaign.baseFee), perPost: String(campaign.perPost),
-    cpmRate: String(campaign.cpmRate), bonus: String(campaign.bonus), minViews: String(campaign.minViews),
-    payoutCap: campaign.payoutCap?.toString() ?? "",
-  });
+  const [name, setName] = useState(campaign.name);
+  const [status, setStatus] = useState(campaign.status);
+  const [targetVideos, setTargetVideos] = useState(campaign.targetVideos?.toString() ?? "");
+  const [payForm, setPayForm] = useState(() =>
+    payFormFromRules({
+      period: campaign.period, baseFee: campaign.baseFee, perPost: campaign.perPost,
+      cpmRate: campaign.cpmRate, cpmBasis: campaign.cpmBasis, cpmCapPerVideo: campaign.cpmCapPerVideo,
+      viewTiers: parseViewTiers(campaign.viewTiers), bonus: campaign.bonus,
+      minViews: campaign.minViews, payoutCap: campaign.payoutCap,
+    })
+  );
   const [saving, setSaving] = useState(false);
-  function set<K extends keyof typeof f>(k: K, v: (typeof f)[K]) { setF((p) => ({ ...p, [k]: v })); }
   async function save() {
     setSaving(true);
-    await fetch(`/api/campaigns/${campaign.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
+    const rules = payFormToRules(payForm);
+    // Send every rule field explicitly so cleared values reset to 0/null.
+    await fetch(`/api/campaigns/${campaign.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name, status, period: payForm.period, targetVideos,
+        baseFee: rules.baseFee ?? 0, perPost: rules.perPost ?? 0, cpmRate: rules.cpmRate ?? 0,
+        cpmBasis: rules.cpmBasis ?? "aggregate", cpmCapPerVideo: rules.cpmCapPerVideo ?? "",
+        viewTiers: rules.viewTiers ?? [], bonus: rules.bonus ?? 0, minViews: rules.minViews ?? 0,
+        payoutCap: rules.payoutCap ?? "",
+      }),
+    });
     onSaved();
   }
   const field = "w-full px-3 py-2 text-sm";
@@ -205,21 +229,14 @@ function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"
       <div className="card my-8 w-full max-w-lg p-5" onMouseDown={(e) => e.stopPropagation()}>
         <h2 className="mb-3 font-display text-lg font-bold">Edit campaign</h2>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className={label}>Name</label><input className={field} value={f.name} onChange={(e) => set("name", e.target.value)} /></div>
-            <div><label className={label}>Status</label><select className={field} value={f.status} onChange={(e) => set("status", e.target.value)}>{["active", "paused", "ended"].map((s) => <option key={s}>{s}</option>)}</select></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className={label}>Billing period</label><select className={field} value={f.period} onChange={(e) => set("period", e.target.value)}><option value="monthly">Monthly</option><option value="weekly">Weekly</option></select></div>
-            <div><label className={label}>Target posts</label><input type="number" className={field} value={f.targetVideos} onChange={(e) => set("targetVideos", e.target.value)} /></div>
-          </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><label className={label}>Base fee</label><input type="number" className={field} value={f.baseFee} onChange={(e) => set("baseFee", e.target.value)} /></div>
-            <div><label className={label}>Per post</label><input type="number" className={field} value={f.perPost} onChange={(e) => set("perPost", e.target.value)} /></div>
-            <div><label className={label}>CPM</label><input type="number" className={field} value={f.cpmRate} onChange={(e) => set("cpmRate", e.target.value)} /></div>
-            <div><label className={label}>Bonus</label><input type="number" className={field} value={f.bonus} onChange={(e) => set("bonus", e.target.value)} /></div>
-            <div><label className={label}>Min views</label><input type="number" className={field} value={f.minViews} onChange={(e) => set("minViews", e.target.value)} /></div>
-            <div><label className={label}>Cap</label><input type="number" className={field} value={f.payoutCap} onChange={(e) => set("payoutCap", e.target.value)} /></div>
+            <div><label className={label}>Name</label><input className={field} value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div><label className={label}>Status</label><select className={field} value={status} onChange={(e) => setStatus(e.target.value)}>{["active", "paused", "ended"].map((s) => <option key={s}>{s}</option>)}</select></div>
+            <div><label className={label}>Target posts</label><input type="number" className={field} value={targetVideos} onChange={(e) => setTargetVideos(e.target.value)} /></div>
+          </div>
+          <div className="rounded-xl border border-[var(--line)] p-3">
+            <div className="mb-2 text-xs font-semibold text-[var(--muted)]">Payout rules (per creator, per period)</div>
+            <PayStructureEditor value={payForm} onChange={setPayForm} />
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
@@ -238,14 +255,28 @@ function RatesModal({ campaignId, creatorId, name, currency, override, onClose, 
   const s = (v: number | null) => (v == null ? "" : String(v));
   const [f, setF] = useState({
     baseFee: s(override.baseFee), perPost: s(override.perPost), cpmRate: s(override.cpmRate),
+    cpmBasis: override.cpmBasis ?? "", cpmCapPerVideo: s(override.cpmCapPerVideo),
     bonus: s(override.bonus), minViews: s(override.minViews), payoutCap: s(override.payoutCap),
     flatDeal: s(override.flatDeal), note: override.note ?? "",
   });
+  const [tiersOn, setTiersOn] = useState(override.viewTiers.length > 0);
+  const [tiers, setTiers] = useState<{ views: string; bonus: string }[]>(
+    override.viewTiers.length
+      ? override.viewTiers.map((t) => ({ views: String(t.views), bonus: String(t.bonus) }))
+      : [{ views: "", bonus: "" }]
+  );
   const [saving, setSaving] = useState(false);
   function set<K extends keyof typeof f>(k: K, v: (typeof f)[K]) { setF((p) => ({ ...p, [k]: v })); }
   async function save() {
     setSaving(true);
-    await fetch(`/api/campaigns/${campaignId}/creator/${creatorId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
+    const viewTiers = tiersOn
+      ? tiers.map((t) => ({ views: Number(t.views), bonus: Number(t.bonus) })).filter((t) => t.views > 0 && t.bonus > 0)
+      : [];
+    await fetch(`/api/campaigns/${campaignId}/creator/${creatorId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...f, viewTiers }),
+    });
     onSaved();
   }
   async function clearAll() {
@@ -268,9 +299,29 @@ function RatesModal({ campaignId, creatorId, name, currency, override, onClose, 
           <div><label className={label}>Base fee</label><input type="number" className={field} value={f.baseFee} onChange={(e) => set("baseFee", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>Per post</label><input type="number" className={field} value={f.perPost} onChange={(e) => set("perPost", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>CPM</label><input type="number" className={field} value={f.cpmRate} onChange={(e) => set("cpmRate", e.target.value)} placeholder="inherit" /></div>
+          <div>
+            <label className={label}>CPM counted</label>
+            <select className={field} value={f.cpmBasis} onChange={(e) => set("cpmBasis", e.target.value)}>
+              <option value="">inherit</option>
+              <option value="aggregate">Aggregate / period</option>
+              <option value="perVideo">Per video</option>
+            </select>
+          </div>
+          <div><label className={label}>CPM cap / video</label><input type="number" className={field} value={f.cpmCapPerVideo} onChange={(e) => set("cpmCapPerVideo", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>Bonus</label><input type="number" className={field} value={f.bonus} onChange={(e) => set("bonus", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>Min views</label><input type="number" className={field} value={f.minViews} onChange={(e) => set("minViews", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>Cap</label><input type="number" className={field} value={f.payoutCap} onChange={(e) => set("payoutCap", e.target.value)} placeholder="inherit" /></div>
+        </div>
+        <div className="mt-3 rounded-xl border border-[var(--line)] p-3">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-[var(--muted)]">
+            <input type="checkbox" checked={tiersOn} onChange={(e) => setTiersOn(e.target.checked)} />
+            Override view bonus tiers
+          </label>
+          {tiersOn && (
+            <div className="mt-3">
+              <TierEditor tiers={tiers} onChange={setTiers} />
+            </div>
+          )}
         </div>
         <div className="mt-3">
           <label className={label}>Note</label>

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useClients } from "@/app/providers";
-import { Copilot } from "./Copilot";
 import { ClientLogo } from "./ClientLogo";
 import { AddClientModal } from "./AddClientModal";
 import { ThemeToggle } from "./ThemeToggle";
@@ -15,7 +14,7 @@ const I = {
   grid: <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />,
   at: <path d="M12 2a10 10 0 1 0 4 19M16 12a4 4 0 1 0-8 0 4 4 0 0 0 8 0v-2" />,
   video: <path d="M15 10l5-3v10l-5-3zM3 6h12v12H3z" />,
-  spark: <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />,
+  search: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>,
   users: <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />,
   target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /></>,
   wallet: <path d="M20 12V8H6a2 2 0 0 1 0-4h12v4M4 6v12a2 2 0 0 0 2 2h14v-4M18 12a2 2 0 0 0 0 4h4v-4z" />,
@@ -29,7 +28,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/", label: "Overview", icon: I.grid },
       { href: "/accounts", label: "Accounts", icon: I.at },
       { href: "/videos", label: "Videos", icon: I.video },
-      { href: "/discover", label: "Discover", icon: I.spark },
+      { href: "/discover", label: "Discover", icon: I.search },
     ],
   },
   {
@@ -126,11 +125,6 @@ export function Sidebar() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* copilot */}
-      <div className="px-3 pb-2">
-        <Copilot />
       </div>
 
       {/* nav */}

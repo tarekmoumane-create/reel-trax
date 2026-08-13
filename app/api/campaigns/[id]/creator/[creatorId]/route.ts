@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
+import { parseViewTiers } from "@/lib/payouts";
 
 const numOrNull = (v: unknown) => (v === "" || v == null ? null : Number.isFinite(Number(v)) ? Number(v) : null);
 
@@ -22,6 +23,12 @@ export async function PATCH(
         baseFee: numOrNull(b.baseFee),
         perPost: numOrNull(b.perPost),
         cpmRate: numOrNull(b.cpmRate),
+        cpmBasis: b.cpmBasis === "perVideo" || b.cpmBasis === "aggregate" ? b.cpmBasis : null,
+        cpmCapPerVideo: numOrNull(b.cpmCapPerVideo),
+        viewTiers: (() => {
+          const tiers = parseViewTiers(JSON.stringify(b.viewTiers ?? null));
+          return tiers.length ? JSON.stringify(tiers) : null;
+        })(),
         bonus: numOrNull(b.bonus),
         minViews: numOrNull(b.minViews),
         payoutCap: numOrNull(b.payoutCap),

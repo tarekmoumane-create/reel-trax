@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, serverError } from "@/lib/api";
 import { logoFromWebsite } from "@/lib/brand";
+import { sanitizePayRules } from "@/lib/payouts";
 
 export async function PATCH(
   request: Request,
@@ -20,6 +21,11 @@ export async function PATCH(
       if (!("logoUrl" in body) && website) data.logoUrl = logoFromWebsite(website);
     }
     if ("logoUrl" in body) data.logoUrl = (body.logoUrl ?? "").trim() || null;
+    if (body.payMode === "uniform" || body.payMode === "individual") data.payMode = body.payMode;
+    if ("defaultPayRules" in body) {
+      const rules = sanitizePayRules(body.defaultPayRules);
+      data.defaultPayRules = rules ? JSON.stringify(rules) : null;
+    }
     const client = await prisma.client.update({ where: { id }, data });
     return ok(client);
   } catch (e) {

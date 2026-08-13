@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
-import { periodBounds, computeEarnings, effectiveRules, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
 
 // Mark a computed payout period as paid/cancelled (stores a record), or revert
 // to "due" (removes the record so it re-computes live).
@@ -35,10 +35,15 @@ export async function POST(request: Request) {
     const bounds = periodBounds(campaign.period, periodStart);
     const baseRules: CampaignRules = {
       period: campaign.period, targetVideos: campaign.targetVideos, baseFee: campaign.baseFee,
-      perPost: campaign.perPost, cpmRate: campaign.cpmRate, bonus: campaign.bonus,
-      minViews: campaign.minViews, payoutCap: campaign.payoutCap,
+      perPost: campaign.perPost, cpmRate: campaign.cpmRate, cpmBasis: campaign.cpmBasis,
+      cpmCapPerVideo: campaign.cpmCapPerVideo, viewTiers: parseViewTiers(campaign.viewTiers),
+      bonus: campaign.bonus, minViews: campaign.minViews, payoutCap: campaign.payoutCap,
     };
-    const e = computeEarnings(effectiveRules(baseRules, link), posts, bounds);
+    const e = computeEarnings(
+      effectiveRules(baseRules, link ? { ...link, viewTiers: parseViewTiers(link.viewTiers) } : null),
+      posts,
+      bounds
+    );
 
     const record = await prisma.payout.upsert({
       where: { campaignId_creatorId_periodStart: { campaignId, creatorId, periodStart: bounds.start } },

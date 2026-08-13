@@ -6,6 +6,8 @@ export interface ClientDTO {
   color: string;
   website: string | null;
   logoUrl: string | null;
+  payMode: string; // uniform | individual
+  defaultPayRules: string | null; // JSON PayRulesJson
   archived: boolean;
   createdAt: string;
   _count?: { creators: number };
@@ -62,6 +64,7 @@ export interface CreatorDTO {
   sideshiftUrl: string | null;
   paymentMethod: string;
   paymentHandle: string | null;
+  payRules: string | null; // JSON PayRulesJson — personal deal (individualized clients)
   phone: string | null;
   email: string | null;
   contactHandle: string | null;
