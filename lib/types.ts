@@ -28,6 +28,10 @@ export interface OverviewRow {
   preferredChannel: string | null;
   phone: string | null;
   contactHandle: string | null;
+  email: string | null;
+  discord: string | null;
+  whatsapp: string | null;
+  sideshiftUrl: string | null;
   cadence: CadenceResult;
 }
 

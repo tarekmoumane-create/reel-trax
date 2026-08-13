@@ -176,6 +176,85 @@ export async function fetchTikTok(
   return { posts, userId, followers, avatarUrl, rawCount: list.length };
 }
 
+// ---------- Profiles (avatars) ----------
+
+export interface ProfileResult {
+  avatarUrl: string | null;
+  followers: number | null;
+  userId: string | null;
+}
+
+/**
+ * Instagram profile — the reliable source for a creator's profile picture.
+ * The posts endpoint doesn't always carry the user object, which is why
+ * avatars came back empty; this endpoint always does.
+ */
+export async function fetchInstagramProfile(
+  handle: string,
+  apiKey: string
+): Promise<ProfileResult> {
+  const data = await scGet("/v1/instagram/profile", { handle }, apiKey);
+  // Response nesting drifts between API versions (data.user vs data.data.user).
+  const avatarUrl =
+    (pick(data, [
+      "data.user.profile_pic_url_hd",
+      "data.user.profile_pic_url",
+      "data.data.user.profile_pic_url_hd",
+      "data.data.user.profile_pic_url",
+      "user.profile_pic_url_hd",
+      "user.profile_pic_url",
+      "profile_pic_url_hd",
+      "profile_pic_url",
+    ]) as string) || null;
+  const followers =
+    num(
+      pick(data, [
+        "data.user.edge_followed_by.count",
+        "data.user.follower_count",
+        "data.data.user.edge_followed_by.count",
+        "user.edge_followed_by.count",
+        "user.follower_count",
+        "follower_count",
+      ])
+    ) || null;
+  const userId =
+    (pick(data, ["data.user.id", "data.user.pk", "data.data.user.id", "user.id", "user.pk"]) as string) ||
+    null;
+  return { avatarUrl, followers, userId: userId ? String(userId) : null };
+}
+
+/** TikTok profile — fallback avatar source for creators with no Instagram. */
+export async function fetchTikTokProfile(
+  handle: string,
+  apiKey: string
+): Promise<ProfileResult> {
+  const data = await scGet("/v1/tiktok/profile", { handle }, apiKey);
+  const avatarUrl =
+    (pick(data, [
+      "user.avatarLarger",
+      "user.avatarMedium",
+      "user.avatarThumb",
+      "user.avatar_larger.url_list.0",
+      "user.avatar_medium.url_list.0",
+      "user.avatar_thumb.url_list.0",
+      "data.user.avatarLarger",
+      "data.user.avatarMedium",
+      "avatarLarger",
+    ]) as string) || null;
+  const followers =
+    num(
+      pick(data, [
+        "statsV2.followerCount",
+        "stats.followerCount",
+        "user.follower_count",
+        "data.stats.followerCount",
+      ])
+    ) || null;
+  const userId =
+    (pick(data, ["user.id", "user.uid", "data.user.id"]) as string) || null;
+  return { avatarUrl, followers, userId: userId ? String(userId) : null };
+}
+
 // ---------- Instagram ----------
 
 export async function fetchInstagram(

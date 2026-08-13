@@ -48,8 +48,13 @@ export async function GET(request: Request) {
         lastSyncedAt: c.lastSyncedAt,
         lastSyncStatus: c.lastSyncStatus,
         preferredChannel: c.preferredChannel,
+        // everything ContactButton needs to open the right app from the roster
         phone: c.phone,
         contactHandle: c.contactHandle,
+        email: c.email,
+        discord: c.discord,
+        whatsapp: c.whatsapp,
+        sideshiftUrl: c.sideshiftUrl,
         cadence,
       };
     });

@@ -2,24 +2,29 @@
 
 import { useState } from "react";
 import { initials } from "@/lib/ui";
+import { imgSrc } from "@/lib/img";
 
-// Creator avatar: shows the synced profile picture, falls back to initials when
-// there's no image or the CDN blocks hotlinking.
+// Creator avatar. Pass `creatorId` and it serves our own stored copy of the
+// picture, which never expires; `src` covers anything else (and gets proxied
+// when the origin blocks hotlinking). Falls back to initials either way.
 export function Avatar({
   name,
+  creatorId,
   src,
   size = 36,
   rounded = "9999px",
   className = "",
 }: {
   name: string;
+  creatorId?: string;
   src?: string | null;
   size?: number;
   rounded?: string;
   className?: string;
 }) {
   const [broken, setBroken] = useState(false);
-  const show = src && !broken;
+  const resolved = creatorId ? `/api/creators/${creatorId}/avatar` : imgSrc(src);
+  const show = resolved && !broken;
   return (
     <span
       className={`grid shrink-0 place-items-center overflow-hidden bg-[var(--panel2)] text-[var(--muted)] ${className}`}
@@ -28,7 +33,7 @@ export function Avatar({
       {show ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={src!}
+          src={resolved!}
           alt=""
           referrerPolicy="no-referrer"
           loading="lazy"

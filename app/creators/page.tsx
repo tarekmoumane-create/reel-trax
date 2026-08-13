@@ -55,7 +55,7 @@ export default function CreatorsPage() {
                 className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 hover:bg-[var(--panel2)] md:grid-cols-[minmax(220px,2fr)_110px_1fr_120px_100px_90px] md:gap-4"
               >
                 <div className="flex items-center gap-3">
-                  <Avatar name={r.displayName} src={r.avatarUrl} size={36} />
+                  <Avatar name={r.displayName} creatorId={r.id} size={36} />
                   <span className="truncate text-sm font-medium">{r.displayName}</span>
                 </div>
                 <div><StatusBadge status={r.cadence.status} /></div>

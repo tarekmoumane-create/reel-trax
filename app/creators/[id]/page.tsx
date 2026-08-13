@@ -67,7 +67,11 @@ export default function CreatorDetail() {
                 Pay · {payLink(creator)!.label}
               </a>
             )}
-            <ContactButton creator={creator} onContacted={() => patch({ markContactedNow: true })} />
+            <ContactButton
+              creator={creator}
+              lastContactedAt={creator.lastContactedAt}
+              onContacted={() => patch({ markContactedNow: true })}
+            />
             <button onClick={resync} disabled={busy} className="btn disabled:opacity-60">{busy ? "…" : "Resync"}</button>
             <button onClick={() => setEditing((e) => !e)} className="btn">{editing ? "Close" : "Edit"}</button>
           </>
@@ -78,7 +82,7 @@ export default function CreatorDetail() {
         {/* header */}
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <Avatar name={creator.displayName} src={creator.avatarUrl} size={56} rounded="16px" />
+            <Avatar name={creator.displayName} creatorId={creator.id} size={56} rounded="16px" />
 
             <div>
               <div className="flex items-center gap-2.5">
@@ -289,5 +293,5 @@ function CreatorTrend({ posts }: { posts: PostDTO[] }) {
     const [, m, day] = d.split("-").map(Number);
     return new Date(2000, m - 1, day).toLocaleDateString("en", { month: "short", day: "numeric" });
   };
-  return <Chart labels={labels} series={[{ name: "Views", color: "#ec5a35", values: views, area: true }]} format={fmtNum} formatX={fmtDate} height={170} />;
+  return <Chart labels={labels} series={[{ name: "Views", color: "var(--signal)", values: views, area: true }]} format={fmtNum} formatX={fmtDate} height={170} />;
 }

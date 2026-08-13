@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, serverError } from "@/lib/api";
-import { logoFromWebsite } from "../route";
+import { logoFromWebsite } from "@/lib/brand";
 
 export async function PATCH(
   request: Request,

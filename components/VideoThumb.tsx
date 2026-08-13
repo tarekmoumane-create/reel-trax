@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { imgSrc } from "@/lib/img";
 
 // Small portrait thumbnail for a short-form post. Clicking opens the post in a
 // new tab. Falls back to a platform-tinted placeholder when there's no image
@@ -22,7 +23,8 @@ export function VideoThumb({
 }) {
   const [broken, setBroken] = useState(false);
   const isTT = platform === "tiktok";
-  const showImg = thumbnailUrl && !broken;
+  const thumb = imgSrc(thumbnailUrl);
+  const showImg = thumb && !broken;
 
   const inner = (
     <div
@@ -32,7 +34,7 @@ export function VideoThumb({
       {showImg ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={thumbnailUrl!}
+          src={thumb!}
           alt=""
           referrerPolicy="no-referrer"
           loading="lazy"

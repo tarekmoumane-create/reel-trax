@@ -80,7 +80,7 @@ export function Copilot() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm" onMouseDown={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex justify-end bg-[var(--scrim)] backdrop-blur-sm" onMouseDown={() => setOpen(false)}>
           <div className="flex h-full w-full max-w-md flex-col border-l border-[var(--line)] bg-[var(--rail)]" onMouseDown={(e) => e.stopPropagation()}>
             {/* header */}
             <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ============ Warm Studio theme ============
+/* ============ Warm Studio theme — daylight ============
    Warm bone paper, espresso ink, one confident coral accent.
    Numbers use tabular sans figures — never monospace. */
 :root,
@@ -17,6 +17,7 @@
   --faint: #b3a897;       /* tertiary text */
   --signal: #ec5a35;      /* warm coral accent */
   --signal-2: #ff6f4c;
+  --accent: #3b6fe0;      /* secondary accent (charts, links) */
   --ok: #2f9464;          /* legible on light */
   --warn: #c98419;
   --bad: #d0473a;
@@ -27,61 +28,82 @@
   --card-shadow: 0 1px 2px rgba(42, 35, 28, 0.04), 0 10px 30px -20px rgba(42, 35, 28, 0.18);
   --scrim: rgba(42, 35, 28, 0.45);
   --chip-tt: rgba(42, 35, 28, 0.07);
+  --logo-tile: #ffffff;   /* backdrop behind brand logos */
+  /* themed effects — kept as tokens so the rules below are written once */
+  --glow-1: transparent;
+  --glow-2: transparent;
+  --primary-grad: var(--signal);
+  --primary-ring: rgba(236, 90, 53, 0.25);
+  --panel-grad: none;
 }
 
-/* ============ Warm Studio — after dark ============
-   Same room, lights down. Roasted espresso, not cold slate;
-   the coral warms a touch to hold its glow on a dark ground. */
+/* ============ Midnight — after dark ============
+   Black ground, violet signal, electric blue second light.
+   Neutrals carry a faint blue-violet cast so nothing reads muddy. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #17130f;          /* deep roasted espresso */
-  --rail: #1e1913;        /* sidebar, a shade up from the floor */
-  --panel: #241d16;       /* cards lift off the background */
-  --panel2: #2e261d;      /* insets, hovers */
-  --line: #383025;        /* borders */
-  --line2: #2c251c;       /* subtle dividers */
-  --ink: #f3ecdf;         /* warm bone text */
-  --muted: #a99d89;       /* secondary text */
-  --faint: #766c5b;       /* tertiary text */
-  --signal: #ff6a44;      /* coral, warmed to glow on dark */
-  --signal-2: #ff835f;
-  --ok: #4bbd86;
-  --warn: #e0a03f;
-  --bad: #ec6a5c;
-  --tt: #f3ecdf;
-  --ig: #f06bab;
-  --field: #1c160f;       /* input fill, recessed */
-  --scroll: #443a2c;
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 34px -22px rgba(0, 0, 0, 0.7);
-  --scrim: rgba(10, 8, 5, 0.62);
-  --chip-tt: rgba(243, 236, 223, 0.10);
+  --bg: #05050b;          /* near-black, faint violet cast */
+  --rail: #090913;        /* sidebar sits just above the floor */
+  --panel: #0f0f1c;       /* cards lift off the background */
+  --panel2: #191a2e;      /* insets, hovers */
+  --line: #272845;        /* borders */
+  --line2: #1b1c31;       /* subtle dividers */
+  --ink: #ecebf8;         /* cool bone text */
+  --muted: #a4a1c6;       /* secondary text */
+  --faint: #6e6b94;       /* tertiary text */
+  --signal: #a566ff;      /* violet — the primary signal */
+  --signal-2: #bf8cff;
+  --accent: #4d8dff;      /* electric blue — the second light */
+  --ok: #35d39a;
+  --warn: #f3b43f;
+  --bad: #ff6b81;
+  --tt: #ecebf8;
+  --ig: #f472b6;
+  --field: #0b0b17;       /* input fill, recessed */
+  --scroll: #2d2e4f;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 18px 44px -26px rgba(124, 58, 237, 0.45);
+  --scrim: rgba(3, 3, 10, 0.72);
+  --chip-tt: rgba(236, 235, 248, 0.09);
+  --logo-tile: #f4f4fb;
+  --glow-1: rgba(139, 74, 255, 0.18);
+  --glow-2: rgba(58, 120, 255, 0.14);
+  --primary-grad: linear-gradient(135deg, #8b5cf6 0%, #4d8dff 100%);
+  --primary-ring: rgba(139, 92, 246, 0.55);
+  --panel-grad: linear-gradient(180deg, rgba(165, 102, 255, 0.045) 0%, rgba(77, 141, 255, 0.02) 100%);
 }
 
 @media (prefers-color-scheme: dark) {
   /* Respect the OS only until the user makes an explicit choice. */
   :root:not([data-theme]) {
     color-scheme: dark;
-    --bg: #17130f;
-    --rail: #1e1913;
-    --panel: #241d16;
-    --panel2: #2e261d;
-    --line: #383025;
-    --line2: #2c251c;
-    --ink: #f3ecdf;
-    --muted: #a99d89;
-    --faint: #766c5b;
-    --signal: #ff6a44;
-    --signal-2: #ff835f;
-    --ok: #4bbd86;
-    --warn: #e0a03f;
-    --bad: #ec6a5c;
-    --tt: #f3ecdf;
-    --ig: #f06bab;
-    --field: #1c160f;
-    --scroll: #443a2c;
-    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 34px -22px rgba(0, 0, 0, 0.7);
-    --scrim: rgba(10, 8, 5, 0.62);
-  --chip-tt: rgba(243, 236, 223, 0.10);
+    --bg: #05050b;
+    --rail: #090913;
+    --panel: #0f0f1c;
+    --panel2: #191a2e;
+    --line: #272845;
+    --line2: #1b1c31;
+    --ink: #ecebf8;
+    --muted: #a4a1c6;
+    --faint: #6e6b94;
+    --signal: #a566ff;
+    --signal-2: #bf8cff;
+    --accent: #4d8dff;
+    --ok: #35d39a;
+    --warn: #f3b43f;
+    --bad: #ff6b81;
+    --tt: #ecebf8;
+    --ig: #f472b6;
+    --field: #0b0b17;
+    --scroll: #2d2e4f;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 18px 44px -26px rgba(124, 58, 237, 0.45);
+    --scrim: rgba(3, 3, 10, 0.72);
+    --chip-tt: rgba(236, 235, 248, 0.09);
+    --logo-tile: #f4f4fb;
+    --glow-1: rgba(139, 74, 255, 0.18);
+    --glow-2: rgba(58, 120, 255, 0.14);
+    --primary-grad: linear-gradient(135deg, #8b5cf6 0%, #4d8dff 100%);
+    --primary-ring: rgba(139, 92, 246, 0.55);
+    --panel-grad: linear-gradient(180deg, rgba(165, 102, 255, 0.045) 0%, rgba(77, 141, 255, 0.02) 100%);
   }
 }
 
@@ -95,6 +117,7 @@
   --color-muted: var(--muted);
   --color-faint: var(--faint);
   --color-signal: var(--signal);
+  --color-accent: var(--accent);
   --font-display: var(--font-bricolage);
   --font-sans: var(--font-hanken);
 }
@@ -113,12 +136,22 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Two soft lights over the ground — violet from the left, blue from the right.
+   Both resolve to transparent in daylight, so this costs the light theme nothing. */
+body {
+  background-image:
+    radial-gradient(900px 520px at 10% -10%, var(--glow-1), transparent 60%),
+    radial-gradient(780px 460px at 95% -6%, var(--glow-2), transparent 62%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
 .font-display {
   font-family: var(--font-bricolage), sans-serif;
   letter-spacing: -0.02em;
 }
 
-/* "mono" is now warm tabular sans — the number treatment, NOT monospace */
+/* "mono" is now tabular sans — the number treatment, NOT monospace */
 .mono {
   font-family: var(--font-hanken), sans-serif;
   font-variant-numeric: tabular-nums;
@@ -127,10 +160,10 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--signal) 22%, transparent);
+  background: color-mix(in srgb, var(--signal) 28%, transparent);
 }
 
-/* scrollbars — warm, subtle */
+/* scrollbars */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -146,7 +179,8 @@ body {
 
 /* building blocks */
 .card {
-  background: var(--panel);
+  background-color: var(--panel);
+  background-image: var(--panel-grad);
   border: 1px solid var(--line);
   border-radius: 18px;
   box-shadow: var(--card-shadow);
@@ -173,7 +207,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--signal);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 16%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 22%, transparent);
 }
 input::placeholder,
 textarea::placeholder {
@@ -192,7 +226,7 @@ textarea::placeholder {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, transform 0.04s;
+  transition: background 0.12s, border-color 0.12s, filter 0.12s, transform 0.04s;
 }
 .btn:hover {
   background: var(--panel2);
@@ -201,11 +235,12 @@ textarea::placeholder {
   transform: translateY(0.5px);
 }
 .btn-primary {
-  background: var(--signal);
-  border-color: var(--signal);
+  background: var(--primary-grad);
+  border-color: color-mix(in srgb, var(--signal) 60%, transparent);
   color: #fff;
-  box-shadow: 0 1px 2px rgba(236, 90, 53, 0.25);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 10px 26px -14px var(--primary-ring);
 }
 .btn-primary:hover {
-  background: var(--signal-2);
+  background: var(--primary-grad);
+  filter: brightness(1.08);
 }

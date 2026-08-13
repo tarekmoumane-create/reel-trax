@@ -24,8 +24,10 @@ export const metadata: Metadata = {
 const themeInit = `(function(){try{var t=localStorage.getItem("rt-theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // themeInit stamps data-theme on <html> before React hydrates, so the server
+  // markup deliberately differs from the client's — suppress that one warning.
   return (
-    <html lang="en" className={`${hanken.variable} ${bricolage.variable} h-full`}>
+    <html lang="en" className={`${hanken.variable} ${bricolage.variable} h-full`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>

@@ -14,7 +14,9 @@ export async function POST(
       return bad("No ScrapeCreators API key set. Add it in Settings.", 400);
     const creator = await prisma.creator.findUnique({ where: { id } });
     if (!creator) return bad("Creator not found", 404);
-    const result = await syncCreator(creator, apiKey);
+    // Resyncing one creator by hand is the "something about them is stale"
+    // action, so this is the one path that re-pulls the profile picture.
+    const result = await syncCreator(creator, apiKey, { refreshAvatar: true });
     return ok(result);
   } catch (e) {
     return serverError(e);

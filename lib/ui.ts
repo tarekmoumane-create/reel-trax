@@ -1,32 +1,34 @@
 import type { CadenceStatus } from "./cadence";
 
+// Built from theme tokens so badges stay legible in both palettes — the fixed
+// hex values these replaced went dark-on-dark at night.
 export const STATUS_STYLE: Record<
   CadenceStatus,
   { label: string; text: string; bg: string; dot: string }
 > = {
   on_track: {
     label: "On track",
-    text: "#1f7a4d",
-    bg: "rgba(47,148,100,0.13)",
-    dot: "#2f9464",
+    text: "var(--ok)",
+    bg: "color-mix(in srgb, var(--ok) 15%, transparent)",
+    dot: "var(--ok)",
   },
   behind: {
     label: "Behind",
-    text: "#a86a10",
-    bg: "rgba(201,132,25,0.15)",
-    dot: "#c98419",
+    text: "var(--warn)",
+    bg: "color-mix(in srgb, var(--warn) 16%, transparent)",
+    dot: "var(--warn)",
   },
   quiet: {
     label: "Gone quiet",
-    text: "#b83a2e",
-    bg: "rgba(208,71,58,0.13)",
-    dot: "#d0473a",
+    text: "var(--bad)",
+    bg: "color-mix(in srgb, var(--bad) 15%, transparent)",
+    dot: "var(--bad)",
   },
   no_data: {
     label: "No posts yet",
-    text: "#8a8074",
-    bg: "rgba(42,35,28,0.06)",
-    dot: "#b3a897",
+    text: "var(--muted)",
+    bg: "color-mix(in srgb, var(--muted) 12%, transparent)",
+    dot: "var(--faint)",
   },
 };
 

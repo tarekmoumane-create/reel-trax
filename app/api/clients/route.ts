@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
+import { isDeadLogoUrl, logoFromWebsite } from "@/lib/brand";
 
 export async function GET() {
   try {
@@ -8,25 +9,24 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
       include: { _count: { select: { creators: true } } },
     });
+
+    // Heal rows still pointing at the retired Clearbit logo API, so existing
+    // clients get their logo back without anyone re-saving them by hand.
+    const stale = clients.filter((c) => isDeadLogoUrl(c.logoUrl));
+    if (stale.length) {
+      await Promise.all(
+        stale.map((c) => {
+          const logoUrl = c.website ? logoFromWebsite(c.website) : null;
+          c.logoUrl = logoUrl;
+          return prisma.client.update({ where: { id: c.id }, data: { logoUrl } });
+        })
+      );
+    }
+
     return ok(clients);
   } catch (e) {
     return serverError(e);
   }
-}
-
-export function hostOf(url: string): string | null {
-  try {
-    const u = new URL(/:\/\//.test(url) ? url : `https://${url}`);
-    return u.hostname.replace(/^www\./, "");
-  } catch {
-    return null;
-  }
-}
-
-/** Auto-derive a client's logo from their website (Clearbit's logo API). */
-export function logoFromWebsite(website: string): string | null {
-  const h = hostOf(website);
-  return h ? `https://logo.clearbit.com/${h}?size=128` : null;
 }
 
 export async function POST(request: Request) {

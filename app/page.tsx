@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
 import { AnalyticsPanel } from "@/components/AnalyticsPanel";
 import { Avatar } from "@/components/Avatar";
+import { ContactButton } from "@/components/ContactButton";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, timeAgo } from "@/lib/ui";
 
@@ -145,8 +146,8 @@ export default function Overview() {
           )}
         </div>
 
-        {/* roster */}
-        <div className="card overflow-hidden">
+        {/* roster — no overflow clipping, so a row's Contact menu can escape it */}
+        <div className="card">
           <div className="hidden grid-cols-[minmax(200px,1.6fr)_auto_84px_72px_64px_104px_150px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
             <div>Creator</div>
             <div>Post activity · 30d</div>
@@ -195,13 +196,13 @@ function Kpi({ label, value, tone, active, onClick }: { label: string; value: nu
   );
 }
 
-function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; busy: boolean; onContacted: () => void; onResync: () => void }) {
+function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; busy: boolean; onContacted: () => Promise<void>; onResync: () => void }) {
   const c = row.cadence;
   return (
     <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(200px,1.6fr)_auto_84px_72px_64px_104px_150px] lg:gap-4">
       {/* identity */}
       <div className="flex min-w-0 items-center gap-3">
-        <Avatar name={row.displayName} src={row.avatarUrl} size={36} />
+        <Avatar name={row.displayName} creatorId={row.id} size={36} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Link href={`/creators/${row.id}`} className="truncate text-sm font-medium hover:text-[var(--signal)]">{row.displayName}</Link>
@@ -226,10 +227,13 @@ function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; bu
 
       {/* actions */}
       <div className="flex items-center justify-end gap-1.5">
-        <button onClick={onContacted} disabled={busy} title={`Last contacted ${timeAgo(row.lastContactedAt)}`}
-          className={`btn px-2.5 py-1.5 text-xs disabled:opacity-50 ${row.needsFollowUp ? "border-[var(--signal)] text-[var(--signal)]" : ""}`}>
-          {row.needsFollowUp ? "Follow up" : "Contacted"}
-        </button>
+        <ContactButton
+          creator={row}
+          lastContactedAt={row.lastContactedAt}
+          needsFollowUp={row.needsFollowUp}
+          onContacted={onContacted}
+          compact
+        />
         <button onClick={onResync} disabled={busy} title={`Synced ${timeAgo(row.lastSyncedAt)}`} className="btn px-2.5 py-1.5 text-xs disabled:opacity-50">
           {busy ? "…" : "Sync"}
         </button>

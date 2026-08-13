@@ -2,20 +2,15 @@
 
 import { useState } from "react";
 import { ClientLogo } from "./ClientLogo";
+import { logoFromWebsite } from "@/lib/brand";
 
-const COLORS = ["#ec5a35", "#2f9464", "#c98419", "#3b6fe0", "#8b5cf6", "#d6438f", "#0f766e", "#b83a2e"];
+const COLORS = ["#8b5cf6", "#4d8dff", "#ec5a35", "#2f9464", "#c98419", "#d6438f", "#0f766e", "#b83a2e"];
 
-// Derive the preview logo the same way the API does (Clearbit).
+// Preview resolves through the same endpoint the API stores, so what you see
+// here is exactly what the roster will render.
 function previewLogo(website: string, logoUrl: string): string | null {
   if (logoUrl.trim()) return logoUrl.trim();
-  const w = website.trim();
-  if (!w) return null;
-  try {
-    const u = new URL(/:\/\//.test(w) ? w : `https://${w}`);
-    return `https://logo.clearbit.com/${u.hostname.replace(/^www\./, "")}?size=128`;
-  } catch {
-    return null;
-  }
+  return website.trim() ? logoFromWebsite(website.trim()) : null;
 }
 
 export function AddClientModal({
@@ -56,7 +51,7 @@ export function AddClientModal({
   const preview = previewLogo(website, logoUrl);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,35,28,0.45)] p-4 backdrop-blur-sm" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 backdrop-blur-sm" onMouseDown={onClose}>
       <div className="card my-8 w-full max-w-md p-5" onMouseDown={(e) => e.stopPropagation()}>
         <h2 className="font-display text-lg font-bold">Add client</h2>
         <p className="text-xs text-[var(--muted)]">Add their website and we&apos;ll pull their logo automatically.</p>

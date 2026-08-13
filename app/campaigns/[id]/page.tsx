@@ -159,7 +159,7 @@ function AssignModal({ campaignId, clientId, assigned, onClose, onSaved }: { cam
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 backdrop-blur-sm" onMouseDown={onClose}>
       <div className="card my-8 w-full max-w-md p-5" onMouseDown={(e) => e.stopPropagation()}>
         <h2 className="mb-3 font-display text-lg font-bold">Assign creators</h2>
         <div className="max-h-80 space-y-1 overflow-y-auto">
@@ -201,7 +201,7 @@ function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"
   const field = "w-full px-3 py-2 text-sm";
   const label = "mb-1 block text-xs font-medium text-[var(--muted)]";
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 backdrop-blur-sm" onMouseDown={onClose}>
       <div className="card my-8 w-full max-w-lg p-5" onMouseDown={(e) => e.stopPropagation()}>
         <h2 className="mb-3 font-display text-lg font-bold">Edit campaign</h2>
         <div className="space-y-3">
@@ -256,7 +256,7 @@ function RatesModal({ campaignId, creatorId, name, currency, override, onClose, 
   const field = "w-full px-3 py-2 text-sm";
   const label = "mb-1 block text-xs font-medium text-[var(--muted)]";
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 backdrop-blur-sm" onMouseDown={onClose}>
       <div className="card my-8 w-full max-w-lg p-5" onMouseDown={(e) => e.stopPropagation()}>
         <h2 className="font-display text-lg font-bold">Custom pay · {name}</h2>
         <p className="mt-1 text-xs text-[var(--muted)]">Leave a field blank to inherit the campaign rule. Set a <span className="text-[var(--ink)]">flat deal</span> to pay a fixed total and ignore everything else. Currency: {currency}.</p>

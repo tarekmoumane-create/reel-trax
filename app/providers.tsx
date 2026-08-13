@@ -28,11 +28,15 @@ export function ClientsProvider({ children }: { children: React.ReactNode }) {
   const [currentClientId, setCurrentId] = useState<string | null>(null);
 
   const reloadClients = useCallback(async () => {
-    const res = await fetch("/api/clients");
-    const data: ClientDTO[] = await res.json();
-    setClients(data);
+    // A failing /api/clients answers with { error }, not a list — keep the last
+    // good roster rather than crashing the whole shell on clients.find.
+    const data = await fetch("/api/clients")
+      .then((res) => res.json())
+      .catch(() => null);
+    const list: ClientDTO[] = Array.isArray(data) ? data : [];
+    setClients(list);
     setLoading(false);
-    return data;
+    return list;
   }, []);
 
   useEffect(() => {

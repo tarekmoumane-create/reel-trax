@@ -117,7 +117,7 @@ function CreateCampaign({ clientId, clientName, onClose, onCreated }: { clientId
   const label = "mb-1 block text-xs font-medium text-[var(--muted)]";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--scrim)] p-4 backdrop-blur-sm" onMouseDown={onClose}>
       <div className="card my-8 w-full max-w-lg p-5" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-4">
           <h2 className="font-display text-lg font-bold">New campaign</h2>

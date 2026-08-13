@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { initials } from "@/lib/ui";
+import { imgSrc } from "@/lib/img";
 
 // Client avatar: shows the brand logo (from their website / uploaded URL),
 // falling back to a colored square with initials.
@@ -19,16 +20,16 @@ export function ClientLogo({
   radius?: number;
 }) {
   const [broken, setBroken] = useState(false);
-  const show = logoUrl && !broken;
-  if (show) {
+  const src = imgSrc(logoUrl);
+  if (src && !broken) {
     return (
       <span
-        className="grid shrink-0 place-items-center overflow-hidden border border-[var(--line)] bg-white"
+        className="grid shrink-0 place-items-center overflow-hidden border border-[var(--line)] bg-[var(--logo-tile)] p-[2px]"
         style={{ width: size, height: size, borderRadius: radius }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={logoUrl!}
+          src={src}
           alt=""
           referrerPolicy="no-referrer"
           loading="lazy"

@@ -32,7 +32,13 @@ model Creator {
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   displayName String
-  avatarUrl   String? // profile picture pulled from TikTok/IG during sync
+  // Profile picture. The platform CDN URL is signed and expires within days, so
+  // we download the image once and keep the bytes — creators rarely change
+  // their photo, and a stored copy costs no API credits and never breaks.
+  avatarUrl  String? // where it came from (TikTok/IG CDN)
+  avatarData Bytes? // the picture itself
+  avatarMime String? // content type of avatarData
+  avatarAt   DateTime? // when it was stored; set = "we have a photo, don't refetch"
 
   // TikTok
   tiktokHandle String?
