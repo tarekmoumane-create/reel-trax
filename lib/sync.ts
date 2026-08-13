@@ -223,6 +223,32 @@ export async function syncCreator(
   const anyOk = results.some((r) => r.ok);
   const errors = results.filter((r) => !r.ok).map((r) => `${r.platform}: ${r.error}`);
 
+  // ---- Daily stats snapshot ----
+  // Post rows only hold each post's current totals, so "views gained today"
+  // has to be captured while it's happening: after every successful sync we
+  // record the creator's summed totals for today, and the analytics endpoint
+  // charts the day-over-day differences.
+  if (anyOk) {
+    const agg = await prisma.post.aggregate({
+      where: { creatorId: creator.id },
+      _sum: { views: true, likes: true, comments: true, shares: true },
+      _count: true,
+    });
+    const day = dayKey(new Date(), tz);
+    const stats = {
+      views: agg._sum.views ?? 0,
+      likes: agg._sum.likes ?? 0,
+      comments: agg._sum.comments ?? 0,
+      shares: agg._sum.shares ?? 0,
+      posts: agg._count,
+    };
+    await prisma.creatorStatSnapshot.upsert({
+      where: { creatorId_day: { creatorId: creator.id, day } },
+      create: { creatorId: creator.id, day, ...stats },
+      update: stats,
+    });
+  }
+
   await prisma.creator.update({
     where: { id: creator.id },
     data: {

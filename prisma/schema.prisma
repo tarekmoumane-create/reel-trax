@@ -87,8 +87,29 @@ model Creator {
   campaignLinks CampaignCreator[]
   payouts       Payout[]
   followerSnapshots FollowerSnapshot[]
+  statSnapshots     CreatorStatSnapshot[]
 
   @@index([clientId])
+}
+
+// Daily totals across a creator's tracked posts, captured during sync.
+// Day-over-day differences give "views gained today" — the metric viral.app
+// charts — which can't be recovered from post rows alone (those only hold the
+// current total for each post).
+model CreatorStatSnapshot {
+  id         String   @id @default(cuid())
+  creatorId  String
+  creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  day        String // YYYY-MM-DD in the app timezone
+  views      Int
+  likes      Int
+  comments   Int
+  shares     Int
+  posts      Int
+  capturedAt DateTime @default(now())
+
+  @@unique([creatorId, day])
+  @@index([creatorId])
 }
 
 // Daily follower count per creator+platform, captured during sync, so we can

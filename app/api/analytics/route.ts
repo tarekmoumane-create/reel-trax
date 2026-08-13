@@ -75,6 +75,27 @@ export async function GET(request: Request) {
     }
     const series = dayList.map((d) => ({ date: d, ...byDay.get(d)! }));
 
+    // views gained per day — the difference between consecutive daily stat
+    // snapshots, summed across creators. A gap in syncs attributes the whole
+    // delta to the day the next snapshot landed; days with no snapshot stay
+    // null so the chart shows "not tracked yet" rather than a fake zero.
+    const statSnaps = await prisma.creatorStatSnapshot.findMany({
+      where: { creatorId: { in: creatorIds } },
+      orderBy: { day: "asc" },
+      select: { creatorId: true, day: true, views: true },
+    });
+    const gainedByDay = new Map<string, number>();
+    const prevByCreator = new Map<string, number>();
+    for (const s of statSnaps) {
+      const prev = prevByCreator.get(s.creatorId);
+      if (prev != null && byDay.has(s.day)) {
+        gainedByDay.set(s.day, (gainedByDay.get(s.day) ?? 0) + Math.max(0, s.views - prev));
+      }
+      prevByCreator.set(s.creatorId, s.views);
+    }
+    const viewsGained = dayList.map((d) => ({ date: d, viewsGained: gainedByDay.has(d) ? gainedByDay.get(d)! : null }));
+    const hasGained = viewsGained.some((g) => g.viewsGained != null);
+
     // follower growth (carry-forward per creator+platform)
     const snaps = await prisma.followerSnapshot.findMany({
       where: { creatorId: { in: creatorIds } },
@@ -99,10 +120,10 @@ export async function GET(request: Request) {
     });
     const hasFollowers = followers.some((f) => f.followers != null);
 
-    // leaderboards
+    // leaderboards — a dozen each; the client's sort/count selectors slice
     const topVideos = [...posts]
       .sort((a, b) => b.views - a.views)
-      .slice(0, 6)
+      .slice(0, 12)
       .map((p) => ({
         platform: p.platform, url: p.url, caption: p.caption, thumbnailUrl: p.thumbnailUrl,
         views: p.views, likes: p.likes, creatorId: p.creatorId, creatorName: nameById.get(p.creatorId) ?? "—",
@@ -118,7 +139,7 @@ export async function GET(request: Request) {
     const topCreators = [...perCreator.entries()]
       .map(([id, v]) => ({ creatorId: id, name: nameById.get(id) ?? "—", views: v.views, posts: v.posts }))
       .sort((a, b) => b.views - a.views)
-      .slice(0, 6);
+      .slice(0, 12);
 
     const totals = {
       posts: posts.length,
@@ -126,11 +147,17 @@ export async function GET(request: Request) {
       likes: posts.reduce((s, p) => s + p.likes, 0),
       comments: posts.reduce((s, p) => s + p.comments, 0),
       shares: posts.reduce((s, p) => s + p.shares, 0),
+      viewsGained: hasGained ? viewsGained.reduce((s, g) => s + (g.viewsGained ?? 0), 0) : null,
       followers: hasFollowers ? followers[followers.length - 1].followers : null,
       creators: creators.length,
     };
 
-    return ok({ from, to, timeZone: tz, series, followers: hasFollowers ? followers : [], topVideos, topCreators, totals });
+    return ok({
+      from, to, timeZone: tz, series,
+      viewsGained: hasGained ? viewsGained : [],
+      followers: hasFollowers ? followers : [],
+      topVideos, topCreators, totals,
+    });
   } catch (e) {
     return serverError(e);
   }
