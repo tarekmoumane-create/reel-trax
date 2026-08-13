@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       model: "claude-haiku-4-5-20251001",
       max_tokens: 4000,
       system:
-        'Convert research answers into a single spreadsheet table. Respond with ONLY a JSON object: {"title": string, "headers": string[], "rows": string[][]}. Every row must have exactly as many cells as there are headers. Pick columns that fit the content (e.g. creators → Name, Handle, Followers, Niche, Why; trends/hooks → Trend, Description, Example, Why it works). Preserve every distinct item from the answer as its own row. Use "" for unknown cells. No markdown, no commentary.',
+        'Convert research answers into a single spreadsheet table. Respond with ONLY a JSON object: {"title": string, "headers": string[], "rows": string[][]}. Every row must have exactly as many cells as there are headers. Pick columns that fit the content (e.g. creators → Name, Handle, Account link, Followers, Niche, Why; trends/hooks → Trend, Description, Example, Why it works). REQUIRED: whenever rows are creators, accounts, or videos, include an "Account link" column with the full profile URL for every row — use URLs from the answer when present, otherwise construct them from the platform and handle (TikTok → https://www.tiktok.com/@handle, Instagram → https://www.instagram.com/handle, YouTube → https://www.youtube.com/@handle; assume TikTok if the platform is unstated). For videos, also include the video URL if the answer has one. Preserve every distinct item from the answer as its own row. Use "" for unknown cells. No markdown, no commentary.',
       messages: [{ role: "user", content: answer }],
     });
 
