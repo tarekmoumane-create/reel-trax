@@ -10,21 +10,30 @@ import { fmtNum } from "@/lib/ui";
 
 interface PayoutRow {
   key: string; campaignId: string; campaignName: string; creatorId: string; creatorName: string;
-  periodStart: string; periodLabel: string; amount: number; currency: string; status: string;
+  periodStart: string; periodEnd: string; periodLabel: string; amount: number; currency: string; status: string;
   postsCount: number; viewsCount: number; sideshiftUrl: string | null; paymentMethod: string; paymentHandle: string | null;
 }
 interface PayoutData {
   rows: PayoutRow[];
-  summary: { due: number; upcoming: number; paid: number; counts: Record<string, number> };
+  summary: { due: number; accruing: number; paid: number; counts: Record<string, number> };
 }
 
-const TABS = ["upcoming", "due", "paid", "cancelled"] as const;
+const TABS = ["accruing", "due", "paid", "cancelled"] as const;
+
+/** How far through the billing period we are, 0–100. */
+function periodProgress(r: PayoutRow): number {
+  const start = new Date(r.periodStart).getTime();
+  const end = new Date(r.periodEnd).getTime();
+  if (!(end > start)) return 0;
+  return Math.max(0, Math.min(100, Math.round(((Date.now() - start) / (end - start)) * 100)));
+}
 
 export default function PayoutsPage() {
   const { currentClientId, currentClient } = useClients();
   const [data, setData] = useState<PayoutData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<(typeof TABS)[number]>("due");
+  const [tab, setTab] = useState<(typeof TABS)[number]>("accruing");
+  const [autoPicked, setAutoPicked] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -35,6 +44,15 @@ export default function PayoutsPage() {
     setLoading(false);
   }, [currentClientId]);
   useEffect(() => { load(); }, [load]);
+
+  // First load: land on "due" only when something actually needs paying;
+  // otherwise stay on the live accruing view.
+  useEffect(() => {
+    if (data && !autoPicked) {
+      setAutoPicked(true);
+      if ((data.summary.counts.due ?? 0) > 0) setTab("due");
+    }
+  }, [data, autoPicked]);
 
   async function mark(r: PayoutRow, status: string) {
     setBusy(r.key);
@@ -50,14 +68,14 @@ export default function PayoutsPage() {
     <>
       <TopBar crumbs={["Creator Hub", "Payouts"]} />
       <div className="px-6 py-6">
-        <PageTitle title="Payouts" sub={`What each creator is owed across ${currentClient?.name ?? "this client"}'s campaigns. Tracking only — no money moves.`} />
+        <PageTitle title="Payouts" sub={`What each creator is owed across ${currentClient?.name ?? "this client"}'s campaigns — accruing live through each period. Tracking only — no money moves.`} />
 
         {s && (
           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Kpi label="Due now" value={money(s.due)} tone="var(--signal)" />
-            <Kpi label="Upcoming" value={money(s.upcoming)} />
+            <Kpi label="Accruing this period" value={money(s.accruing)} />
             <Kpi label="Paid (recorded)" value={money(s.paid)} tone="var(--ok)" />
-            <Kpi label="Creators owed" value={`${s.counts.due + s.counts.upcoming}`} />
+            <Kpi label="Creators owed" value={`${s.counts.due + s.counts.accruing}`} />
           </div>
         )}
 
@@ -77,14 +95,28 @@ export default function PayoutsPage() {
             <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
           ) : rows.length === 0 ? (
             <div className="py-16 text-center text-sm text-[var(--muted)]">
-              {tab === "due" ? "Nothing due. Finished billing periods will show here." : `No ${tab} payouts.`}
+              {tab === "due"
+                ? "Nothing due. Periods that finish unpaid stay here until you mark them."
+                : tab === "accruing"
+                  ? "Nothing accruing — assign creators to an active campaign and this period's earnings build up here live."
+                  : `No ${tab} payouts.`}
             </div>
           ) : (
             rows.map((r) => (
               <div key={r.key} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(160px,1.4fr)_minmax(140px,1fr)_130px_80px_90px_110px_210px] lg:gap-4">
                 <Link href={`/creators/${r.creatorId}`} className="font-medium hover:text-[var(--signal)]">{r.creatorName}</Link>
                 <Link href={`/campaigns/${r.campaignId}`} className="truncate text-[13px] text-[var(--muted)] hover:text-[var(--signal)]">{r.campaignName}</Link>
-                <div className="mono text-[12px] text-[var(--muted)]">{r.periodLabel}</div>
+                <div>
+                  <div className="mono text-[12px] text-[var(--muted)]">{r.periodLabel}</div>
+                  {r.status === "accruing" && (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <div className="h-1 w-16 overflow-hidden rounded-full bg-[var(--panel2)]">
+                        <div className="h-full rounded-full bg-[var(--signal)]" style={{ width: `${periodProgress(r)}%` }} />
+                      </div>
+                      <span className="text-[10px] text-[var(--faint)]">{periodProgress(r)}%</span>
+                    </div>
+                  )}
+                </div>
                 <div className="mono text-[13px]">{r.postsCount}</div>
                 <div className="mono text-[13px]">{fmtNum(r.viewsCount)}</div>
                 <div className="mono text-[15px] font-bold">{money(r.amount, r.currency)}</div>
@@ -92,7 +124,7 @@ export default function PayoutsPage() {
                   {payLink(r) && (
                     <a href={payLink(r)!.href} target="_blank" rel="noreferrer" title={`Pay via ${payLink(r)!.label}`} className="btn whitespace-nowrap px-2.5 py-1.5 text-xs">Pay · {payLink(r)!.label}</a>
                   )}
-                  {(r.status === "due" || r.status === "upcoming") && (
+                  {(r.status === "due" || r.status === "accruing") && (
                     <>
                       <button onClick={() => mark(r, "paid")} disabled={busy === r.key} className="btn btn-primary px-2.5 py-1.5 text-xs disabled:opacity-60">Mark paid</button>
                       <button onClick={() => mark(r, "cancelled")} disabled={busy === r.key} className="btn px-2.5 py-1.5 text-xs disabled:opacity-60">Skip</button>

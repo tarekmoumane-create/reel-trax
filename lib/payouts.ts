@@ -112,6 +112,26 @@ export function periodBounds(period: string, now: Date = new Date()): PeriodBoun
   };
 }
 
+/**
+ * Every billing period from `from` through the one containing `now`, ascending.
+ * Lets payouts be tracked for the whole campaign lifetime — mid-period accrual
+ * and past unpaid periods — instead of only the current cycle. Capped so a
+ * years-old campaign can't explode the list; the current period is always last.
+ */
+export function periodsSince(period: string, from: Date | string, now: Date = new Date(), cap = 24): PeriodBounds[] {
+  const fromDate = from instanceof Date ? from : new Date(from);
+  const out: PeriodBounds[] = [];
+  let b = periodBounds(period, isNaN(fromDate.getTime()) ? now : fromDate);
+  for (let i = 0; i < cap && b.start.getTime() <= now.getTime(); i++) {
+    out.push(b);
+    if (now.getTime() <= b.end.getTime()) break;
+    b = periodBounds(period, new Date(b.end.getTime() + 1));
+  }
+  const last = out[out.length - 1];
+  if (!last || now.getTime() > last.end.getTime()) out.push(periodBounds(period, now));
+  return out;
+}
+
 export interface Earnings {
   amount: number;
   qualifyingPosts: number;

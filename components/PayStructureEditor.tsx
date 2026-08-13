@@ -183,6 +183,9 @@ export function PayStructureEditor({
 
       <div>
         <label className={label}>View bonuses</label>
+        <p className="mb-1.5 text-[11px] text-[var(--faint)]">
+          Paid <span className="text-[var(--ink)]">on top of</span> the retainer and per-video pay above — not instead of them.
+        </p>
         <div className="flex gap-1.5">
           {[
             ["none", "None"],

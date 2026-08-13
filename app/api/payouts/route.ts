@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
-import { periodBounds, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, periodsSince, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
 
 function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
@@ -49,22 +49,30 @@ export async function GET(request: Request) {
       }
     }
 
-    // computed current period for active campaigns
+    // Computed periods for active campaigns — every period since the campaign
+    // started, not just the current one, so the live period accrues in view
+    // and finished-but-unpaid periods stay visible as due.
     for (const c of campaigns) {
       if (c.status !== "active") continue;
-      const bounds = periodBounds(c.period, now);
       const baseRules = rulesOf(c);
-      for (const a of c.assignments) {
-        const key = `${c.id}|${a.creatorId}|${bounds.start.toISOString()}`;
-        if (map.has(key)) continue; // stored wins
-        const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds);
-        map.set(key, {
-          key, campaignId: c.id, campaignName: c.name, creatorId: a.creatorId, creatorName: a.creator.displayName,
-          periodStart: bounds.start.toISOString(), periodEnd: bounds.end.toISOString(), periodLabel: bounds.label,
-          amount: e.amount, currency: c.currency,
-          status: bounds.end.getTime() < now.getTime() ? "due" : "upcoming",
-          postsCount: e.qualifyingPosts, viewsCount: e.qualifyingViews,
-        });
+      const periods = periodsSince(c.period, c.startDate ?? c.createdAt, now);
+      for (const bounds of periods) {
+        if (c.endDate && bounds.start.getTime() > c.endDate.getTime()) continue;
+        const isCurrent = now.getTime() >= bounds.start.getTime() && now.getTime() <= bounds.end.getTime();
+        for (const a of c.assignments) {
+          const key = `${c.id}|${a.creatorId}|${bounds.start.toISOString()}`;
+          if (map.has(key)) continue; // stored wins
+          const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds);
+          // Skip empty past periods (nothing earned, nothing posted) — noise.
+          if (!isCurrent && e.amount === 0 && e.qualifyingPosts === 0) continue;
+          map.set(key, {
+            key, campaignId: c.id, campaignName: c.name, creatorId: a.creatorId, creatorName: a.creator.displayName,
+            periodStart: bounds.start.toISOString(), periodEnd: bounds.end.toISOString(), periodLabel: bounds.label,
+            amount: e.amount, currency: c.currency,
+            status: isCurrent ? "accruing" : "due",
+            postsCount: e.qualifyingPosts, viewsCount: e.qualifyingViews,
+          });
+        }
       }
     }
 
@@ -81,11 +89,11 @@ export async function GET(request: Request) {
     const sum = (st: string) => rows.filter((r) => r.status === st).reduce((s, r) => s + r.amount, 0);
     const summary = {
       due: Math.round(sum("due") * 100) / 100,
-      upcoming: Math.round(sum("upcoming") * 100) / 100,
+      accruing: Math.round(sum("accruing") * 100) / 100,
       paid: Math.round(sum("paid") * 100) / 100,
       counts: {
         due: rows.filter((r) => r.status === "due").length,
-        upcoming: rows.filter((r) => r.status === "upcoming").length,
+        accruing: rows.filter((r) => r.status === "accruing").length,
         paid: rows.filter((r) => r.status === "paid").length,
         cancelled: rows.filter((r) => r.status === "cancelled").length,
       },
