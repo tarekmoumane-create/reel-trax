@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useClients } from "../providers";
 import { ClientLogo } from "@/components/ClientLogo";
+import { parsePayRules } from "@/lib/payouts";
+import { PayStructureEditor, payFormFromRules, payFormToRules, payFormSummary } from "@/components/PayStructureEditor";
 
 const TIMEZONES = [
   "America/New_York",
@@ -241,12 +243,17 @@ function ClientRow({
   client,
   onChange,
 }: {
-  client: { id: string; name: string; color: string; website?: string | null; logoUrl?: string | null; _count?: { creators: number } };
+  client: { id: string; name: string; color: string; website?: string | null; logoUrl?: string | null; payMode?: string; defaultPayRules?: string | null; _count?: { creators: number } };
   onChange: () => Promise<unknown>;
 }) {
   const [name, setName] = useState(client.name);
   const [website, setWebsite] = useState(client.website ?? "");
   const [color, setColor] = useState(client.color);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payMode, setPayMode] = useState(client.payMode ?? "uniform");
+  const [payForm, setPayForm] = useState(() => payFormFromRules(parsePayRules(client.defaultPayRules)));
+  const [savingPay, setSavingPay] = useState(false);
+  const [paySaved, setPaySaved] = useState(false);
 
   async function save() {
     await fetch(`/api/clients/${client.id}`, {
@@ -255,6 +262,18 @@ function ClientRow({
       body: JSON.stringify({ name, color, website }),
     });
     await onChange();
+  }
+  async function savePay() {
+    setSavingPay(true);
+    await fetch(`/api/clients/${client.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payMode, defaultPayRules: payFormToRules(payForm) }),
+    });
+    await onChange();
+    setSavingPay(false);
+    setPaySaved(true);
+    setTimeout(() => setPaySaved(false), 1800);
   }
   async function del() {
     if (!confirm(`Delete client "${client.name}" and all its creators?`)) return;
@@ -265,26 +284,69 @@ function ClientRow({
   const dirty = name !== client.name || color !== client.color || website !== (client.website ?? "");
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border p-2.5">
-      <ClientLogo name={name || "?"} logoUrl={client.logoUrl} color={color} size={32} radius={9} />
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" className="min-w-[120px] flex-1 px-2.5 py-1.5 text-sm" />
-      <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="website.com" className="min-w-[120px] flex-1 px-2.5 py-1.5 text-sm" />
-      <input
-        type="color"
-        value={color}
-        onChange={(e) => setColor(e.target.value)}
-        className="h-8 w-10 cursor-pointer rounded-md border-0 bg-transparent p-0"
-        title="Fallback color"
-      />
-      <span className="w-16 text-right text-xs text-[var(--muted)]">
-        {client._count?.creators ?? 0} creators
-      </span>
-      {dirty && (
-        <button onClick={save} className="btn btn-primary px-3 py-1.5 text-xs">Save</button>
+    <div className="rounded-xl border p-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <ClientLogo name={name || "?"} logoUrl={client.logoUrl} color={color} size={32} radius={9} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" className="min-w-[120px] flex-1 px-2.5 py-1.5 text-sm" />
+        <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="website.com" className="min-w-[120px] flex-1 px-2.5 py-1.5 text-sm" />
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          className="h-8 w-10 cursor-pointer rounded-md border-0 bg-transparent p-0"
+          title="Fallback color"
+        />
+        <span className="w-16 text-right text-xs text-[var(--muted)]">
+          {client._count?.creators ?? 0} creators
+        </span>
+        <button
+          onClick={() => setPayOpen((o) => !o)}
+          className={`rounded-lg border px-2.5 py-1.5 text-xs ${payOpen ? "border-[var(--signal)] text-[var(--signal)]" : "hover:bg-[var(--panel2)]"}`}
+        >
+          Pay {payOpen ? "▴" : "▾"}
+        </button>
+        {dirty && (
+          <button onClick={save} className="btn btn-primary px-3 py-1.5 text-xs">Save</button>
+        )}
+        <button onClick={del} className="rounded-lg border border-[color:rgba(208,71,58,0.4)] px-2.5 py-1.5 text-xs text-[var(--bad)] hover:bg-[color:rgba(208,71,58,0.1)]">
+          Delete
+        </button>
+      </div>
+
+      {payOpen && (
+        <div className="mt-2.5 rounded-xl border border-[var(--line)] p-3">
+          <div className="mb-1 text-xs font-semibold text-[var(--muted)]">Payment structure</div>
+          <p className="mb-2.5 text-[11px] text-[var(--faint)]">
+            Currently: <span className="text-[var(--ink)]">{payFormSummary(payFormFromRules(parsePayRules(client.defaultPayRules)))}</span> ·{" "}
+            {(client.payMode ?? "uniform") === "individual" ? "individualized per creator" : "same for all creators"}.
+            Changes here update the default; campaigns and custom creator deals keep their own rules.
+          </p>
+          <div className="mb-3 grid grid-cols-2 gap-1.5">
+            {[
+              ["uniform", "Same for all creators", "Every creator is paid on the structure below."],
+              ["individual", "Individualized per creator", "Each creator gets their own deal — the structure below is the starting point."],
+            ].map(([v, l, d]) => (
+              <button
+                key={v}
+                onClick={() => setPayMode(v)}
+                className={`rounded-lg border p-2.5 text-left ${
+                  payMode === v ? "border-[var(--signal)] bg-[var(--panel2)]" : "border-[var(--line)] hover:bg-[var(--panel2)]"
+                }`}
+              >
+                <div className="text-xs font-semibold">{l}</div>
+                <div className="mt-0.5 text-[11px] leading-snug text-[var(--faint)]">{d}</div>
+              </button>
+            ))}
+          </div>
+          <PayStructureEditor value={payForm} onChange={setPayForm} />
+          <div className="mt-3 flex items-center justify-end gap-2">
+            {paySaved && <span className="text-xs text-green-400">Saved</span>}
+            <button onClick={savePay} disabled={savingPay} className="btn btn-primary px-3 py-1.5 text-xs disabled:opacity-60">
+              {savingPay ? "Saving…" : "Save pay structure"}
+            </button>
+          </div>
+        </div>
       )}
-      <button onClick={del} className="rounded-lg border border-[color:rgba(208,71,58,0.4)] px-2.5 py-1.5 text-xs text-[var(--bad)] hover:bg-[color:rgba(208,71,58,0.1)]">
-        Delete
-      </button>
     </div>
   );
 }
