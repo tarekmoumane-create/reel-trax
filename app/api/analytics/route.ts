@@ -4,20 +4,42 @@ import { dayKey } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 
 const DAY = 86_400_000;
+const MAX_SPAN_DAYS = 366;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Calendar days from..to inclusive (plain date strings; tz only matters when
+// assigning posts to days, which dayKey handles).
+function eachDay(from: string, to: string): string[] {
+  const out: string[] = [];
+  const d = new Date(`${from}T12:00:00Z`);
+  const end = new Date(`${to}T12:00:00Z`);
+  while (d <= end && out.length <= MAX_SPAN_DAYS) {
+    out.push(d.toISOString().slice(0, 10));
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return out;
+}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
     if (!clientId) return bad("clientId is required");
-    const days = Math.min(120, Math.max(7, Number(searchParams.get("days")) || 30));
-    const tz = await getTimeZone();
-    const now = new Date();
-    const since = new Date(now.getTime() - days * DAY);
 
-    // day-key list, oldest → newest
-    const dayList: string[] = [];
-    for (let i = days - 1; i >= 0; i--) dayList.push(dayKey(new Date(now.getTime() - i * DAY), tz));
+    const tz = await getTimeZone();
+    const today = dayKey(new Date(), tz);
+
+    // Range: explicit from/to (viral-style custom window), else trailing `days`.
+    let from = searchParams.get("from") ?? "";
+    let to = searchParams.get("to") ?? "";
+    if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) {
+      const days = Math.min(MAX_SPAN_DAYS, Math.max(1, Number(searchParams.get("days")) || 30));
+      to = today;
+      from = dayKey(new Date(Date.now() - (days - 1) * DAY), tz);
+    }
+    if (to > today) to = today;
+    const dayList = eachDay(from, to);
+    if (dayList.length === 0) return bad("empty range");
 
     const creators = await prisma.creator.findMany({
       where: { clientId },
@@ -26,20 +48,32 @@ export async function GET(request: Request) {
     const creatorIds = creators.map((c) => c.id);
     const nameById = new Map(creators.map((c) => [c.id, c.displayName]));
 
-    const posts = await prisma.post.findMany({
-      where: { creatorId: { in: creatorIds }, postedAt: { gte: since } },
-      select: { creatorId: true, platform: true, url: true, caption: true, thumbnailUrl: true, postedAt: true, views: true, likes: true, comments: true },
+    // ±1 day of slack around the range: postedAt is UTC but days are bucketed
+    // in the app timezone, so the boundary posts straddle the query edges.
+    const fetched = await prisma.post.findMany({
+      where: {
+        creatorId: { in: creatorIds },
+        postedAt: {
+          gte: new Date(new Date(`${from}T00:00:00Z`).getTime() - DAY),
+          lte: new Date(new Date(`${to}T00:00:00Z`).getTime() + 2 * DAY),
+        },
+      },
+      select: { creatorId: true, platform: true, url: true, caption: true, thumbnailUrl: true, postedAt: true, views: true, likes: true, comments: true, shares: true },
     });
 
-    // daily posts + views
-    const byDay = new Map<string, { posts: number; views: number }>();
-    for (const d of dayList) byDay.set(d, { posts: 0, views: 0 });
+    // one row per day carrying every metric — the client picks which to chart
+    const byDay = new Map<string, { posts: number; views: number; likes: number; comments: number; shares: number }>();
+    for (const d of dayList) byDay.set(d, { posts: 0, views: 0, likes: 0, comments: 0, shares: 0 });
+    const posts = fetched.filter((p) => byDay.has(dayKey(p.postedAt, tz)));
     for (const p of posts) {
-      const k = dayKey(p.postedAt, tz);
-      const b = byDay.get(k);
-      if (b) { b.posts += 1; b.views += p.views; }
+      const b = byDay.get(dayKey(p.postedAt, tz))!;
+      b.posts += 1;
+      b.views += p.views;
+      b.likes += p.likes;
+      b.comments += p.comments;
+      b.shares += p.shares;
     }
-    const series = dayList.map((d) => ({ date: d, posts: byDay.get(d)!.posts, views: byDay.get(d)!.views }));
+    const series = dayList.map((d) => ({ date: d, ...byDay.get(d)! }));
 
     // follower growth (carry-forward per creator+platform)
     const snaps = await prisma.followerSnapshot.findMany({
@@ -89,11 +123,14 @@ export async function GET(request: Request) {
     const totals = {
       posts: posts.length,
       views: posts.reduce((s, p) => s + p.views, 0),
+      likes: posts.reduce((s, p) => s + p.likes, 0),
+      comments: posts.reduce((s, p) => s + p.comments, 0),
+      shares: posts.reduce((s, p) => s + p.shares, 0),
       followers: hasFollowers ? followers[followers.length - 1].followers : null,
       creators: creators.length,
     };
 
-    return ok({ days, series, followers: hasFollowers ? followers : [], topVideos, topCreators, totals });
+    return ok({ from, to, timeZone: tz, series, followers: hasFollowers ? followers : [], topVideos, topCreators, totals });
   } catch (e) {
     return serverError(e);
   }
