@@ -23,7 +23,8 @@ export function Avatar({
   className?: string;
 }) {
   const [broken, setBroken] = useState(false);
-  const resolved = creatorId ? `/api/creators/${creatorId}/avatar` : imgSrc(src);
+  // v2: bust browser caches that hold the unrenderable HEIC responses v1 served
+  const resolved = creatorId ? `/api/creators/${creatorId}/avatar?v=2` : imgSrc(src);
   const show = resolved && !broken;
   return (
     <span

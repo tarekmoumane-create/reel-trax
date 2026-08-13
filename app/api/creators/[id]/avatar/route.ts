@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { downloadImage } from "@/lib/avatar";
+import { downloadImage, isWebSafeMime } from "@/lib/avatar";
 
 // Serves the creator's stored profile picture.
 //
@@ -33,7 +33,11 @@ export async function GET(
   });
   if (!creator) return new Response(null, { status: 404 });
 
-  if (creator.avatarData) {
+  // Serve the stored copy — unless it's a format browsers can't render (HEIC
+  // slipped in from TikTok before we filtered formats). Those fall through to
+  // the re-download below, and if that can't do better either, 404 → initials
+  // until the next sync replaces the photo with a good one.
+  if (creator.avatarData && isWebSafeMime(creator.avatarMime)) {
     const tag = creator.avatarAt ? `"${creator.avatarAt.getTime()}"` : null;
     if (tag && request.headers.get("if-none-match") === tag) {
       return new Response(null, { status: 304 });

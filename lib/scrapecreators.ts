@@ -26,8 +26,12 @@ export interface FetchResult {
   userId?: string | null;
   /** follower count if present in the payload (for growth charts) */
   followers?: number | null;
-  /** profile picture URL if present in the payload */
-  avatarUrl?: string | null;
+  /**
+   * Candidate profile-picture URLs, best first. A list because TikTok offers
+   * the same photo in several formats and only some render in a browser —
+   * the downloader picks the first one that actually works.
+   */
+  avatarUrls?: string[];
   rawCount: number;
 }
 
@@ -68,6 +72,16 @@ export function parseInstagramHandle(input: string): string | null {
 function num(v: unknown): number {
   const n = typeof v === "string" ? Number(v) : (v as number);
   return Number.isFinite(n) ? Number(n) : 0;
+}
+
+/** every defined string value among candidate paths (keeps order, dedupes) */
+function pickAll(obj: any, paths: string[]): string[] {
+  const out: string[] = [];
+  for (const path of paths) {
+    const v = pick(obj, [path]);
+    if (typeof v === "string" && v && !out.includes(v)) out.push(v);
+  }
+  return out;
 }
 
 /** first defined value among candidate paths like "a.b.c" */
@@ -165,21 +179,28 @@ export async function fetchTikTok(
   const followers = list.length
     ? num(pick(list[0], ["author.follower_count", "author.followerCount"])) || null
     : null;
-  const avatarUrl = list.length
-    ? (pick(list[0], [
-        "author.avatar_medium.url_list.0",
-        "author.avatar_168x168.url_list.0",
-        "author.avatar_thumb.url_list.0",
+  // Each avatar field carries a url_list where index 0 is often HEIC and a
+  // later entry is the JPEG fallback — collect them all, biggest size first.
+  const avatarUrls = list.length
+    ? pickAll(list[0], [
         "author.avatar_larger.url_list.0",
-      ]) as string) || null
-    : null;
-  return { posts, userId, followers, avatarUrl, rawCount: list.length };
+        "author.avatar_larger.url_list.1",
+        "author.avatar_medium.url_list.0",
+        "author.avatar_medium.url_list.1",
+        "author.avatar_168x168.url_list.0",
+        "author.avatar_168x168.url_list.1",
+        "author.avatar_thumb.url_list.0",
+        "author.avatar_thumb.url_list.1",
+      ])
+    : [];
+  return { posts, userId, followers, avatarUrls, rawCount: list.length };
 }
 
 // ---------- Profiles (avatars) ----------
 
 export interface ProfileResult {
-  avatarUrl: string | null;
+  /** candidate picture URLs, best first (see FetchResult.avatarUrls) */
+  avatarUrls: string[];
   followers: number | null;
   userId: string | null;
 }
@@ -195,17 +216,16 @@ export async function fetchInstagramProfile(
 ): Promise<ProfileResult> {
   const data = await scGet("/v1/instagram/profile", { handle }, apiKey);
   // Response nesting drifts between API versions (data.user vs data.data.user).
-  const avatarUrl =
-    (pick(data, [
-      "data.user.profile_pic_url_hd",
-      "data.user.profile_pic_url",
-      "data.data.user.profile_pic_url_hd",
-      "data.data.user.profile_pic_url",
-      "user.profile_pic_url_hd",
-      "user.profile_pic_url",
-      "profile_pic_url_hd",
-      "profile_pic_url",
-    ]) as string) || null;
+  const avatarUrls = pickAll(data, [
+    "data.user.profile_pic_url_hd",
+    "data.user.profile_pic_url",
+    "data.data.user.profile_pic_url_hd",
+    "data.data.user.profile_pic_url",
+    "user.profile_pic_url_hd",
+    "user.profile_pic_url",
+    "profile_pic_url_hd",
+    "profile_pic_url",
+  ]);
   const followers =
     num(
       pick(data, [
@@ -220,7 +240,7 @@ export async function fetchInstagramProfile(
   const userId =
     (pick(data, ["data.user.id", "data.user.pk", "data.data.user.id", "user.id", "user.pk"]) as string) ||
     null;
-  return { avatarUrl, followers, userId: userId ? String(userId) : null };
+  return { avatarUrls, followers, userId: userId ? String(userId) : null };
 }
 
 /** TikTok profile — fallback avatar source for creators with no Instagram. */
@@ -229,18 +249,20 @@ export async function fetchTikTokProfile(
   apiKey: string
 ): Promise<ProfileResult> {
   const data = await scGet("/v1/tiktok/profile", { handle }, apiKey);
-  const avatarUrl =
-    (pick(data, [
-      "user.avatarLarger",
-      "user.avatarMedium",
-      "user.avatarThumb",
-      "user.avatar_larger.url_list.0",
-      "user.avatar_medium.url_list.0",
-      "user.avatar_thumb.url_list.0",
-      "data.user.avatarLarger",
-      "data.user.avatarMedium",
-      "avatarLarger",
-    ]) as string) || null;
+  const avatarUrls = pickAll(data, [
+    "user.avatarLarger",
+    "user.avatarMedium",
+    "user.avatarThumb",
+    "user.avatar_larger.url_list.0",
+    "user.avatar_larger.url_list.1",
+    "user.avatar_medium.url_list.0",
+    "user.avatar_medium.url_list.1",
+    "user.avatar_thumb.url_list.0",
+    "user.avatar_thumb.url_list.1",
+    "data.user.avatarLarger",
+    "data.user.avatarMedium",
+    "avatarLarger",
+  ]);
   const followers =
     num(
       pick(data, [
@@ -252,7 +274,7 @@ export async function fetchTikTokProfile(
     ) || null;
   const userId =
     (pick(data, ["user.id", "user.uid", "data.user.id"]) as string) || null;
-  return { avatarUrl, followers, userId: userId ? String(userId) : null };
+  return { avatarUrls, followers, userId: userId ? String(userId) : null };
 }
 
 // ---------- Instagram ----------
@@ -319,11 +341,10 @@ export async function fetchInstagram(
         "follower_count",
       ])
     ) || null;
-  const avatarUrl =
-    (pick(data, [
-      "user.profile_pic_url",
-      "user.profile_pic_url_hd",
-      "data.user.profile_pic_url",
-    ]) as string) || null;
-  return { posts, followers, avatarUrl, rawCount: Array.isArray(list) ? list.length : 0 };
+  const avatarUrls = pickAll(data, [
+    "user.profile_pic_url_hd",
+    "user.profile_pic_url",
+    "data.user.profile_pic_url",
+  ]);
+  return { posts, followers, avatarUrls, rawCount: Array.isArray(list) ? list.length : 0 };
 }
