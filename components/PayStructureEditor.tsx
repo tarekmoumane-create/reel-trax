@@ -108,19 +108,20 @@ export function TierEditor({
   return (
     <div className="space-y-2">
       {tiers.map((t, i) => (
+        // No `field` here — its w-full beats flex sizing and blows up the row.
         <div key={i} className="flex items-center gap-2">
-          <span className="text-[11px] text-[var(--faint)]">at</span>
+          <span className="shrink-0 text-[11px] text-[var(--faint)]">at</span>
           <input
             type="number"
-            className={`${field} flex-1`}
+            className="min-w-0 flex-1 px-3 py-2 text-sm"
             value={t.views}
             onChange={(e) => onChange(tiers.map((x, j) => (j === i ? { ...x, views: e.target.value } : x)))}
             placeholder="100000"
           />
-          <span className="text-[11px] text-[var(--faint)]">views →</span>
+          <span className="shrink-0 whitespace-nowrap text-[11px] text-[var(--faint)]">views →</span>
           <input
             type="number"
-            className={`${field} w-24 flex-none`}
+            className="w-24 shrink-0 px-3 py-2 text-sm"
             value={t.bonus}
             onChange={(e) => onChange(tiers.map((x, j) => (j === i ? { ...x, bonus: e.target.value } : x)))}
             placeholder="$"
