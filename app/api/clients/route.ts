@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { isDeadLogoUrl, logoFromWebsite } from "@/lib/brand";
 import { sanitizePayRules } from "@/lib/payouts";
+import { syncAutoCampaign } from "@/lib/autocampaign";
 
 export async function GET() {
   try {
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
         defaultPayRules: defaultPayRules ? JSON.stringify(defaultPayRules) : null,
       },
     });
+    await syncAutoCampaign(client.id);
     return ok(client, { status: 201 });
   } catch (e) {
     return serverError(e);

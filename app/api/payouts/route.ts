@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { periodBounds, periodsSince, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
+import { syncAutoCampaign } from "@/lib/autocampaign";
 
 function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
@@ -19,6 +20,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
     if (!clientId) return bad("clientId is required");
+
+    // Self-heals: materializes the client's auto campaign + assignments so
+    // payouts work for clients configured before the auto-campaign feature.
+    await syncAutoCampaign(clientId);
 
     const campaigns = await prisma.campaign.findMany({
       where: { clientId },

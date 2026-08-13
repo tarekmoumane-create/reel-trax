@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, serverError } from "@/lib/api";
 import { logoFromWebsite } from "@/lib/brand";
 import { sanitizePayRules } from "@/lib/payouts";
+import { syncAutoCampaign } from "@/lib/autocampaign";
 
 export async function PATCH(
   request: Request,
@@ -27,6 +28,7 @@ export async function PATCH(
       data.defaultPayRules = rules ? JSON.stringify(rules) : null;
     }
     const client = await prisma.client.update({ where: { id }, data });
+    if ("defaultPayRules" in data) await syncAutoCampaign(id);
     return ok(client);
   } catch (e) {
     return serverError(e);

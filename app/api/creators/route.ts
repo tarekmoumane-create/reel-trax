@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { sanitizePayRules } from "@/lib/payouts";
+import { syncAutoCampaign } from "@/lib/autocampaign";
 import { parseTikTokHandle, parseInstagramHandle } from "@/lib/scrapecreators";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreator } from "@/lib/sync";
@@ -67,6 +68,9 @@ export async function POST(request: Request) {
         notes: body?.notes || null,
       },
     });
+
+    // New creators join the client's auto campaign so payouts track right away.
+    await syncAutoCampaign(clientId);
 
     // Best-effort immediate first sync so the creator isn't blank on arrival.
     let firstSync: unknown = null;

@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { parseViewTiers } from "@/lib/payouts";
+import { syncAutoCampaign } from "@/lib/autocampaign";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
     if (!clientId) return bad("clientId is required");
+    await syncAutoCampaign(clientId); // materialize/refresh the auto campaign
     const campaigns = await prisma.campaign.findMany({
       where: { clientId },
       orderBy: { createdAt: "desc" },

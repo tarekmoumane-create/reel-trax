@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { parsePayRules } from "@/lib/payouts";
+import { syncAutoCampaign } from "@/lib/autocampaign";
 
 // Sync the campaign's creator assignments to the provided set. Existing links
 // are kept as-is (so hand-tuned rate overrides survive a reassign); new links
@@ -59,6 +60,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           })]
         : []),
     ]);
+
+    // Manual assignments changed — creators now covered by (or freed from) a
+    // manual campaign move out of / back into the client's auto campaign.
+    await syncAutoCampaign(campaign.clientId);
 
     return ok({ assigned: validIds.size });
   } catch (e) {

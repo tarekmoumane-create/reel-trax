@@ -319,7 +319,8 @@ function ClientRow({
           <p className="mb-2.5 text-[11px] text-[var(--faint)]">
             Currently: <span className="text-[var(--ink)]">{payFormSummary(payFormFromRules(parsePayRules(client.defaultPayRules)))}</span> ·{" "}
             {(client.payMode ?? "uniform") === "individual" ? "individualized per creator" : "same for all creators"}.
-            Changes here update the default; campaigns and custom creator deals keep their own rules.
+            The client&apos;s automatic campaign mirrors this structure, so saving here updates payout tracking directly;
+            manual campaigns and custom creator deals keep their own rules.
           </p>
           <div className="mb-3 grid grid-cols-2 gap-1.5">
             {[

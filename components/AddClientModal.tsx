@@ -90,7 +90,8 @@ export function AddClientModal({
           <div className="rounded-xl border border-[var(--line)] p-3">
             <div className="mb-1 text-xs font-semibold text-[var(--muted)]">Payment structure</div>
             <p className="mb-2.5 text-[11px] text-[var(--faint)]">
-              This is how payouts get calculated for this client&apos;s creators — you can refine it later per campaign.
+              This is how payouts get calculated for this client&apos;s creators. An automatic campaign is created from
+              it, so payouts start tracking as soon as you add creators — no extra setup.
             </p>
             <div className="mb-3 grid grid-cols-2 gap-1.5">
               {[

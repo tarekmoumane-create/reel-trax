@@ -149,6 +149,12 @@ model Campaign {
   status String @default("active") // active | paused | ended
   period String @default("monthly") // weekly | monthly — the billing cadence
 
+  // The client's automatic campaign: mirrors the client's payment structure
+  // and holds every creator not assigned to a manual campaign, so payouts
+  // track with zero setup. Maintained by lib/autocampaign.ts — at most one
+  // per client.
+  isAuto Boolean @default(false)
+
   targetVideos Int? // target posts per period (optional)
   startDate    DateTime?
   endDate      DateTime?

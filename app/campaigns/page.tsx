@@ -12,6 +12,7 @@ interface CampaignRow {
   name: string;
   status: string;
   period: string;
+  isAuto: boolean;
   targetVideos: number | null;
   baseFee: number;
   perPost: number;
@@ -70,7 +71,14 @@ export default function CampaignsPage() {
           ) : (
             rows.map((c) => (
               <Link key={c.id} href={`/campaigns/${c.id}`} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 hover:bg-[var(--panel2)] md:grid-cols-[minmax(220px,2fr)_90px_90px_1fr_110px_90px] md:gap-4">
-                <div className="font-medium">{c.name}</div>
+                <div className="flex items-center gap-2 font-medium">
+                  {c.name}
+                  {c.isAuto && (
+                    <span title="Mirrors the client's payment structure; creators without a manual campaign are assigned automatically." className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--signal)]">
+                      auto
+                    </span>
+                  )}
+                </div>
                 <div className="text-[13px] capitalize text-[var(--muted)]">{c.period}</div>
                 <div className="mono text-[13px]">{c.targetVideos ? `${c.targetVideos}` : "—"}</div>
                 <div className="mono truncate text-[12px] text-[var(--muted)]">{ruleSummary(c)}</div>

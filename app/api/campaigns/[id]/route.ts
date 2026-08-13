@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { periodBounds, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
+import { syncAutoCampaign } from "@/lib/autocampaign";
 
 function rulesOf(c: {
   period: string;
@@ -109,7 +110,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(_r: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.campaign.delete({ where: { id } });
+    const campaign = await prisma.campaign.delete({ where: { id } });
+    // Deleting a manual campaign frees its creators back into the auto campaign.
+    if (!campaign.isAuto) await syncAutoCampaign(campaign.clientId);
     return ok({ deleted: true });
   } catch (e) {
     return serverError(e);
