@@ -15,6 +15,7 @@ export interface PayForm {
   tiers: { views: string; bonus: string }[];
   bonus: string; // bonus when the period post target is met
   minViews: string; // min views for a post to qualify
+  viewWindowDays: string; // days a video has to hit minViews / the tiers
   payoutCap: string; // max per period
 }
 
@@ -30,6 +31,7 @@ export function emptyPayForm(): PayForm {
     tiers: [{ views: "", bonus: "" }],
     bonus: "",
     minViews: "",
+    viewWindowDays: "",
     payoutCap: "",
   };
 }
@@ -48,6 +50,7 @@ export function payFormFromRules(r: PayRulesJson | null | undefined): PayForm {
   f.viewComp = r.viewTiers?.length ? "tiers" : r.cpmRate ? "cpm" : "none";
   f.bonus = s(r.bonus);
   f.minViews = s(r.minViews);
+  f.viewWindowDays = s(r.viewWindowDays);
   f.payoutCap = s(r.payoutCap);
   return f;
 }
@@ -76,6 +79,7 @@ export function payFormToRules(f: PayForm): PayRulesJson {
   }
   if (num(f.bonus)) rules.bonus = num(f.bonus);
   if (num(f.minViews)) rules.minViews = num(f.minViews);
+  if (num(f.viewWindowDays)) rules.viewWindowDays = Math.round(num(f.viewWindowDays)!);
   if (num(f.payoutCap)) rules.payoutCap = num(f.payoutCap);
   return rules;
 }
@@ -92,7 +96,11 @@ export function payFormSummary(f: PayForm): string {
     const n = f.tiers.filter((t) => Number(t.views) > 0 && Number(t.bonus) > 0).length;
     if (n) parts.push(`${n} view bonus tier${n > 1 ? "s" : ""}`);
   }
-  return parts.join(" + ") || "No pay set";
+  const extras: string[] = [];
+  if (Number(f.minViews) > 0) extras.push(`min ${f.minViews} views`);
+  if (Number(f.viewWindowDays) > 0) extras.push(`${f.viewWindowDays}d window`);
+  const main = parts.join(" + ") || "No pay set";
+  return extras.length ? `${main} (${extras.join(", ")})` : main;
 }
 
 const field = "w-full px-3 py-2 text-sm";
@@ -237,22 +245,31 @@ export function PayStructureEditor({
         </div>
       )}
 
-      <details className="rounded-xl border border-[var(--line)] p-3">
+      <details className="rounded-xl border border-[var(--line)] p-3" open={!!(value.minViews || value.viewWindowDays)}>
         <summary className="cursor-pointer text-xs font-semibold text-[var(--muted)]">More rules</summary>
-        <div className="mt-3 grid grid-cols-3 gap-3">
-          <div>
-            <label className={label}>Target-met bonus</label>
-            <input type="number" className={field} value={value.bonus} onChange={(e) => set("bonus", e.target.value)} placeholder="0" />
-          </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
             <label className={label}>Min views / video</label>
             <input type="number" className={field} value={value.minViews} onChange={(e) => set("minViews", e.target.value)} placeholder="0" />
+          </div>
+          <div>
+            <label className={label}>View window (days)</label>
+            <input type="number" className={field} value={value.viewWindowDays} onChange={(e) => set("viewWindowDays", e.target.value)} placeholder="all-time" />
+          </div>
+          <div>
+            <label className={label}>Target-met bonus</label>
+            <input type="number" className={field} value={value.bonus} onChange={(e) => set("bonus", e.target.value)} placeholder="0" />
           </div>
           <div>
             <label className={label}>Payout cap / period</label>
             <input type="number" className={field} value={value.payoutCap} onChange={(e) => set("payoutCap", e.target.value)} placeholder="none" />
           </div>
         </div>
+        <p className="mt-2 text-[11px] text-[var(--faint)]">
+          A video only counts once it hits the minimum views — and with a view window set, it has that many days
+          from posting to get there. The same window is the deadline for reaching view-bonus tiers and the cutoff
+          for CPM views. Blank window = views count whenever they arrive.
+        </p>
       </details>
     </div>
   );

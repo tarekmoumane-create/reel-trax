@@ -16,7 +16,8 @@ interface Detail {
   campaign: {
     id: string; clientId: string; name: string; status: string; period: string; targetVideos: number | null;
     baseFee: number; perPost: number; cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null;
-    viewTiers: string | null; bonus: number; minViews: number; payoutCap: number | null; currency: string;
+    viewTiers: string | null; bonus: number; minViews: number; viewWindowDays: number | null;
+    payoutCap: number | null; currency: string;
   };
   period: { label: string; total: number; start: string; end: string };
   creators: {
@@ -27,7 +28,8 @@ interface Detail {
     override: {
       baseFee: number | null; perPost: number | null; cpmRate: number | null;
       cpmBasis: string | null; cpmCapPerVideo: number | null; viewTiers: ViewTier[];
-      bonus: number | null; minViews: number | null; payoutCap: number | null; flatDeal: number | null; note: string | null;
+      bonus: number | null; minViews: number | null; viewWindowDays: number | null;
+      payoutCap: number | null; flatDeal: number | null; note: string | null;
     };
   }[];
 }
@@ -67,6 +69,7 @@ export default function CampaignDetail() {
     campaignTiers.length > 0 && campaignTiers.map((t) => `${fmtNum(t.views)}→${money(t.bonus, cur)}`).join(", "),
     c.bonus && `${money(c.bonus, cur)} bonus @ target`,
     c.minViews && `min ${fmtNum(c.minViews)} views`,
+    c.viewWindowDays && `${c.viewWindowDays}d view window`,
     c.payoutCap && `cap ${money(c.payoutCap, cur)}`,
   ].filter(Boolean).join(" · ") || "No payout rules set";
 
@@ -201,7 +204,7 @@ function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"
       period: campaign.period, baseFee: campaign.baseFee, perPost: campaign.perPost,
       cpmRate: campaign.cpmRate, cpmBasis: campaign.cpmBasis, cpmCapPerVideo: campaign.cpmCapPerVideo,
       viewTiers: parseViewTiers(campaign.viewTiers), bonus: campaign.bonus,
-      minViews: campaign.minViews, payoutCap: campaign.payoutCap,
+      minViews: campaign.minViews, viewWindowDays: campaign.viewWindowDays, payoutCap: campaign.payoutCap,
     })
   );
   const [saving, setSaving] = useState(false);
@@ -217,7 +220,7 @@ function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"
         baseFee: rules.baseFee ?? 0, perPost: rules.perPost ?? 0, cpmRate: rules.cpmRate ?? 0,
         cpmBasis: rules.cpmBasis ?? "aggregate", cpmCapPerVideo: rules.cpmCapPerVideo ?? "",
         viewTiers: rules.viewTiers ?? [], bonus: rules.bonus ?? 0, minViews: rules.minViews ?? 0,
-        payoutCap: rules.payoutCap ?? "",
+        viewWindowDays: rules.viewWindowDays ?? "", payoutCap: rules.payoutCap ?? "",
       }),
     });
     onSaved();
@@ -256,8 +259,8 @@ function RatesModal({ campaignId, creatorId, name, currency, override, onClose, 
   const [f, setF] = useState({
     baseFee: s(override.baseFee), perPost: s(override.perPost), cpmRate: s(override.cpmRate),
     cpmBasis: override.cpmBasis ?? "", cpmCapPerVideo: s(override.cpmCapPerVideo),
-    bonus: s(override.bonus), minViews: s(override.minViews), payoutCap: s(override.payoutCap),
-    flatDeal: s(override.flatDeal), note: override.note ?? "",
+    bonus: s(override.bonus), minViews: s(override.minViews), viewWindowDays: s(override.viewWindowDays),
+    payoutCap: s(override.payoutCap), flatDeal: s(override.flatDeal), note: override.note ?? "",
   });
   const [tiersOn, setTiersOn] = useState(override.viewTiers.length > 0);
   const [tiers, setTiers] = useState<{ views: string; bonus: string }[]>(
@@ -310,6 +313,7 @@ function RatesModal({ campaignId, creatorId, name, currency, override, onClose, 
           <div><label className={label}>CPM cap / video</label><input type="number" className={field} value={f.cpmCapPerVideo} onChange={(e) => set("cpmCapPerVideo", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>Bonus</label><input type="number" className={field} value={f.bonus} onChange={(e) => set("bonus", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>Min views</label><input type="number" className={field} value={f.minViews} onChange={(e) => set("minViews", e.target.value)} placeholder="inherit" /></div>
+          <div><label className={label}>View window (days)</label><input type="number" className={field} value={f.viewWindowDays} onChange={(e) => set("viewWindowDays", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>Cap</label><input type="number" className={field} value={f.payoutCap} onChange={(e) => set("payoutCap", e.target.value)} placeholder="inherit" /></div>
         </div>
         <div className="mt-3 rounded-xl border border-[var(--line)] p-3">

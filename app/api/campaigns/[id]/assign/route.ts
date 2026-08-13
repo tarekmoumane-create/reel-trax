@@ -50,6 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
                 viewTiers: deal?.viewTiers?.length ? JSON.stringify(deal.viewTiers) : null,
                 bonus: deal?.bonus ?? null,
                 minViews: deal?.minViews ?? null,
+                viewWindowDays: deal?.viewWindowDays ?? null,
                 payoutCap: deal?.payoutCap ?? null,
                 flatDeal: deal?.flatDeal ?? null,
                 note: deal?.note ?? (deal ? "personal deal" : null),

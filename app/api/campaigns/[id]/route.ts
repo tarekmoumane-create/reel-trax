@@ -13,6 +13,7 @@ function rulesOf(c: {
   viewTiers: string | null;
   bonus: number;
   minViews: number;
+  viewWindowDays: number | null;
   payoutCap: number | null;
 }): CampaignRules {
   return {
@@ -26,6 +27,7 @@ function rulesOf(c: {
     viewTiers: parseViewTiers(c.viewTiers),
     bonus: c.bonus,
     minViews: c.minViews,
+    viewWindowDays: c.viewWindowDays,
     payoutCap: c.payoutCap,
   };
 }
@@ -36,7 +38,7 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
     const campaign = await prisma.campaign.findUnique({
       where: { id },
       include: {
-        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true } } } } } },
+        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, snapshots: { select: { day: true, views: true } } } } } } } },
       },
     });
     if (!campaign) return bad("Campaign not found", 404);
@@ -50,7 +52,8 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
       const overridden =
         a.baseFee != null || a.perPost != null || a.cpmRate != null ||
         a.cpmBasis != null || a.cpmCapPerVideo != null || overrideTiers.length > 0 ||
-        a.bonus != null || a.minViews != null || a.payoutCap != null || a.flatDeal != null;
+        a.bonus != null || a.minViews != null || a.viewWindowDays != null ||
+        a.payoutCap != null || a.flatDeal != null;
       return {
         creatorId: a.creator.id,
         displayName: a.creator.displayName,
@@ -59,7 +62,8 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
         override: {
           baseFee: a.baseFee, perPost: a.perPost, cpmRate: a.cpmRate,
           cpmBasis: a.cpmBasis, cpmCapPerVideo: a.cpmCapPerVideo, viewTiers: overrideTiers,
-          bonus: a.bonus, minViews: a.minViews, payoutCap: a.payoutCap, flatDeal: a.flatDeal, note: a.note,
+          bonus: a.bonus, minViews: a.minViews, viewWindowDays: a.viewWindowDays,
+          payoutCap: a.payoutCap, flatDeal: a.flatDeal, note: a.note,
         },
       };
     });
@@ -85,6 +89,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if ("startDate" in b) data.startDate = b.startDate ? new Date(b.startDate) : null;
     if ("endDate" in b) data.endDate = b.endDate ? new Date(b.endDate) : null;
     for (const f of ["baseFee", "perPost", "cpmRate", "bonus", "minViews"]) if (f in b) data[f] = NUM(b[f]);
+    if ("viewWindowDays" in b) data.viewWindowDays = b.viewWindowDays === "" || b.viewWindowDays == null ? null : Math.round(NUM(b.viewWindowDays));
     if ("cpmBasis" in b) data.cpmBasis = b.cpmBasis === "perVideo" ? "perVideo" : "aggregate";
     if ("cpmCapPerVideo" in b) data.cpmCapPerVideo = b.cpmCapPerVideo === "" || b.cpmCapPerVideo == null ? null : NUM(b.cpmCapPerVideo);
     if ("viewTiers" in b) {

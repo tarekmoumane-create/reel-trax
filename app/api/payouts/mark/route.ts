@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     });
     const posts = await prisma.post.findMany({
       where: { creatorId, creator: { campaignLinks: { some: { campaignId } } } },
-      select: { postedAt: true, views: true },
+      select: { postedAt: true, views: true, snapshots: { select: { day: true, views: true } } },
     });
 
     const bounds = periodBounds(campaign.period, periodStart);
@@ -37,7 +37,8 @@ export async function POST(request: Request) {
       period: campaign.period, targetVideos: campaign.targetVideos, baseFee: campaign.baseFee,
       perPost: campaign.perPost, cpmRate: campaign.cpmRate, cpmBasis: campaign.cpmBasis,
       cpmCapPerVideo: campaign.cpmCapPerVideo, viewTiers: parseViewTiers(campaign.viewTiers),
-      bonus: campaign.bonus, minViews: campaign.minViews, payoutCap: campaign.payoutCap,
+      bonus: campaign.bonus, minViews: campaign.minViews, viewWindowDays: campaign.viewWindowDays,
+      payoutCap: campaign.payoutCap,
     };
     const e = computeEarnings(
       effectiveRules(baseRules, link ? { ...link, viewTiers: parseViewTiers(link.viewTiers) } : null),

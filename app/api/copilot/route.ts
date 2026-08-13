@@ -46,7 +46,7 @@ async function buildSnapshot(clientId: string) {
     const base: CampaignRules = {
       period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
       cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
-      bonus: c.bonus, minViews: c.minViews, payoutCap: c.payoutCap,
+      bonus: c.bonus, minViews: c.minViews, viewWindowDays: c.viewWindowDays, payoutCap: c.payoutCap,
     };
     const creatorsPay = c.assignments.map((a) => ({
       name: a.creator.displayName,

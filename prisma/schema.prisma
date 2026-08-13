@@ -167,6 +167,10 @@ model Campaign {
   viewTiers String?
   bonus     Float  @default(0) // flat bonus when target met
   minViews  Int    @default(0) // min views for a post to qualify
+  // A video's views count only up to N days after posting — the deadline for
+  // hitting minViews and the tiers, and the cutoff for CPM views.
+  // Null = all-time (no deadline). Judged from PostStatSnapshot history.
+  viewWindowDays Int?
   payoutCap Float? // max per creator per period
   currency  String @default("USD")
 
@@ -194,6 +198,7 @@ model CampaignCreator {
   viewTiers      String? // JSON [{"views":n,"bonus":n}]
   bonus          Float?
   minViews       Int?
+  viewWindowDays Int?
   payoutCap      Float?
   flatDeal       Float? // a fixed total for the period, ignoring all other rules
   note           String? // free text, e.g. "hybrid: $200 + rev share"
@@ -244,8 +249,26 @@ model Post {
   source    String   @default("auto") // auto | manual
   fetchedAt DateTime @default(now())
 
+  snapshots PostStatSnapshot[]
+
   @@unique([platform, platformPostId])
   @@index([creatorId, postedAt])
+}
+
+// Daily view count per post, captured during sync for recent posts. This is
+// what makes viewWindowDays judgeable: "views at day N after posting" is the
+// snapshot on/just before that deadline. Posts older than the snapshot
+// feature have no rows and fall back to current totals.
+model PostStatSnapshot {
+  id         String   @id @default(cuid())
+  postId     String
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  day        String // YYYY-MM-DD in the app timezone
+  views      Int
+  capturedAt DateTime @default(now())
+
+  @@unique([postId, day])
+  @@index([postId])
 }
 
 // Key/value app config: ScrapeCreators API key, cron secret, sync cadence, etc.

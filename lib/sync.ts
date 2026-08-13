@@ -89,10 +89,16 @@ async function resolveAvatar(
   return downloadFirstWebSafe(candidates);
 }
 
-async function upsertPosts(creatorId: string, posts: NormalizedPost[]): Promise<number> {
+// Per-post daily history is only kept while a payout view-window could still
+// reference it; beyond that the post's current totals are all anyone needs.
+const POST_SNAPSHOT_MAX_AGE_DAYS = 60;
+
+async function upsertPosts(creatorId: string, posts: NormalizedPost[], tz: string): Promise<number> {
   let count = 0;
+  const day = dayKey(new Date(), tz);
+  const snapshotCutoff = Date.now() - POST_SNAPSHOT_MAX_AGE_DAYS * 86_400_000;
   for (const p of posts) {
-    await prisma.post.upsert({
+    const row = await prisma.post.upsert({
       where: {
         platform_platformPostId: {
           platform: p.platform,
@@ -126,6 +132,15 @@ async function upsertPosts(creatorId: string, posts: NormalizedPost[]): Promise<
         fetchedAt: new Date(),
       },
     });
+    // Today's per-post view count — the history that makes "views within N
+    // days of posting" (viewWindowDays payout rules) judgeable later.
+    if (row.postedAt.getTime() >= snapshotCutoff) {
+      await prisma.postStatSnapshot.upsert({
+        where: { postId_day: { postId: row.id, day } },
+        create: { postId: row.id, day, views: p.views },
+        update: { views: p.views },
+      });
+    }
     count++;
   }
   return count;
@@ -152,7 +167,7 @@ export async function syncCreator(
         { handle: tiktokHandle, userId: creator.tiktokUserId },
         apiKey
       );
-      const upserted = await upsertPosts(creator.id, r.posts);
+      const upserted = await upsertPosts(creator.id, r.posts, tz);
       await snapshotFollowers(creator.id, "tiktok", r.followers, tz);
       if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
       // cache discovered user id for faster future calls
@@ -187,7 +202,7 @@ export async function syncCreator(
   if (igHandle) {
     try {
       const r = await fetchInstagram({ handle: igHandle }, apiKey);
-      const upserted = await upsertPosts(creator.id, r.posts);
+      const upserted = await upsertPosts(creator.id, r.posts, tz);
       await snapshotFollowers(creator.id, "instagram", r.followers, tz);
       if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
       results.push({

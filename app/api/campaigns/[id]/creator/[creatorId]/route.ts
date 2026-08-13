@@ -31,6 +31,7 @@ export async function PATCH(
         })(),
         bonus: numOrNull(b.bonus),
         minViews: numOrNull(b.minViews),
+        viewWindowDays: (() => { const n = numOrNull(b.viewWindowDays); return n == null ? null : Math.round(n); })(),
         payoutCap: numOrNull(b.payoutCap),
         flatDeal: numOrNull(b.flatDeal),
         note: b.note ? String(b.note) : null,

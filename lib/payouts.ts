@@ -34,6 +34,7 @@ export interface CampaignRules {
   viewTiers?: ViewTier[]; // per-video milestone bonuses (alternative to CPM)
   bonus: number;
   minViews: number;
+  viewWindowDays?: number | null; // views count only up to N days after posting (null = all-time)
   payoutCap: number | null;
   flatDeal?: number | null; // fixed total for the period, ignores all other rules
 }
@@ -48,6 +49,7 @@ export interface RuleOverride {
   viewTiers?: ViewTier[] | null;
   bonus?: number | null;
   minViews?: number | null;
+  viewWindowDays?: number | null;
   payoutCap?: number | null;
   flatDeal?: number | null;
 }
@@ -67,6 +69,7 @@ export function effectiveRules(base: CampaignRules, o?: RuleOverride | null): Ca
     viewTiers: o.viewTiers && o.viewTiers.length ? o.viewTiers : base.viewTiers ?? [],
     bonus: pick(o.bonus, base.bonus),
     minViews: pick(o.minViews, base.minViews),
+    viewWindowDays: o.viewWindowDays == null ? base.viewWindowDays ?? null : o.viewWindowDays,
     // null/undefined = inherit — matches the "leave blank to inherit" UI.
     payoutCap: o.payoutCap == null ? base.payoutCap : o.payoutCap,
     flatDeal: o.flatDeal == null ? base.flatDeal : o.flatDeal,
@@ -76,6 +79,8 @@ export function effectiveRules(base: CampaignRules, o?: RuleOverride | null): Ca
 export interface EarningPost {
   postedAt: Date | string;
   views: number;
+  // Daily view history (from PostStatSnapshot) — needed to judge viewWindowDays.
+  snapshots?: { day: string; views: number }[];
 }
 
 export interface PeriodBounds {
@@ -141,15 +146,39 @@ export interface Earnings {
   capped: boolean;
 }
 
+/**
+ * A post's countable views under a view window: its views as of `windowDays`
+ * after posting, taken from the daily snapshot on/just before that deadline.
+ * While the window is still open the current total counts (still racing).
+ * Posts with no history (predating snapshots) fall back to current views.
+ */
+function windowedViews(p: EarningPost, windowDays: number | null | undefined, now: Date): number {
+  if (!windowDays || windowDays <= 0) return p.views;
+  const posted = (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
+  const deadline = posted + windowDays * DAY;
+  if (now.getTime() < deadline) return p.views;
+  const snaps = p.snapshots ?? [];
+  if (!snaps.length) return p.views;
+  const deadlineDay = new Date(deadline).toISOString().slice(0, 10);
+  const onOrBefore = snaps.filter((s) => s.day <= deadlineDay).sort((a, b) => (a.day < b.day ? 1 : -1))[0];
+  if (onOrBefore) return onOrBefore.views;
+  // Only post-deadline history exists — the earliest row is closest to the cutoff.
+  return [...snaps].sort((a, b) => (a.day > b.day ? 1 : -1))[0].views;
+}
+
 export function computeEarnings(
   rules: CampaignRules,
   posts: EarningPost[],
-  bounds: PeriodBounds
+  bounds: PeriodBounds,
+  now: Date = new Date()
 ): Earnings {
-  const inPeriod = posts.filter((p) => {
-    const t = (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
-    return t >= bounds.start.getTime() && t <= bounds.end.getTime();
-  });
+  const inPeriod = posts
+    .filter((p) => {
+      const t = (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
+      return t >= bounds.start.getTime() && t <= bounds.end.getTime();
+    })
+    // From here on, "views" means countable views under the view window.
+    .map((p) => ({ ...p, views: windowedViews(p, rules.viewWindowDays, now) }));
   const qualifying = inPeriod.filter((p) => p.views >= (rules.minViews || 0));
   const qCount = qualifying.length;
   const qViews = qualifying.reduce((s, p) => s + p.views, 0);
@@ -225,6 +254,7 @@ export interface PayRulesJson {
   viewTiers?: ViewTier[];
   bonus?: number;
   minViews?: number;
+  viewWindowDays?: number | null;
   payoutCap?: number | null;
   flatDeal?: number | null;
   targetVideos?: number | null;
@@ -248,6 +278,7 @@ export function sanitizePayRules(raw: unknown): PayRulesJson | null {
   if (tiers.length) out.viewTiers = tiers;
   const bonus = num(r.bonus); if (bonus) out.bonus = bonus;
   const minViews = num(r.minViews); if (minViews) out.minViews = minViews;
+  const viewWindowDays = num(r.viewWindowDays); if (viewWindowDays) out.viewWindowDays = Math.round(viewWindowDays);
   const payoutCap = num(r.payoutCap); if (payoutCap) out.payoutCap = payoutCap;
   const flatDeal = num(r.flatDeal); if (flatDeal) out.flatDeal = flatDeal;
   const targetVideos = num(r.targetVideos); if (targetVideos) out.targetVideos = targetVideos;

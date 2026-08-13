@@ -48,6 +48,7 @@ export async function POST(request: Request) {
         })(),
         bonus: NUM(b.bonus),
         minViews: NUM(b.minViews),
+        viewWindowDays: b.viewWindowDays != null && b.viewWindowDays !== "" ? Math.round(NUM(b.viewWindowDays)) : null,
         payoutCap: b.payoutCap != null && b.payoutCap !== "" ? NUM(b.payoutCap) : null,
         currency: b.currency || "USD",
       },

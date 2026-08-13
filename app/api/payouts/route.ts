@@ -5,12 +5,12 @@ import { periodBounds, periodsSince, computeEarnings, effectiveRules, parseViewT
 function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
   cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null; viewTiers: string | null;
-  bonus: number; minViews: number; payoutCap: number | null;
+  bonus: number; minViews: number; viewWindowDays: number | null; payoutCap: number | null;
 }): CampaignRules {
   return {
     period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
     cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
-    bonus: c.bonus, minViews: c.minViews, payoutCap: c.payoutCap,
+    bonus: c.bonus, minViews: c.minViews, viewWindowDays: c.viewWindowDays, payoutCap: c.payoutCap,
   };
 }
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const campaigns = await prisma.campaign.findMany({
       where: { clientId },
       include: {
-        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true } } } } } },
+        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, snapshots: { select: { day: true, views: true } } } } } } } },
         payouts: { include: { creator: { select: { displayName: true } } } },
       },
     });
