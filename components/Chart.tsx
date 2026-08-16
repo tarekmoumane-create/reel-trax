@@ -145,6 +145,25 @@ export function Chart({
         {series.map((s, si) => (!s.bars ? (
           <path key={`l${si}`} d={linePath(s.values, si)} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         ) : null))}
+        {/* always-visible point markers — same styling as the hover marker,
+            slightly smaller, shrinking further when the series is dense */}
+        {series.map((s, si) =>
+          !s.bars
+            ? s.values.map((v, i) =>
+                v != null ? (
+                  <circle
+                    key={`p${si}-${i}`}
+                    cx={xAt(i)}
+                    cy={yAt(v, si)}
+                    r={labels.length > 45 ? 2 : 2.8}
+                    fill="var(--panel)"
+                    stroke={s.color}
+                    strokeWidth={1.6}
+                  />
+                ) : null
+              )
+            : null
+        )}
         {/* hover guide + markers */}
         {hover != null && (
           <g>

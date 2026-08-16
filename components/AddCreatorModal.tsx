@@ -5,6 +5,12 @@ import { PAYMENT_METHODS } from "@/lib/pay";
 import { parsePayRules } from "@/lib/payouts";
 import { useClients } from "@/app/providers";
 import { PayStructureEditor, payFormFromRules, payFormToRules, payFormSummary } from "./PayStructureEditor";
+import { Select } from "./Select";
+
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 const SOURCES = [
   ["sideshift", "Sideshift"],
@@ -50,6 +56,7 @@ export function AddCreatorModal({
     instagramUrl: "",
     source: "sideshift",
     sourceDetail: "",
+    onboardedAt: todayStr(),
     sideshiftUrl: "",
     paymentMethod: "sideshift",
     paymentHandle: "",
@@ -156,20 +163,25 @@ export function AddCreatorModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className={label}>Source</label>
-              <select
-                className={field}
+              <Select
+                className="w-full"
                 value={form.source}
-                onChange={(e) => set("source", e.target.value)}
-              >
-                {SOURCES.map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set("source", v)}
+                options={SOURCES as [string, string][]}
+              />
+            </div>
+            <div>
+              <label className={label}>Onboarded on</label>
+              <input
+                type="date"
+                className={field}
+                max={todayStr()}
+                value={form.onboardedAt}
+                onChange={(e) => set("onboardedAt", e.target.value)}
+              />
             </div>
             <div>
               <label className={label}>Target posts / week</label>
@@ -189,11 +201,12 @@ export function AddCreatorModal({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={label}>Payment method</label>
-              <select className={field} value={form.paymentMethod} onChange={(e) => set("paymentMethod", e.target.value)}>
-                {PAYMENT_METHODS.map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </select>
+              <Select
+                className="w-full"
+                value={form.paymentMethod}
+                onChange={(v) => set("paymentMethod", v)}
+                options={PAYMENT_METHODS as [string, string][]}
+              />
             </div>
             {form.paymentMethod === "sideshift" ? (
               <div>
@@ -211,17 +224,12 @@ export function AddCreatorModal({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className={label}>Preferred channel</label>
-              <select
-                className={field}
+              <Select
+                className="w-full"
                 value={form.preferredChannel}
-                onChange={(e) => set("preferredChannel", e.target.value)}
-              >
-                {CHANNELS.map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set("preferredChannel", v)}
+                options={CHANNELS as [string, string][]}
+              />
             </div>
             <div>
               <label className={label}>Phone</label>

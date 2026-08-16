@@ -45,6 +45,8 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
+const COLLAPSE_KEY = "rt.sidebarCollapsed";
+
 function Icon({ children }: { children: React.ReactNode }) {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -58,7 +60,20 @@ export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [showAddClient, setShowAddClient] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((c) => {
+      localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
+      return !c;
+    });
+    setOpen(false);
+  }
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -69,33 +84,59 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="flex w-[228px] shrink-0 flex-col border-r border-[var(--line)] bg-[var(--rail)]">
+    <aside
+      className={`relative z-10 flex shrink-0 flex-col border-r border-[var(--line)] bg-[var(--rail)] transition-[width] duration-200 ${
+        collapsed ? "w-[64px]" : "w-[228px]"
+      }`}
+    >
+      {/* collapse toggle — riding the sidebar's outer edge */}
+      <button
+        onClick={toggleCollapsed}
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        className="absolute -right-[11px] top-[26px] z-40 grid h-[22px] w-[22px] place-items-center rounded-full border border-[var(--line)] bg-[var(--panel)] text-[var(--faint)] shadow-sm hover:text-[var(--ink)]"
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          {collapsed ? <path d="M9 18l6-6-6-6" /> : <path d="M15 18l-6-6 6-6" />}
+        </svg>
+      </button>
+
       {/* client switcher */}
-      <div className="relative p-3" ref={ref}>
+      <div className={`relative ${collapsed ? "p-2.5" : "p-3"}`} ref={ref}>
         <button
           onClick={() => setOpen((o) => !o)}
-          className="flex w-full items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-left hover:border-[var(--signal)]"
+          title={collapsed ? currentClient?.name ?? "Select client" : undefined}
+          className={`flex w-full items-center rounded-xl border border-[var(--line)] bg-[var(--panel)] text-left hover:border-[var(--signal)] ${
+            collapsed ? "justify-center p-1.5" : "gap-2.5 px-2.5 py-2"
+          }`}
         >
           {currentClient ? (
             <ClientLogo name={currentClient.name} logoUrl={currentClient.logoUrl} color={currentClient.color} size={32} radius={9} />
           ) : (
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--panel2)] text-xs font-bold text-[var(--muted)]">—</span>
           )}
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-semibold">
-              {currentClient?.name ?? "Select client"}
-            </span>
-            <span className="block text-[11px] text-[var(--muted)]">
-              {currentClient ? `${currentClient._count?.creators ?? 0} creators` : "Reel Trax"}
-            </span>
-          </span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[var(--faint)]">
-            <path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          {!collapsed && (
+            <>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold">
+                  {currentClient?.name ?? "Select client"}
+                </span>
+                <span className="block text-[11px] text-[var(--muted)]">
+                  {currentClient ? `${currentClient._count?.creators ?? 0} creators` : "Reel Trax"}
+                </span>
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[var(--faint)]">
+                <path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </>
+          )}
         </button>
 
         {open && (
-          <div className="absolute left-3 right-3 z-40 mt-1.5 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] shadow-2xl">
+          <div
+            className={`absolute z-40 mt-1.5 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] shadow-2xl ${
+              collapsed ? "left-2 w-[240px]" : "left-3 right-3"
+            }`}
+          >
             <div className="max-h-64 overflow-y-auto p-1">
               {clients.map((c) => (
                 <button
@@ -128,32 +169,43 @@ export function Sidebar() {
       </div>
 
       {/* nav */}
-      <nav className="flex-1 overflow-y-auto px-3 pb-4">
-        {GROUPS.map((g) => (
+      <nav className={`flex-1 overflow-y-auto pb-4 ${collapsed ? "px-2.5" : "px-3"}`}>
+        {GROUPS.map((g, gi) => (
           <div key={g.title} className="mb-4">
-            <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]">
-              {g.title}
-            </div>
+            {collapsed ? (
+              gi > 0 && <div className="mx-2 mb-2 border-t border-[var(--line2)]" />
+            ) : (
+              <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]">
+                {g.title}
+              </div>
+            )}
             {g.items.map((it) => {
               const active = pathname === it.href;
               return (
                 <Link
                   key={it.href}
                   href={it.href}
-                  className={`group mb-0.5 flex items-center gap-2.5 rounded-lg px-2 py-[7px] text-[13px] ${
+                  title={collapsed ? it.label : undefined}
+                  className={`group mb-0.5 flex items-center rounded-lg text-[13px] ${
+                    collapsed ? "justify-center py-[9px]" : "gap-2.5 px-2 py-[7px]"
+                  } ${
                     active
-                      ? "bg-[var(--panel2)] text-[var(--ink)]"
+                      ? `bg-[var(--panel2)] text-[var(--ink)] ${collapsed ? "" : "shadow-[inset_2px_0_0_var(--signal)]"}`
                       : "text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--ink)]"
                   }`}
                 >
                   <span className={active ? "text-[var(--signal)]" : "text-[var(--faint)] group-hover:text-[var(--muted)]"}>
                     <Icon>{it.icon}</Icon>
                   </span>
-                  <span className="flex-1">{it.label}</span>
-                  {it.soon && (
-                    <span className="rounded bg-[var(--panel)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--faint)]">
-                      soon
-                    </span>
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1">{it.label}</span>
+                      {it.soon && (
+                        <span className="rounded bg-[var(--panel)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--faint)]">
+                          soon
+                        </span>
+                      )}
+                    </>
                   )}
                 </Link>
               );
@@ -163,14 +215,22 @@ export function Sidebar() {
       </nav>
 
       {/* user footer */}
-      <div className="flex items-center gap-2.5 border-t border-[var(--line)] p-3">
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--panel2)] text-[11px] font-semibold text-[var(--muted)]">
-          TM
-        </span>
-        <div className="min-w-0 flex-1 text-[12px]">
-          <div className="truncate font-medium">Reel Trax</div>
-          <div className="truncate text-[var(--faint)]">The Reel Work</div>
-        </div>
+      <div
+        className={`border-t border-[var(--line)] ${
+          collapsed ? "flex flex-col items-center gap-2 p-2.5" : "flex items-center gap-2.5 p-3"
+        }`}
+      >
+        {!collapsed && (
+          <>
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--panel2)] text-[11px] font-semibold text-[var(--muted)]">
+              TM
+            </span>
+            <div className="min-w-0 flex-1 text-[12px]">
+              <div className="truncate font-medium">Reel Trax</div>
+              <div className="truncate text-[var(--faint)]">The Reel Work</div>
+            </div>
+          </>
+        )}
         <ThemeToggle />
         <button
           onClick={async () => {

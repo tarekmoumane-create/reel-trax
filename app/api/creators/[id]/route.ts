@@ -82,6 +82,8 @@ export async function PATCH(
       data.lastContactedAt = body.lastContactedAt ? new Date(body.lastContactedAt) : null;
     if ("followUpAt" in body)
       data.followUpAt = body.followUpAt ? new Date(body.followUpAt) : null;
+    if ("onboardedAt" in body)
+      data.onboardedAt = body.onboardedAt ? new Date(body.onboardedAt) : null;
 
     const creator = await prisma.creator.update({ where: { id }, data });
     return ok(creator);

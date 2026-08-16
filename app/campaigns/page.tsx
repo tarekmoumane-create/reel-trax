@@ -6,6 +6,7 @@ import { useClients } from "../providers";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { money, parsePayRules, parseViewTiers } from "@/lib/payouts";
 import { PayStructureEditor, payFormFromRules, payFormToRules } from "@/components/PayStructureEditor";
+import { Select } from "@/components/Select";
 
 interface CampaignRow {
   id: string;
@@ -148,7 +149,7 @@ function CreateCampaign({ clientId, clientName, defaultPayRules, onClose, onCrea
           <div><label className={label}>Campaign name *</label><input autoFocus className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Summer UGC push" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={label}>Target posts / period</label><input type="number" className={field} value={targetVideos} onChange={(e) => setTargetVideos(e.target.value)} placeholder="e.g. 20" /></div>
-            <div><label className={label}>Currency</label><select className={field} value={currency} onChange={(e) => setCurrency(e.target.value)}>{["USD", "EUR", "GBP", "CAD", "AUD"].map((c) => <option key={c}>{c}</option>)}</select></div>
+            <div><label className={label}>Currency</label><Select className="w-full" value={currency} onChange={setCurrency} options={["USD", "EUR", "GBP", "CAD", "AUD"].map((c) => [c, c] as [string, string])} /></div>
           </div>
           <div className="rounded-xl border border-[var(--line)] p-3">
             <div className="mb-2 text-xs font-semibold text-[var(--muted)]">Payout rules (per creator, per period)</div>

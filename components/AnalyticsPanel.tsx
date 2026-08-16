@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chart, type Series } from "./Chart";
 import { VideoThumb } from "./VideoThumb";
 import { Avatar } from "./Avatar";
+import { Select, CountPicker } from "./Select";
 import { fmtNum } from "@/lib/ui";
 
 // ---------- metrics ----------
@@ -283,8 +284,8 @@ function TopVideosCard({ videos, rangeLabel }: { videos: Analytics["topVideos"];
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Top videos <span className="font-normal text-[var(--muted)]">· {rangeLabel}</span></h3>
         <div className="flex items-center gap-1.5">
-          <MiniSelect value={sortBy} onChange={(v) => setSortBy(v as "views" | "likes")} options={[["views", "Views"], ["likes", "Likes"]]} />
-          <MiniSelect value={String(count)} onChange={(v) => setCount(Number(v))} options={[["5", "5"], ["10", "10"]]} />
+          <Select size="sm" align="right" value={sortBy} onChange={(v) => setSortBy(v as "views" | "likes")} options={[["views", "Views"], ["likes", "Likes"]]} />
+          <CountPicker value={count} onChange={setCount} max={videos.length || 1} />
         </div>
       </div>
       {rows.length === 0 && <p className="py-6 text-center text-xs text-[var(--muted)]">No posts in this range.</p>}
@@ -317,8 +318,8 @@ function TopCreatorsCard({ creators, rangeLabel }: { creators: Analytics["topCre
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Top creators <span className="font-normal text-[var(--muted)]">· {rangeLabel}</span></h3>
         <div className="flex items-center gap-1.5">
-          <MiniSelect value={sortBy} onChange={(v) => setSortBy(v as "views" | "posts")} options={[["views", "Views"], ["posts", "Posts"]]} />
-          <MiniSelect value={String(count)} onChange={(v) => setCount(Number(v))} options={[["5", "5"], ["10", "10"]]} />
+          <Select size="sm" align="right" value={sortBy} onChange={(v) => setSortBy(v as "views" | "posts")} options={[["views", "Views"], ["posts", "Posts"]]} />
+          <CountPicker value={count} onChange={setCount} max={creators.length || 1} />
         </div>
       </div>
       {rows.length === 0 && <p className="py-6 text-center text-xs text-[var(--muted)]">No data in this range.</p>}
@@ -334,20 +335,6 @@ function TopCreatorsCard({ creators, rangeLabel }: { creators: Analytics["topCre
         ))}
       </div>
     </div>
-  );
-}
-
-function MiniSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: [string, string][] }) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg px-2 py-1 text-xs font-medium"
-    >
-      {options.map(([v, label]) => (
-        <option key={v} value={v}>{label}</option>
-      ))}
-    </select>
   );
 }
 

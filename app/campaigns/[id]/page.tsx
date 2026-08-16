@@ -7,6 +7,7 @@ import { TopBar } from "@/components/PageHeader";
 import { money, parseViewTiers, type ViewTier } from "@/lib/payouts";
 import { fmtNum } from "@/lib/ui";
 import { PayStructureEditor, TierEditor, payFormFromRules, payFormToRules } from "@/components/PayStructureEditor";
+import { Select } from "@/components/Select";
 
 interface Earnings {
   amount: number; qualifyingPosts: number; qualifyingViews: number; targetMet: boolean;
@@ -243,7 +244,7 @@ function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-3">
             <div><label className={label}>Name</label><input className={field} value={name} onChange={(e) => setName(e.target.value)} /></div>
-            <div><label className={label}>Status</label><select className={field} value={status} onChange={(e) => setStatus(e.target.value)}>{["active", "paused", "ended"].map((s) => <option key={s}>{s}</option>)}</select></div>
+            <div><label className={label}>Status</label><Select className="w-full" value={status} onChange={setStatus} options={["active", "paused", "ended"].map((s) => [s, s] as [string, string])} /></div>
             <div><label className={label}>Target posts</label><input type="number" className={field} value={targetVideos} onChange={(e) => setTargetVideos(e.target.value)} /></div>
           </div>
           <div className="rounded-xl border border-[var(--line)] p-3">
@@ -313,11 +314,12 @@ function RatesModal({ campaignId, creatorId, name, currency, override, onClose, 
           <div><label className={label}>CPM</label><input type="number" className={field} value={f.cpmRate} onChange={(e) => set("cpmRate", e.target.value)} placeholder="inherit" /></div>
           <div>
             <label className={label}>CPM counted</label>
-            <select className={field} value={f.cpmBasis} onChange={(e) => set("cpmBasis", e.target.value)}>
-              <option value="">inherit</option>
-              <option value="aggregate">Aggregate / period</option>
-              <option value="perVideo">Per video</option>
-            </select>
+            <Select
+              className="w-full"
+              value={f.cpmBasis}
+              onChange={(v) => set("cpmBasis", v)}
+              options={[["", "inherit"], ["aggregate", "Aggregate / period"], ["perVideo", "Per video"]]}
+            />
           </div>
           <div><label className={label}>CPM cap / video</label><input type="number" className={field} value={f.cpmCapPerVideo} onChange={(e) => set("cpmCapPerVideo", e.target.value)} placeholder="inherit" /></div>
           <div><label className={label}>Bonus</label><input type="number" className={field} value={f.bonus} onChange={(e) => set("bonus", e.target.value)} placeholder="inherit" /></div>

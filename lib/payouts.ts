@@ -76,11 +76,38 @@ export function effectiveRules(base: CampaignRules, o?: RuleOverride | null): Ca
   };
 }
 
+// Pay components a single video can be excluded from. "all" = the video earns
+// nothing at all (and doesn't count toward the video target either).
+export const PAY_COMPONENTS = ["perPost", "cpm", "tiers"] as const;
+export type PayComponent = (typeof PAY_COMPONENTS)[number];
+export type PayExclusion = PayComponent | "all";
+
+/** Parse a Post.payExclusions JSON column into a sane exclusion list. */
+export function parsePayExclusions(s: string | null | undefined): PayExclusion[] {
+  if (!s) return [];
+  try {
+    const raw = JSON.parse(s);
+    if (!Array.isArray(raw)) return [];
+    const valid = new Set<string>(["all", ...PAY_COMPONENTS]);
+    return [...new Set(raw.filter((x): x is PayExclusion => typeof x === "string" && valid.has(x)))];
+  } catch {
+    return [];
+  }
+}
+
 export interface EarningPost {
   postedAt: Date | string;
   views: number;
   // Daily view history (from PostStatSnapshot) — needed to judge viewWindowDays.
   snapshots?: { day: string; views: number }[];
+  // Pay components this video is excluded from — either parsed, or the raw
+  // Post.payExclusions JSON column straight from the DB.
+  exclusions?: PayExclusion[];
+  payExclusions?: string | null;
+}
+
+function exclusionsOf(p: EarningPost): PayExclusion[] {
+  return p.exclusions ?? parsePayExclusions(p.payExclusions);
 }
 
 export interface PeriodBounds {
@@ -177,9 +204,14 @@ export function computeEarnings(
       const t = (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
       return t >= bounds.start.getTime() && t <= bounds.end.getTime();
     })
+    // Videos excluded from all pay simply don't exist for the payout math.
+    .filter((p) => !exclusionsOf(p).includes("all"))
     // From here on, "views" means countable views under the view window.
     .map((p) => ({ ...p, views: windowedViews(p, rules.viewWindowDays, now) }));
   const qualifying = inPeriod.filter((p) => p.views >= (rules.minViews || 0));
+  // Per-component opt-outs: a video can count for some pay rules but not others.
+  const counted = (list: typeof qualifying, c: PayComponent) =>
+    list.filter((p) => !exclusionsOf(p).includes(c));
   const qCount = qualifying.length;
   const qViews = qualifying.reduce((s, p) => s + p.views, 0);
   const targetMet = rules.targetVideos != null && qCount >= rules.targetVideos;
@@ -198,19 +230,24 @@ export function computeEarnings(
 
   const breakdown: { label: string; amount: number }[] = [];
   if (rules.baseFee) breakdown.push({ label: "Base fee", amount: rules.baseFee });
-  if (rules.perPost) breakdown.push({ label: `Per post × ${qCount}`, amount: rules.perPost * qCount });
+  if (rules.perPost) {
+    const pp = counted(qualifying, "perPost");
+    if (pp.length) breakdown.push({ label: `Per post × ${pp.length}`, amount: rules.perPost * pp.length });
+  }
   if (rules.cpmRate) {
+    const cpmPosts = counted(qualifying, "cpm");
     if (rules.cpmBasis === "perVideo") {
       // Each video earns on its own views; the per-video cap is what makes
       // this differ from aggregate CPM.
       const cap = rules.cpmCapPerVideo;
-      const amt = qualifying.reduce((s, p) => {
+      const amt = cpmPosts.reduce((s, p) => {
         const v = (rules.cpmRate * p.views) / 1000;
         return s + (cap != null && cap > 0 ? Math.min(v, cap) : v);
       }, 0);
-      breakdown.push({ label: `CPM per video × ${qCount}`, amount: amt });
+      if (cpmPosts.length) breakdown.push({ label: `CPM per video × ${cpmPosts.length}`, amount: amt });
     } else {
-      breakdown.push({ label: `CPM (${(qViews / 1000).toFixed(1)}k)`, amount: (rules.cpmRate * qViews) / 1000 });
+      const cpmViews = cpmPosts.reduce((s, p) => s + p.views, 0);
+      if (cpmPosts.length) breakdown.push({ label: `CPM (${(cpmViews / 1000).toFixed(1)}k)`, amount: (rules.cpmRate * cpmViews) / 1000 });
     }
   }
   const tiers = rules.viewTiers ?? [];
@@ -218,7 +255,7 @@ export function computeEarnings(
     // Each video pays the highest tier it reached (tiers are sorted ascending).
     let tierAmt = 0;
     let tierHits = 0;
-    for (const p of qualifying) {
+    for (const p of counted(qualifying, "tiers")) {
       const hit = [...tiers].reverse().find((t) => p.views >= t.views);
       if (hit) {
         tierAmt += hit.bonus;

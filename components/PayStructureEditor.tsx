@@ -1,6 +1,7 @@
 "use client";
 
 import { type PayRulesJson, type ViewTier } from "@/lib/payouts";
+import { Select } from "./Select";
 
 // Form state for building a pay structure. All numerics are strings so inputs
 // can be blank; payFormToRules converts to the stored PayRulesJson shape.
@@ -173,10 +174,12 @@ export function PayStructureEditor({
         {showPeriod && (
           <div>
             <label className={label}>Billing period</label>
-            <select className={field} value={value.period} onChange={(e) => set("period", e.target.value)}>
-              <option value="monthly">Monthly</option>
-              <option value="weekly">Weekly</option>
-            </select>
+            <Select
+              className="w-full"
+              value={value.period ?? "monthly"}
+              onChange={(v) => set("period", v)}
+              options={[["monthly", "Monthly"], ["weekly", "Weekly"]]}
+            />
           </div>
         )}
         <div>
@@ -230,10 +233,15 @@ export function PayStructureEditor({
             </div>
             <div>
               <label className={label}>Counted</label>
-              <select className={field} value={value.cpmBasis} onChange={(e) => set("cpmBasis", e.target.value)}>
-                <option value="aggregate">All views, {value.period === "weekly" ? "weekly" : "monthly"} total</option>
-                <option value="perVideo">Per video</option>
-              </select>
+              <Select
+                className="w-full"
+                value={value.cpmBasis ?? "aggregate"}
+                onChange={(v) => set("cpmBasis", v)}
+                options={[
+                  ["aggregate", `All views, ${value.period === "weekly" ? "weekly" : "monthly"} total`],
+                  ["perVideo", "Per video"],
+                ]}
+              />
             </div>
             {value.cpmBasis === "perVideo" && (
               <div>

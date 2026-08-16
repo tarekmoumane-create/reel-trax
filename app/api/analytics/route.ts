@@ -120,10 +120,12 @@ export async function GET(request: Request) {
     });
     const hasFollowers = followers.some((f) => f.followers != null);
 
-    // leaderboards — a dozen each; the client's sort/count selectors slice
+    // leaderboards — the client's sort/count selectors slice; videos capped
+    // to keep the payload sane, creators returned in full so "top N" can be
+    // any number up to the roster size
     const topVideos = [...posts]
       .sort((a, b) => b.views - a.views)
-      .slice(0, 12)
+      .slice(0, 100)
       .map((p) => ({
         platform: p.platform, url: p.url, caption: p.caption, thumbnailUrl: p.thumbnailUrl,
         views: p.views, likes: p.likes, creatorId: p.creatorId, creatorName: nameById.get(p.creatorId) ?? "—",
@@ -138,8 +140,7 @@ export async function GET(request: Request) {
     }
     const topCreators = [...perCreator.entries()]
       .map(([id, v]) => ({ creatorId: id, name: nameById.get(id) ?? "—", views: v.views, posts: v.posts }))
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 12);
+      .sort((a, b) => b.views - a.views);
 
     const totals = {
       posts: posts.length,

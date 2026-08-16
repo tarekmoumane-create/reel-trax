@@ -73,6 +73,7 @@ export interface CreatorDTO {
   preferredChannel: string | null;
   expectedPerWeek: number;
   status: string;
+  onboardedAt: string | null;
   notes: string | null;
   lastContactedAt: string | null;
   followUpAt: string | null;

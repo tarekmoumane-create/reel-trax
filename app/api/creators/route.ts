@@ -64,6 +64,11 @@ export async function POST(request: Request) {
         expectedPerWeek: Number.isFinite(body?.expectedPerWeek)
           ? Math.max(1, Math.min(21, Math.round(body.expectedPerWeek)))
           : 7,
+        // Defaults to "now" — most creators get added the day they onboard.
+        onboardedAt: (() => {
+          const d = body?.onboardedAt ? new Date(body.onboardedAt) : new Date();
+          return isNaN(d.getTime()) ? new Date() : d;
+        })(),
         status: body?.status || "active",
         notes: body?.notes || null,
       },

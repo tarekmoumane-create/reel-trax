@@ -33,6 +33,7 @@ export async function GET(request: Request) {
         likes: p.likes,
         comments: p.comments,
         source: p.source,
+        payExclusions: p.payExclusions,
         creatorId: p.creator.id,
         creatorName: p.creator.displayName,
       }))

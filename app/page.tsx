@@ -119,9 +119,9 @@ export default function Overview() {
       <div className="px-6 py-6">
         <PageTitle title={currentClient?.name ?? "Overview"} sub={s ? `${s.total} creators tracked · times in ${data?.timeZone}` : "Loading…"} />
 
-        {/* KPI cards */}
+        {/* KPI strip — one fused card, hairline-divided */}
         {s && (
-          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="card mb-5 grid grid-cols-2 gap-px overflow-hidden bg-[var(--line)] sm:grid-cols-3 lg:grid-cols-5">
             <Kpi label="Creators" value={s.total} active={filter === "all"} onClick={() => setFilter("all")} />
             <Kpi label="On track" value={s.onTrack} tone="var(--ok)" active={filter === "on_track"} onClick={() => setFilter("on_track")} />
             <Kpi label="Behind" value={s.behind} tone="var(--warn)" active={filter === "behind"} onClick={() => setFilter("behind")} />
@@ -189,9 +189,14 @@ export default function Overview() {
 
 function Kpi({ label, value, tone, active, onClick }: { label: string; value: number; tone?: string; active?: boolean; onClick?: () => void }) {
   return (
-    <button onClick={onClick} className={`card px-4 py-3.5 text-left transition hover:border-[var(--signal)] ${active ? "ring-1 ring-[var(--signal)]" : ""}`}>
-      <div className="mono text-[26px] font-bold leading-none" style={{ color: tone }}>{value}</div>
-      <div className="mt-2 text-[11px] uppercase tracking-wide text-[var(--muted)]">{label}</div>
+    <button
+      onClick={onClick}
+      className={`px-4 py-3.5 text-left transition ${
+        active ? "bg-[var(--panel2)] shadow-[inset_0_2px_0_var(--signal)]" : "bg-[var(--panel)] hover:bg-[var(--panel2)]"
+      }`}
+    >
+      <div className="mono text-[22px] font-semibold leading-none tracking-tight" style={{ color: tone }}>{value}</div>
+      <div className="mt-2 text-[10.5px] uppercase tracking-[0.08em] text-[var(--faint)]">{label}</div>
     </button>
   );
 }

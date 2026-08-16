@@ -5,6 +5,7 @@ import { useClients } from "../providers";
 import { ClientLogo } from "@/components/ClientLogo";
 import { parsePayRules } from "@/lib/payouts";
 import { PayStructureEditor, payFormFromRules, payFormToRules, payFormSummary } from "@/components/PayStructureEditor";
+import { Select } from "@/components/Select";
 
 const TIMEZONES = [
   "America/New_York",
@@ -191,13 +192,7 @@ export default function SettingsPage() {
           Posting days, streaks and calendars are bucketed in this timezone.
         </p>
         <div className="mt-3 flex gap-2">
-          <select value={tz} onChange={(e) => setTz(e.target.value)} className="flex-1 px-3 py-2 text-sm">
-            {TIMEZONES.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </select>
+          <Select className="flex-1" value={tz} onChange={setTz} options={TIMEZONES.map((z) => [z, z] as [string, string])} />
           <button
             onClick={saveKey}
             className="rounded-lg border px-4 py-2 text-sm hover:bg-[var(--panel2)]"

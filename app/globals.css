@@ -1,109 +1,103 @@
 @import "tailwindcss";
 
-/* ============ Warm Studio theme — daylight ============
-   Warm bone paper, espresso ink, one confident coral accent.
-   Numbers use tabular sans figures — never monospace. */
+/* ============ Ledger — daylight ============
+   The light counterpart to the dark default: cool paper, graphite ink,
+   one quiet violet signal. Hairlines over shadows, precision over glow. */
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #faf5ee;          /* warm bone paper */
-  --rail: #f4ecdf;        /* sidebar, a touch warmer */
+  --bg: #f6f7fa;          /* cool paper */
+  --rail: #fafbfd;        /* sidebar, a touch lighter */
   --panel: #ffffff;       /* cards */
-  --panel2: #f3ebdd;      /* insets, hovers */
-  --line: #e8dfd0;        /* borders */
-  --line2: #f0e8db;       /* subtle dividers */
-  --ink: #2a231c;         /* warm espresso text */
-  --muted: #8a8074;       /* secondary text */
-  --faint: #b3a897;       /* tertiary text */
-  --signal: #ec5a35;      /* warm coral accent */
-  --signal-2: #ff6f4c;
-  --accent: #3b6fe0;      /* secondary accent (charts, links) */
-  --ok: #2f9464;          /* legible on light */
-  --warn: #c98419;
-  --bad: #d0473a;
-  --tt: #2a231c;
-  --ig: #d6438f;
-  --field: #fdfbf7;       /* input fill */
-  --scroll: #ddd2c0;      /* scrollbar thumb */
-  --card-shadow: 0 1px 2px rgba(42, 35, 28, 0.04), 0 10px 30px -20px rgba(42, 35, 28, 0.18);
-  --scrim: rgba(42, 35, 28, 0.45);
-  --chip-tt: rgba(42, 35, 28, 0.07);
+  --panel2: #f0f1f6;      /* insets, hovers */
+  --line: #e4e6ee;        /* borders */
+  --line2: #edeff4;       /* subtle dividers */
+  --ink: #1a1d27;         /* graphite text */
+  --muted: #5c6270;       /* secondary text */
+  --faint: #979dab;       /* tertiary text */
+  --signal: #6553d6;      /* violet signal — deeper for light-ground contrast */
+  --signal-2: #7e6ce4;
+  --accent: #5661c9;      /* second accent (charts, links) */
+  --ok: #17855a;
+  --warn: #a96a0e;
+  --bad: #bf4536;
+  --tt: #1a1d27;
+  --ig: #c2438c;
+  --field: #fcfcfe;       /* input fill */
+  --scroll: #d4d7e0;      /* scrollbar thumb */
+  --card-shadow: 0 1px 2px rgba(20, 22, 32, 0.04);
+  --scrim: rgba(20, 22, 32, 0.45);
+  --chip-tt: rgba(26, 29, 39, 0.07);
   --logo-tile: #ffffff;   /* backdrop behind brand logos */
   /* themed effects — kept as tokens so the rules below are written once */
   --glow-1: transparent;
-  --glow-2: transparent;
-  --primary-grad: var(--signal);
-  --primary-ring: rgba(236, 90, 53, 0.25);
-  --panel-grad: none;
+  --primary: #6553d6;
+  --primary-ring: rgba(101, 83, 214, 0.28);
 }
 
-/* ============ Midnight — after dark ============
-   Black ground, violet signal, electric blue second light.
-   Neutrals carry a faint blue-violet cast so nothing reads muddy. */
+/* ============ Ledger — after dark (the default mood) ============
+   Near-black ground, hairline borders, restrained violet signal.
+   Quiet, tabular, expensive. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #05050b;          /* near-black, faint violet cast */
-  --rail: #090913;        /* sidebar sits just above the floor */
-  --panel: #0f0f1c;       /* cards lift off the background */
-  --panel2: #191a2e;      /* insets, hovers */
-  --line: #272845;        /* borders */
-  --line2: #1b1c31;       /* subtle dividers */
-  --ink: #ecebf8;         /* cool bone text */
-  --muted: #a4a1c6;       /* secondary text */
-  --faint: #6e6b94;       /* tertiary text */
-  --signal: #a566ff;      /* violet — the primary signal */
-  --signal-2: #bf8cff;
-  --accent: #4d8dff;      /* electric blue — the second light */
-  --ok: #35d39a;
-  --warn: #f3b43f;
-  --bad: #ff6b81;
-  --tt: #ecebf8;
-  --ig: #f472b6;
-  --field: #0b0b17;       /* input fill, recessed */
-  --scroll: #2d2e4f;
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 18px 44px -26px rgba(124, 58, 237, 0.45);
-  --scrim: rgba(3, 3, 10, 0.72);
-  --chip-tt: rgba(236, 235, 248, 0.09);
-  --logo-tile: #f4f4fb;
-  --glow-1: rgba(139, 74, 255, 0.18);
-  --glow-2: rgba(58, 120, 255, 0.14);
-  --primary-grad: linear-gradient(135deg, #8b5cf6 0%, #4d8dff 100%);
-  --primary-ring: rgba(139, 92, 246, 0.55);
-  --panel-grad: linear-gradient(180deg, rgba(165, 102, 255, 0.045) 0%, rgba(77, 141, 255, 0.02) 100%);
+  --bg: #0e0f13;
+  --rail: #101116;
+  --panel: #15161c;
+  --panel2: #1b1d24;
+  --line: rgba(255, 255, 255, 0.07);
+  --line2: rgba(255, 255, 255, 0.04);
+  --ink: #e8eaf0;
+  --muted: #8b90a0;
+  --faint: #5b6070;
+  --signal: #8571e8;      /* the one violet — used sparingly */
+  --signal-2: #9d8bf0;
+  --accent: #6e79d6;      /* desaturated indigo for charts/links */
+  --ok: #4cc38a;
+  --warn: #e2a13c;
+  --bad: #e0644e;
+  --tt: #e8eaf0;
+  --ig: #d9679f;
+  --field: #101117;
+  --scroll: #2a2c36;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --scrim: rgba(6, 7, 10, 0.7);
+  --chip-tt: rgba(232, 234, 240, 0.08);
+  --logo-tile: #f2f3f7;
+  --glow-1: rgba(133, 113, 232, 0.06);
+  --primary: #8571e8;
+  --primary-ring: rgba(133, 113, 232, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
   /* Respect the OS only until the user makes an explicit choice. */
   :root:not([data-theme]) {
     color-scheme: dark;
-    --bg: #05050b;
-    --rail: #090913;
-    --panel: #0f0f1c;
-    --panel2: #191a2e;
-    --line: #272845;
-    --line2: #1b1c31;
-    --ink: #ecebf8;
-    --muted: #a4a1c6;
-    --faint: #6e6b94;
-    --signal: #a566ff;
-    --signal-2: #bf8cff;
-    --accent: #4d8dff;
-    --ok: #35d39a;
-    --warn: #f3b43f;
-    --bad: #ff6b81;
-    --tt: #ecebf8;
-    --ig: #f472b6;
-    --field: #0b0b17;
-    --scroll: #2d2e4f;
-    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 18px 44px -26px rgba(124, 58, 237, 0.45);
-    --scrim: rgba(3, 3, 10, 0.72);
-    --chip-tt: rgba(236, 235, 248, 0.09);
-    --logo-tile: #f4f4fb;
-    --glow-1: rgba(139, 74, 255, 0.18);
-    --glow-2: rgba(58, 120, 255, 0.14);
-    --primary-grad: linear-gradient(135deg, #8b5cf6 0%, #4d8dff 100%);
-    --primary-ring: rgba(139, 92, 246, 0.55);
-    --panel-grad: linear-gradient(180deg, rgba(165, 102, 255, 0.045) 0%, rgba(77, 141, 255, 0.02) 100%);
+    --bg: #0e0f13;
+    --rail: #101116;
+    --panel: #15161c;
+    --panel2: #1b1d24;
+    --line: rgba(255, 255, 255, 0.07);
+    --line2: rgba(255, 255, 255, 0.04);
+    --ink: #e8eaf0;
+    --muted: #8b90a0;
+    --faint: #5b6070;
+    --signal: #8571e8;
+    --signal-2: #9d8bf0;
+    --accent: #6e79d6;
+    --ok: #4cc38a;
+    --warn: #e2a13c;
+    --bad: #e0644e;
+    --tt: #e8eaf0;
+    --ig: #d9679f;
+    --field: #101117;
+    --scroll: #2a2c36;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --scrim: rgba(6, 7, 10, 0.7);
+    --chip-tt: rgba(232, 234, 240, 0.08);
+    --logo-tile: #f2f3f7;
+    --glow-1: rgba(133, 113, 232, 0.06);
+    --primary: #8571e8;
+    --primary-ring: rgba(133, 113, 232, 0.4);
   }
 }
 
@@ -118,8 +112,8 @@
   --color-faint: var(--faint);
   --color-signal: var(--signal);
   --color-accent: var(--accent);
-  --font-display: var(--font-bricolage);
-  --font-sans: var(--font-hanken);
+  --font-display: var(--font-sans-app);
+  --font-sans: var(--font-sans-app);
 }
 
 * {
@@ -131,32 +125,32 @@ html,
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans-app), ui-sans-serif, system-ui, sans-serif;
+  font-size: 13.5px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Two soft lights over the ground — violet from the left, blue from the right.
-   Both resolve to transparent in daylight, so this costs the light theme nothing. */
+/* One faint violet wash from the top — the only atmosphere the dark theme
+   allows itself. Resolves to transparent in daylight. */
 body {
-  background-image:
-    radial-gradient(900px 520px at 10% -10%, var(--glow-1), transparent 60%),
-    radial-gradient(780px 460px at 95% -6%, var(--glow-2), transparent 62%);
+  background-image: radial-gradient(900px 480px at 30% -12%, var(--glow-1), transparent 62%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
 
+/* Headings are the same family, set tighter and heavier — the Ledger look is
+   one voice at different volumes, not two typefaces. */
 .font-display {
-  font-family: var(--font-bricolage), sans-serif;
-  letter-spacing: -0.02em;
+  font-family: var(--font-sans-app), sans-serif;
+  letter-spacing: -0.025em;
 }
 
-/* "mono" is now tabular sans — the number treatment, NOT monospace */
+/* "mono" is the data treatment: true monospace, tabular by nature */
 .mono {
-  font-family: var(--font-hanken), sans-serif;
+  font-family: var(--font-mono-app), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1, "cv01" 1;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
 }
 
 ::selection {
@@ -180,15 +174,14 @@ body {
 /* building blocks */
 .card {
   background-color: var(--panel);
-  background-image: var(--panel-grad);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 10px;
   box-shadow: var(--card-shadow);
 }
 .tile-ico {
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 7px;
   background: var(--panel2);
   border: 1px solid var(--line);
   color: var(--muted);
@@ -199,7 +192,7 @@ select,
 textarea {
   background: var(--field);
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: 8px;
   color: var(--ink);
   outline: none;
 }
@@ -207,7 +200,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--signal);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 18%, transparent);
 }
 input::placeholder,
 textarea::placeholder {
@@ -221,26 +214,28 @@ textarea::placeholder {
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
-  border-radius: 11px;
-  padding: 8px 13px;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s, filter 0.12s, transform 0.04s;
 }
 .btn:hover {
   background: var(--panel2);
+  border-color: color-mix(in srgb, var(--ink) 16%, var(--line));
 }
 .btn:active {
   transform: translateY(0.5px);
 }
 .btn-primary {
-  background: var(--primary-grad);
-  border-color: color-mix(in srgb, var(--signal) 60%, transparent);
+  background: var(--primary);
+  border-color: transparent;
   color: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 10px 26px -14px var(--primary-ring);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 8px 22px -12px var(--primary-ring);
 }
 .btn-primary:hover {
-  background: var(--primary-grad);
+  background: var(--primary);
   filter: brightness(1.08);
 }

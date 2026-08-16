@@ -16,7 +16,7 @@ async function buildSnapshot(clientId: string) {
 
   const creators = await prisma.creator.findMany({
     where: { clientId },
-    include: { posts: { select: { postedAt: true, views: true } } },
+    include: { posts: { select: { postedAt: true, views: true, payExclusions: true } } },
   });
 
   const creatorRows = creators.map((c) => {
@@ -39,7 +39,7 @@ async function buildSnapshot(clientId: string) {
 
   const campaigns = await prisma.campaign.findMany({
     where: { clientId },
-    include: { assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true } } } } } } },
+    include: { assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true } } } } } } },
   });
   const campaignRows = campaigns.map((c) => {
     const bounds = periodBounds(c.period, now);

@@ -82,6 +82,10 @@ model Creator {
   expectedPerWeek Int    @default(7) // target posts per week
   status          String @default("active") // active | paused | inactive
 
+  // When this creator was onboarded to the client (informational — nothing is
+  // filtered by it; syncs still ingest their whole account history).
+  onboardedAt DateTime?
+
   notes String?
 
   // Comms tracking (the "who do I need to text" layer)
@@ -254,6 +258,11 @@ model Post {
 
   source    String   @default("auto") // auto | manual
   fetchedAt DateTime @default(now())
+
+  // Pay components this video is excluded from, as a JSON array:
+  // any of "perPost" | "cpm" | "tiers", or ["all"] to earn nothing at all.
+  // null/empty = counts toward everything (the default).
+  payExclusions String?
 
   snapshots PostStatSnapshot[]
 
