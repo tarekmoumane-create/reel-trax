@@ -88,7 +88,7 @@ export default function PayoutsPage() {
         </div>
 
         <div className="card overflow-hidden">
-          <div className="hidden grid-cols-[minmax(160px,1.4fr)_minmax(140px,1fr)_130px_80px_90px_110px_210px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
+          <div className="hidden grid-cols-[minmax(140px,1.4fr)_minmax(110px,1fr)_130px_70px_84px_104px_248px] items-center gap-3 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
             <div>Creator</div><div>Campaign</div><div>Period</div><div>Posts</div><div>Views</div><div>Amount</div><div className="text-right">Action</div>
           </div>
           {loading ? (
@@ -103,8 +103,8 @@ export default function PayoutsPage() {
             </div>
           ) : (
             rows.map((r) => (
-              <div key={r.key} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(160px,1.4fr)_minmax(140px,1fr)_130px_80px_90px_110px_210px] lg:gap-4">
-                <Link href={`/creators/${r.creatorId}`} className="font-medium hover:text-[var(--signal)]">{r.creatorName}</Link>
+              <div key={r.key} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(140px,1.4fr)_minmax(110px,1fr)_130px_70px_84px_104px_248px] lg:gap-3">
+                <Link href={`/creators/${r.creatorId}`} className="truncate font-medium hover:text-[var(--signal)]">{r.creatorName}</Link>
                 <Link href={`/campaigns/${r.campaignId}`} className="truncate text-[13px] text-[var(--muted)] hover:text-[var(--signal)]">{r.campaignName}</Link>
                 <div>
                   <div className="mono text-[12px] text-[var(--muted)]">{r.periodLabel}</div>
@@ -120,7 +120,9 @@ export default function PayoutsPage() {
                 <div className="mono text-[13px]">{r.postsCount}</div>
                 <div className="mono text-[13px]">{fmtNum(r.viewsCount)}</div>
                 <div className="mono text-[15px] font-bold">{money(r.amount, r.currency)}</div>
-                <div className="flex items-center justify-end gap-1.5">
+                {/* flex-wrap: the 3-button Sideshift rows drop to a second line
+                    instead of overlapping the amount when space runs out */}
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
                   {payLink(r) && (
                     <a href={payLink(r)!.href} target="_blank" rel="noreferrer" title={`Pay via ${payLink(r)!.label}`} className="btn whitespace-nowrap px-2.5 py-1.5 text-xs">Pay · {payLink(r)!.label}</a>
                   )}

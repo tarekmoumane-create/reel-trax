@@ -148,7 +148,7 @@ export default function Overview() {
 
         {/* roster — no overflow clipping, so a row's Contact menu can escape it */}
         <div className="card">
-          <div className="hidden grid-cols-[minmax(200px,1.6fr)_auto_84px_72px_64px_104px_150px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
+          <div className="hidden grid-cols-[minmax(190px,1.6fr)_auto_78px_64px_56px_100px_140px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
             <div>Creator</div>
             <div>Post activity · 30d</div>
             <div>Last post</div>
@@ -204,7 +204,7 @@ function Kpi({ label, value, tone, active, onClick }: { label: string; value: nu
 function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; busy: boolean; onContacted: () => Promise<void>; onResync: () => void }) {
   const c = row.cadence;
   return (
-    <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(200px,1.6fr)_auto_84px_72px_64px_104px_150px] lg:gap-4">
+    <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(190px,1.6fr)_auto_78px_64px_56px_100px_140px] lg:gap-4">
       {/* identity */}
       <div className="flex min-w-0 items-center gap-3">
         <Avatar name={row.displayName} creatorId={row.id} size={36} />
@@ -222,7 +222,7 @@ function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; bu
       </div>
 
       {/* activity strip */}
-      <div className="overflow-x-auto"><PostActivity calendar={c.calendar} days={30} dot={12} gap={4} /></div>
+      <div className="overflow-x-auto"><PostActivity calendar={c.calendar} days={30} dot={10} gap={3} /></div>
 
       {/* metrics */}
       <div className="mono text-[13px]">{daysLabel(c.daysSinceLastPost)}</div>

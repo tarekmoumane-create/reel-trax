@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const tz = await getTimeZone();
     const creators = await prisma.creator.findMany({
       where: { clientId },
-      include: { posts: { select: { postedAt: true }, orderBy: { postedAt: "desc" } } },
+      include: { posts: { select: { postedAt: true, views: true }, orderBy: { postedAt: "desc" } } },
     });
 
     const now = new Date();
@@ -33,6 +33,12 @@ export async function GET(request: Request) {
       });
       const needsFollowUp =
         !!c.followUpAt && new Date(c.followUpAt).getTime() <= now.getTime();
+      const cutoff30 = now.getTime() - 30 * 86_400_000;
+      const viewsTotal = c.posts.reduce((s, p) => s + p.views, 0);
+      const views30d = c.posts.reduce(
+        (s, p) => (p.postedAt.getTime() >= cutoff30 ? s + p.views : s),
+        0
+      );
       return {
         id: c.id,
         displayName: c.displayName,
@@ -55,6 +61,9 @@ export async function GET(request: Request) {
         discord: c.discord,
         whatsapp: c.whatsapp,
         sideshiftUrl: c.sideshiftUrl,
+        createdAt: c.createdAt,
+        viewsTotal,
+        views30d,
         cadence,
       };
     });

@@ -34,6 +34,9 @@ export interface OverviewRow {
   discord: string | null;
   whatsapp: string | null;
   sideshiftUrl: string | null;
+  createdAt: string;
+  viewsTotal: number;
+  views30d: number;
   cadence: CadenceResult;
 }
 
