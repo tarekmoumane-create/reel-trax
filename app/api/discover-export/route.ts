@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const anthropic = new Anthropic({ apiKey });
     const msg = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 4000,
+      max_tokens: 16000,
       system:
         'Convert research answers into a single spreadsheet table. Respond with ONLY a JSON object: {"title": string, "headers": string[], "rows": string[][]}. Every row must have exactly as many cells as there are headers. Pick columns that fit the content (e.g. creators → Name, Handle, Account link, Followers, Niche, Why; trends/hooks → Trend, Description, Example, Why it works). REQUIRED: whenever rows are creators, accounts, or videos, include an "Account link" column with the full profile URL for every row — use URLs from the answer when present, otherwise construct them from the platform and handle (TikTok → https://www.tiktok.com/@handle, Instagram → https://www.instagram.com/handle, YouTube → https://www.youtube.com/@handle; assume TikTok if the platform is unstated). For videos, also include the video URL if the answer has one. Preserve every distinct item from the answer as its own row. Use "" for unknown cells. No markdown, no commentary.',
       messages: [{ role: "user", content: answer }],
@@ -39,9 +39,18 @@ export async function POST(request: Request) {
       .join("")
       .trim();
 
+    if (msg.stop_reason === "max_tokens")
+      return bad("This answer is too long to export in one table — try exporting a shorter answer.", 422);
+
     // Tolerate a stray code fence around the JSON.
     const jsonText = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-    const parsed = Table.safeParse(JSON.parse(jsonText));
+    let raw: unknown;
+    try {
+      raw = JSON.parse(jsonText);
+    } catch {
+      return bad("Couldn't structure this answer into a table — try again.", 422);
+    }
+    const parsed = Table.safeParse(raw);
     if (!parsed.success) return bad("Couldn't structure this answer into a table", 422);
 
     const { title, headers, rows } = parsed.data;
