@@ -14,6 +14,7 @@ import { TopBar } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
 import { PAYMENT_METHODS, PAYMENT_LABEL, payLink } from "@/lib/pay";
 import { Select } from "@/components/Select";
+import { RangePicker, PRESETS, dstr, fmtRangeDate, type Range } from "@/components/RangePicker";
 
 export default function CreatorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -137,12 +138,7 @@ export default function CreatorDetail() {
         </div>
 
         {/* trend */}
-        {posts.length > 0 && (
-          <div className="card mb-4 p-5">
-            <h2 className="mb-3 text-sm font-semibold">Views trend <span className="text-[var(--muted)]">· last 30 days</span></h2>
-            <CreatorTrend posts={posts} />
-          </div>
-        )}
+        {posts.length > 0 && <CreatorTrendCard posts={posts} />}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="card p-5 lg:col-span-1"><CommsPanel creator={creator} onSave={patch} busy={busy} /></div>
@@ -285,26 +281,41 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
   );
 }
 
-function CreatorTrend({ posts }: { posts: PostDTO[] }) {
-  const { labels, views } = useMemo(() => {
-    const days = 30;
-    const now = new Date();
+function CreatorTrendCard({ posts }: { posts: PostDTO[] }) {
+  const [range, setRange] = useState<Range>(() => PRESETS[4].range()); // last 30 days
+
+  const { labels, views, total } = useMemo(() => {
     const labels: string[] = [];
     const map = new Map<string, number>();
-    for (let i = days - 1; i >= 0; i--) {
-      const k = new Date(now.getTime() - i * 86400000).toISOString().slice(0, 10);
+    const d = new Date(`${range.from}T12:00:00`);
+    const end = new Date(`${range.to}T12:00:00`);
+    while (d <= end && labels.length <= 366) {
+      const k = dstr(d);
       labels.push(k);
       map.set(k, 0);
+      d.setDate(d.getDate() + 1);
     }
+    let total = 0;
     for (const p of posts) {
-      const k = new Date(p.postedAt).toISOString().slice(0, 10);
-      if (map.has(k)) map.set(k, map.get(k)! + p.views);
+      const k = dstr(new Date(p.postedAt));
+      if (map.has(k)) {
+        map.set(k, map.get(k)! + p.views);
+        total += p.views;
+      }
     }
-    return { labels, views: labels.map((k) => map.get(k)!) };
-  }, [posts]);
-  const fmtDate = (d: string) => {
-    const [, m, day] = d.split("-").map(Number);
-    return new Date(2000, m - 1, day).toLocaleDateString("en", { month: "short", day: "numeric" });
-  };
-  return <Chart labels={labels} series={[{ name: "Views", color: "var(--signal)", values: views, area: true }]} format={fmtNum} formatX={fmtDate} height={170} />;
+    return { labels, views: labels.map((k) => map.get(k)!), total };
+  }, [posts, range.from, range.to]);
+
+  return (
+    <div className="card mb-4 p-5">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">
+          Views <span className="text-[var(--muted)]">· {range.label}</span>
+          <span className="mono ml-2.5 text-base font-bold text-[var(--signal)]">{fmtNum(total)}</span>
+        </h2>
+        <RangePicker range={range} onChange={setRange} />
+      </div>
+      <Chart labels={labels} series={[{ name: "Views", color: "var(--signal)", values: views, area: true }]} format={fmtNum} formatX={fmtRangeDate} height={170} />
+    </div>
+  );
 }

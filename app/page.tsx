@@ -12,9 +12,9 @@ import { AnalyticsPanel } from "@/components/AnalyticsPanel";
 import { Avatar } from "@/components/Avatar";
 import { ContactButton } from "@/components/ContactButton";
 import { TopBar, PageTitle } from "@/components/PageHeader";
-import { SOURCE_LABEL, daysLabel, timeAgo } from "@/lib/ui";
+import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
 
-type Filter = "all" | CadenceStatus | "follow_up";
+type Filter = "all" | CadenceStatus;
 
 export default function Overview() {
   const { currentClientId, currentClient, loading: clientsLoading, reloadClients } = useClients();
@@ -25,6 +25,8 @@ export default function Overview() {
   const [showAdd, setShowAdd] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [busyRow, setBusyRow] = useState<string | null>(null);
+  // total views for the analytics chart's current timeline, reported up by AnalyticsPanel
+  const [viewsTotal, setViewsTotal] = useState<{ views: number; rangeLabel: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!currentClientId) {
@@ -68,8 +70,7 @@ export default function Overview() {
 
   const rows = useMemo(() => {
     let r = data?.rows ?? [];
-    if (filter === "follow_up") r = r.filter((x) => x.needsFollowUp);
-    else if (filter !== "all") r = r.filter((x) => x.cadence.status === filter);
+    if (filter !== "all") r = r.filter((x) => x.cadence.status === filter);
     if (q.trim()) {
       const s = q.toLowerCase();
       r = r.filter(
@@ -126,12 +127,16 @@ export default function Overview() {
             <Kpi label="On track" value={s.onTrack} tone="var(--ok)" active={filter === "on_track"} onClick={() => setFilter("on_track")} />
             <Kpi label="Behind" value={s.behind} tone="var(--warn)" active={filter === "behind"} onClick={() => setFilter("behind")} />
             <Kpi label="Gone quiet" value={s.quiet} tone="var(--bad)" active={filter === "quiet"} onClick={() => setFilter("quiet")} />
-            <Kpi label="Follow-ups due" value={s.needFollowUp} tone="var(--signal)" active={filter === "follow_up"} onClick={() => setFilter("follow_up")} />
+            <Kpi
+              label={viewsTotal ? `Views · ${viewsTotal.rangeLabel}` : "Views"}
+              value={viewsTotal ? fmtNum(viewsTotal.views) : "—"}
+              tone="var(--signal)"
+            />
           </div>
         )}
 
         {/* analytics */}
-        {currentClientId && <AnalyticsPanel clientId={currentClientId} />}
+        {currentClientId && <AnalyticsPanel clientId={currentClientId} onTotals={setViewsTotal} />}
 
         {/* toolbar */}
         <div className="mb-3 flex items-center gap-2">
@@ -187,12 +192,12 @@ export default function Overview() {
   );
 }
 
-function Kpi({ label, value, tone, active, onClick }: { label: string; value: number; tone?: string; active?: boolean; onClick?: () => void }) {
+function Kpi({ label, value, tone, active, onClick }: { label: string; value: number | string; tone?: string; active?: boolean; onClick?: () => void }) {
   return (
     <button
       onClick={onClick}
       className={`px-4 py-3.5 text-left transition ${
-        active ? "bg-[var(--panel2)] shadow-[inset_0_2px_0_var(--signal)]" : "bg-[var(--panel)] hover:bg-[var(--panel2)]"
+        active ? "bg-[var(--panel2)] shadow-[inset_0_2px_0_var(--signal)]" : onClick ? "bg-[var(--panel)] hover:bg-[var(--panel2)]" : "cursor-default bg-[var(--panel)]"
       }`}
     >
       <div className="mono text-[22px] font-semibold leading-none tracking-tight" style={{ color: tone }}>{value}</div>
