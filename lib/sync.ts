@@ -322,10 +322,10 @@ export async function syncCreator(
     });
     const day = dayKey(new Date(), tz);
     const stats = {
-      views: agg._sum.views ?? 0,
-      likes: agg._sum.likes ?? 0,
-      comments: agg._sum.comments ?? 0,
-      shares: agg._sum.shares ?? 0,
+      views: BigInt(agg._sum.views ?? 0),
+      likes: BigInt(agg._sum.likes ?? 0),
+      comments: BigInt(agg._sum.comments ?? 0),
+      shares: BigInt(agg._sum.shares ?? 0),
       posts: agg._count,
     };
     await prisma.creatorStatSnapshot.upsert({

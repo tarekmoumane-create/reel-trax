@@ -128,10 +128,12 @@ model CreatorStatSnapshot {
   creatorId  String
   creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   day        String // YYYY-MM-DD in the app timezone
-  views      Int
-  likes      Int
-  comments   Int
-  shares     Int
+  // Summed across every tracked post, so 64-bit: a big channel's lifetime
+  // views blow past what a 32-bit Int holds (seen: 12.8B on one creator).
+  views      BigInt
+  likes      BigInt
+  comments   BigInt
+  shares     BigInt
   posts      Int
   capturedAt DateTime @default(now())
 

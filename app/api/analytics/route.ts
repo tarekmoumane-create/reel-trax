@@ -87,11 +87,12 @@ export async function GET(request: Request) {
     const gainedByDay = new Map<string, number>();
     const prevByCreator = new Map<string, number>();
     for (const s of statSnaps) {
+      const views = Number(s.views); // BigInt column
       const prev = prevByCreator.get(s.creatorId);
       if (prev != null && byDay.has(s.day)) {
-        gainedByDay.set(s.day, (gainedByDay.get(s.day) ?? 0) + Math.max(0, s.views - prev));
+        gainedByDay.set(s.day, (gainedByDay.get(s.day) ?? 0) + Math.max(0, views - prev));
       }
-      prevByCreator.set(s.creatorId, s.views);
+      prevByCreator.set(s.creatorId, views);
     }
     const viewsGained = dayList.map((d) => ({ date: d, viewsGained: gainedByDay.has(d) ? gainedByDay.get(d)! : null }));
     const hasGained = viewsGained.some((g) => g.viewsGained != null);
