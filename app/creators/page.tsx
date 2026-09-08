@@ -114,7 +114,8 @@ export default function CreatorsPage() {
                 <div className="mono flex flex-wrap gap-x-2 text-[11px] text-[var(--muted)]">
                   {r.tiktokHandle && <span>TT @{r.tiktokHandle}</span>}
                   {r.instagramHandle && <span>IG @{r.instagramHandle}</span>}
-                  {!r.tiktokHandle && !r.instagramHandle && <span className="text-[var(--faint)]">—</span>}
+                  {r.youtubeHandle && <span>YT @{r.youtubeHandle}</span>}
+                  {!r.tiktokHandle && !r.instagramHandle && !r.youtubeHandle && <span className="text-[var(--faint)]">—</span>}
                 </div>
                 <div className="mono text-[13px]">{r.views30d > 0 ? fmtNum(r.views30d) : <span className="text-[var(--faint)]">—</span>}</div>
                 <div className="text-[13px] text-[var(--muted)]">{SOURCE_LABEL[r.source] ?? r.source}</div>

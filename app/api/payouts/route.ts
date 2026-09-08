@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     const campaigns = await prisma.campaign.findMany({
       where: { clientId },
       include: {
-        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true, snapshots: { select: { day: true, views: true } } } } } } } },
+        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true, snapshots: { select: { day: true, views: true } } } } } } } },
         payouts: { include: { creator: { select: { displayName: true } } } },
       },
     });

@@ -56,6 +56,11 @@ model Creator {
   instagramHandle String?
   instagramUrl    String?
 
+  // YouTube (Shorts)
+  youtubeHandle    String? // @handle without the "@"
+  youtubeUrl       String?
+  youtubeChannelId String? // UC… id, resolved on first sync when only a URL was given
+
   // Where this creator came from (Sideshift is the common one)
   source       String  @default("sideshift") // sideshift | referral | outreach | agency | other
   sourceDetail String?
@@ -70,11 +75,12 @@ model Creator {
   // null = they're on the client/campaign default.
   payRules String?
 
-  // Contact / comms
+  // Contact info
   phone         String?
   email         String?
   contactHandle String? // preferred DM handle / channel
-  discord       String? // Discord user id (numeric) or username
+  discord       String? // Discord username / handle
+  discordChannel String? // link to the creator's channel in the client's Discord server
   whatsapp      String? // WhatsApp number if different from phone
   preferredChannel String? // sms | imessage | instagram | whatsapp | discord | email | other
 
@@ -88,7 +94,8 @@ model Creator {
 
   notes String?
 
-  // Comms tracking (the "who do I need to text" layer)
+  // Legacy — comms tracking was removed from the app. Columns stay so a
+  // `db push` on deploy never has to drop data; nothing reads or writes them.
   lastContactedAt DateTime?
   followUpAt      DateTime?
 
@@ -243,7 +250,7 @@ model Post {
   id             String  @id @default(cuid())
   creatorId      String
   creator        Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  platform       String // tiktok | instagram
+  platform       String // tiktok | instagram | youtube
   platformPostId String
 
   url          String?
@@ -263,6 +270,12 @@ model Post {
   // any of "perPost" | "cpm" | "tiers", or ["all"] to earn nothing at all.
   // null/empty = counts toward everything (the default).
   payExclusions String?
+  // A warm-up post: earns no view-based pay (CPM / view bonuses) — the
+  // creator posted it to prime the algorithm, not to perform.
+  isWarmUp Boolean @default(false)
+  // A fixed amount this one video pays instead of whatever the rules would
+  // compute for it. Null = priced by the campaign rules.
+  payOverride Float?
 
   snapshots PostStatSnapshot[]
 

@@ -26,6 +26,7 @@ const CHANNELS = [
   ["imessage", "iMessage"],
   ["instagram", "Instagram DM"],
   ["whatsapp", "WhatsApp"],
+  ["discord", "Discord"],
   ["email", "Email"],
   ["other", "Other"],
 ];
@@ -54,6 +55,7 @@ export function AddCreatorModal({
     displayName: "",
     tiktokUrl: "",
     instagramUrl: "",
+    youtubeUrl: "",
     source: "sideshift",
     sourceDetail: "",
     onboardedAt: todayStr(),
@@ -63,6 +65,8 @@ export function AddCreatorModal({
     expectedPerWeek: 7,
     preferredChannel: "",
     phone: "",
+    discord: "",
+    discordChannel: "",
     contactHandle: "",
     email: "",
     notes: "",
@@ -80,8 +84,8 @@ export function AddCreatorModal({
       setError("Creator name is required");
       return;
     }
-    if (!form.tiktokUrl.trim() && !form.instagramUrl.trim()) {
-      setError("Add at least a TikTok or Instagram profile URL to track");
+    if (!form.tiktokUrl.trim() && !form.instagramUrl.trim() && !form.youtubeUrl.trim()) {
+      setError("Add at least a TikTok, Instagram or YouTube profile URL to track");
       return;
     }
     setSaving(true);
@@ -142,7 +146,7 @@ export function AddCreatorModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className={label}>TikTok profile URL</label>
               <input
@@ -159,6 +163,15 @@ export function AddCreatorModal({
                 value={form.instagramUrl}
                 onChange={(e) => set("instagramUrl", e.target.value)}
                 placeholder="instagram.com/handle"
+              />
+            </div>
+            <div>
+              <label className={label}>YouTube channel URL <span className="text-[var(--faint)]">(Shorts)</span></label>
+              <input
+                className={field}
+                value={form.youtubeUrl}
+                onChange={(e) => set("youtubeUrl", e.target.value)}
+                placeholder="youtube.com/@handle"
               />
             </div>
           </div>
@@ -221,33 +234,63 @@ export function AddCreatorModal({
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className={label}>Preferred channel</label>
-              <Select
-                className="w-full"
-                value={form.preferredChannel}
-                onChange={(v) => set("preferredChannel", v)}
-                options={CHANNELS as [string, string][]}
-              />
-            </div>
-            <div>
-              <label className={label}>Phone</label>
-              <input
-                className={field}
-                value={form.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                placeholder="+1…"
-              />
-            </div>
-            <div>
-              <label className={label}>Contact handle</label>
-              <input
-                className={field}
-                value={form.contactHandle}
-                onChange={(e) => set("contactHandle", e.target.value)}
-                placeholder="@dm / email"
-              />
+          <div className="rounded-xl border border-[var(--line)] p-3">
+            <div className="mb-2 text-xs font-semibold text-[var(--muted)]">Contact info</div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className={label}>Preferred channel</label>
+                <Select
+                  className="w-full"
+                  value={form.preferredChannel}
+                  onChange={(v) => set("preferredChannel", v)}
+                  options={CHANNELS as [string, string][]}
+                />
+              </div>
+              <div>
+                <label className={label}>Phone</label>
+                <input
+                  className={field}
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                  placeholder="+1…"
+                />
+              </div>
+              <div>
+                <label className={label}>Discord handle</label>
+                <input
+                  className={field}
+                  value={form.discord}
+                  onChange={(e) => set("discord", e.target.value)}
+                  placeholder="username"
+                />
+              </div>
+              <div>
+                <label className={label}>Discord channel <span className="text-[var(--faint)]">(link)</span></label>
+                <input
+                  className={field}
+                  value={form.discordChannel}
+                  onChange={(e) => set("discordChannel", e.target.value)}
+                  placeholder="https://discord.com/channels/…"
+                />
+              </div>
+              <div>
+                <label className={label}>Email</label>
+                <input
+                  className={field}
+                  value={form.email}
+                  onChange={(e) => set("email", e.target.value)}
+                  placeholder="name@email.com"
+                />
+              </div>
+              <div>
+                <label className={label}>Other handle</label>
+                <input
+                  className={field}
+                  value={form.contactHandle}
+                  onChange={(e) => set("contactHandle", e.target.value)}
+                  placeholder="@dm handle"
+                />
+              </div>
             </div>
           </div>
 

@@ -104,10 +104,22 @@ export interface EarningPost {
   // Post.payExclusions JSON column straight from the DB.
   exclusions?: PayExclusion[];
   payExclusions?: string | null;
+  // Warm-up posts earn no view-based pay (CPM / view bonuses).
+  isWarmUp?: boolean | null;
+  // A fixed price for this one video, replacing every rule-computed component.
+  payOverride?: number | null;
 }
 
-function exclusionsOf(p: EarningPost): PayExclusion[] {
-  return p.exclusions ?? parsePayExclusions(p.payExclusions);
+/** Pay components a video is excluded from, with warm-up folded in. */
+export function exclusionsOf(p: EarningPost): PayExclusion[] {
+  const base = p.exclusions ?? parsePayExclusions(p.payExclusions);
+  if (!p.isWarmUp) return base;
+  return [...new Set<PayExclusion>([...base, "cpm", "tiers"])];
+}
+
+/** Is this video priced by hand rather than by the rules? */
+export function hasOverride(p: EarningPost): boolean {
+  return p.payOverride != null && Number.isFinite(p.payOverride) && p.payOverride >= 0;
 }
 
 export interface PeriodBounds {
@@ -204,14 +216,19 @@ export function computeEarnings(
       const t = (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
       return t >= bounds.start.getTime() && t <= bounds.end.getTime();
     })
-    // Videos excluded from all pay simply don't exist for the payout math.
-    .filter((p) => !exclusionsOf(p).includes("all"))
+    // Videos excluded from all pay simply don't exist for the payout math —
+    // unless someone priced them by hand, in which case that price stands.
+    .filter((p) => hasOverride(p) || !exclusionsOf(p).includes("all"))
     // From here on, "views" means countable views under the view window.
     .map((p) => ({ ...p, views: windowedViews(p, rules.viewWindowDays, now) }));
-  const qualifying = inPeriod.filter((p) => p.views >= (rules.minViews || 0));
-  // Per-component opt-outs: a video can count for some pay rules but not others.
+  // Hand-priced videos always qualify (someone decided what they're worth);
+  // the rest have to clear the minimum views.
+  const qualifying = inPeriod.filter((p) => hasOverride(p) || p.views >= (rules.minViews || 0));
+  // Per-component opt-outs: a video can count for some pay rules but not
+  // others. Hand-priced videos sit outside every rule-computed component.
   const counted = (list: typeof qualifying, c: PayComponent) =>
-    list.filter((p) => !exclusionsOf(p).includes(c));
+    list.filter((p) => !hasOverride(p) && !exclusionsOf(p).includes(c));
+  const custom = qualifying.filter(hasOverride);
   const qCount = qualifying.length;
   const qViews = qualifying.reduce((s, p) => s + p.views, 0);
   const targetMet = rules.targetVideos != null && qCount >= rules.targetVideos;
@@ -263,6 +280,9 @@ export function computeEarnings(
       }
     }
     if (tierHits) breakdown.push({ label: `View bonuses × ${tierHits}`, amount: tierAmt });
+  }
+  if (custom.length) {
+    breakdown.push({ label: `Custom-priced × ${custom.length}`, amount: custom.reduce((s, p) => s + (p.payOverride as number), 0) });
   }
   if (rules.bonus && targetMet) breakdown.push({ label: "Target bonus", amount: rules.bonus });
 
@@ -333,6 +353,19 @@ export function parsePayRules(s: string | null | undefined): PayRulesJson | null
   } catch {
     return null;
   }
+}
+
+/** What a single video earns, in a word — for pay menus, lists and invoices. */
+export function paySummary(
+  v: { exclusions: PayExclusion[]; isWarmUp: boolean; payOverride: number | null },
+  currency = "USD"
+): { label: string; tone: string } {
+  if (v.payOverride != null) return { label: `${money(v.payOverride, currency)} fixed`, tone: "text-[var(--signal)]" };
+  if (v.exclusions.includes("all")) return { label: "Excluded", tone: "text-[var(--bad)]" };
+  if (v.isWarmUp) return { label: "Warm-up", tone: "text-[var(--warn)]" };
+  if (v.exclusions.length === 0) return { label: "Counts", tone: "text-[var(--muted)]" };
+  const short: Record<PayComponent, string> = { perPost: "post fee", cpm: "CPM", tiers: "bonuses" };
+  return { label: `No ${v.exclusions.map((e) => short[e as PayComponent]).join(", ")}`, tone: "text-[var(--warn)]" };
 }
 
 export function money(amount: number, currency = "USD"): string {

@@ -7,6 +7,7 @@ import {
   getAnthropicKey,
   getLightReelKey,
   getTimeZone,
+  getInvoiceProfile,
 } from "@/lib/settings";
 
 function mask(key: string | null): string | null {
@@ -35,6 +36,7 @@ export async function GET() {
       lightReelKeyMasked: mask(effectiveLightReel),
       lightReelKeyFromEnv: !dbLightReel && !!process.env.LIGHTREEL_API_KEY,
       timeZone,
+      invoice: await getInvoiceProfile(),
     });
   } catch (e) {
     return serverError(e);
@@ -58,6 +60,12 @@ export async function POST(request: Request) {
     }
     if (typeof body.timeZone === "string" && body.timeZone.trim()) {
       await setSetting(SETTING_KEYS.timeZone, body.timeZone.trim());
+    }
+    if (body.invoice && typeof body.invoice === "object") {
+      const inv = body.invoice as Record<string, unknown>;
+      if (typeof inv.fromName === "string") await setSetting(SETTING_KEYS.invoiceFromName, inv.fromName.trim());
+      if (typeof inv.fromDetails === "string") await setSetting(SETTING_KEYS.invoiceFromDetails, inv.fromDetails.trim());
+      if (typeof inv.paymentInstructions === "string") await setSetting(SETTING_KEYS.invoicePaymentInstructions, inv.paymentInstructions.trim());
     }
     return ok({ saved: true });
   } catch (e) {

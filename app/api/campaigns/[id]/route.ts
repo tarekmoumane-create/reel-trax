@@ -39,7 +39,7 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
     const campaign = await prisma.campaign.findUnique({
       where: { id },
       include: {
-        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true, snapshots: { select: { day: true, views: true } } } } } } } },
+        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true, snapshots: { select: { day: true, views: true } } } } } } } },
       },
     });
     if (!campaign) return bad("Campaign not found", 404);

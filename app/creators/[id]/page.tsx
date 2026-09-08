@@ -15,6 +15,8 @@ import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
 import { PAYMENT_METHODS, PAYMENT_LABEL, payLink } from "@/lib/pay";
 import { Select } from "@/components/Select";
 import { RangePicker, PRESETS, dstr, fmtRangeDate, type Range } from "@/components/RangePicker";
+import { VideoPayMenu, type VideoPayPatch } from "@/components/VideoPayMenu";
+import { parsePayExclusions } from "@/lib/payouts";
 
 export default function CreatorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +53,22 @@ export default function CreatorDetail() {
     await fetch(`/api/creators/${id}`, { method: "DELETE" });
     router.push("/creators");
   }
+  async function savePostPay(postId: string, patch: VideoPayPatch) {
+    // optimistic — the menu updates instantly, the PATCH lands behind it
+    setData((d) => {
+      if (!d?.creator.posts) return d;
+      const posts = d.creator.posts.map((p) => {
+        if (p.id !== postId) return p;
+        const next = { ...p };
+        if (patch.payExclusions) next.payExclusions = patch.payExclusions.length ? JSON.stringify(patch.payExclusions) : null;
+        if ("isWarmUp" in patch) next.isWarmUp = !!patch.isWarmUp;
+        if ("payOverride" in patch) next.payOverride = patch.payOverride ?? null;
+        return next;
+      });
+      return { ...d, creator: { ...d.creator, posts } };
+    });
+    await fetch(`/api/videos/${postId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+  }
 
   if (loading) return <><TopBar crumbs={["Creator Hub", "Creators", "…"]} /><div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div></>;
   if (!data) return <><TopBar crumbs={["Creator Hub", "Creators"]} /><div className="py-16 text-center text-sm text-[var(--muted)]">Not found. <Link href="/creators" className="text-[var(--signal)]">Back</Link></div></>;
@@ -69,11 +87,7 @@ export default function CreatorDetail() {
                 Pay · {payLink(creator)!.label}
               </a>
             )}
-            <ContactButton
-              creator={creator}
-              lastContactedAt={creator.lastContactedAt}
-              onContacted={() => patch({ markContactedNow: true })}
-            />
+            <ContactButton creator={creator} />
             <button onClick={resync} disabled={busy} className="btn disabled:opacity-60">{busy ? "…" : "Resync"}</button>
             <button onClick={() => setEditing((e) => !e)} className="btn">{editing ? "Close" : "Edit"}</button>
           </>
@@ -94,6 +108,7 @@ export default function CreatorDetail() {
               <div className="mono mt-1 flex flex-wrap items-center gap-x-3 text-[12px] text-[var(--muted)]">
                 {creator.tiktokUrl && <a href={creator.tiktokUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">TT @{creator.tiktokHandle}</a>}
                 {creator.instagramUrl && <a href={creator.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">IG @{creator.instagramHandle}</a>}
+                {creator.youtubeUrl && <a href={creator.youtubeUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">YT {creator.youtubeHandle ? `@${creator.youtubeHandle}` : "channel"}</a>}
                 <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[10px]">from {SOURCE_LABEL[creator.source] ?? creator.source}{creator.sourceDetail ? ` · ${creator.sourceDetail}` : ""}</span>
                 <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[10px] text-[var(--signal)]">pay via {PAYMENT_LABEL[creator.paymentMethod] ?? creator.paymentMethod}</span>
                 {creator.onboardedAt && (
@@ -141,14 +156,17 @@ export default function CreatorDetail() {
         {posts.length > 0 && <CreatorTrendCard posts={posts} />}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="card p-5 lg:col-span-1"><CommsPanel creator={creator} onSave={patch} busy={busy} /></div>
+          <div className="card p-5 lg:col-span-1"><ContactPanel creator={creator} onSave={patch} busy={busy} /></div>
           <div className="card p-5 lg:col-span-2">
-            <h2 className="mb-3 text-sm font-semibold">Recent posts <span className="text-[var(--muted)]">({posts.length})</span></h2>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Recent posts <span className="text-[var(--muted)]">({posts.length})</span></h2>
+              <span className="text-[11px] text-[var(--faint)]">Pay column: mark warm-ups or set a fixed price per video</span>
+            </div>
             {posts.length === 0 ? (
               <p className="py-8 text-center text-sm text-[var(--muted)]">No posts tracked yet. They&apos;ll appear after the next sync.</p>
             ) : (
               <div className="max-h-[420px] space-y-1 overflow-y-auto pr-1">
-                {posts.slice(0, 60).map((p) => <PostRow key={p.id} post={p} />)}
+                {posts.slice(0, 60).map((p) => <PostRow key={p.id} post={p} onPay={(patch) => savePostPay(p.id, patch)} />)}
               </div>
             )}
           </div>
@@ -180,44 +198,42 @@ function Kpi({ icon, label, value, tone }: { icon: string; label: string; value:
   );
 }
 
-function PostRow({ post }: { post: PostDTO }) {
+function PostRow({ post, onPay }: { post: PostDTO; onPay: (patch: VideoPayPatch) => void }) {
   const dt = new Date(post.postedAt);
   return (
-    <a href={post.url ?? "#"} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[var(--panel2)]">
-      <VideoThumb url={post.url} thumbnailUrl={post.thumbnailUrl} platform={post.platform} w={32} h={44} asLink={false} />
+    <div className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[var(--panel2)]">
+      <VideoThumb url={post.url} thumbnailUrl={post.thumbnailUrl} platform={post.platform} w={32} h={44} />
       <span className="mono w-24 shrink-0 text-[11px] text-[var(--muted)]">{dt.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" })}</span>
-      <span className="min-w-0 flex-1 truncate text-sm">{post.caption || <span className="text-[var(--faint)]">(no caption)</span>}</span>
+      <a href={post.url ?? "#"} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm hover:text-[var(--signal)]">
+        {post.caption || <span className="text-[var(--faint)]">(no caption)</span>}
+      </a>
       <span className="mono shrink-0 text-[11px] text-[var(--muted)]">▶ {fmtNum(post.views)}</span>
       <span className="mono shrink-0 text-[11px] text-[var(--muted)]">♥ {fmtNum(post.likes)}</span>
       {post.source === "manual" && <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--faint)]">manual</span>}
-    </a>
+      <div className="w-[108px] shrink-0">
+        <VideoPayMenu
+          value={{ exclusions: parsePayExclusions(post.payExclusions), isWarmUp: post.isWarmUp, payOverride: post.payOverride }}
+          onChange={onPay}
+        />
+      </div>
+    </div>
   );
 }
 
-function CommsPanel({ creator, onSave, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; busy: boolean }) {
+function ContactPanel({ creator, onSave, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; busy: boolean }) {
   const [notes, setNotes] = useState(creator.notes ?? "");
-  const [followUp, setFollowUp] = useState(creator.followUpAt ? creator.followUpAt.slice(0, 10) : "");
 
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold">Comms</h2>
+      <h2 className="mb-3 text-sm font-semibold">Contact</h2>
       <dl className="space-y-2 text-sm">
-        <Row label="Last contacted" value={timeAgo(creator.lastContactedAt)} />
         <Row label="Preferred" value={creator.preferredChannel || "—"} />
         <Row label="Phone" value={creator.phone || "—"} />
         <Row label="WhatsApp" value={creator.whatsapp || "—"} />
-        <Row label="Discord" value={creator.discord || "—"} />
-        <Row label="Email" value={creator.email || "—"} />
+        <Row label="Discord" value={creator.discord ? `@${creator.discord.replace(/^@/, "")}` : "—"} />
+        <Row label="Discord channel" value={creator.discordChannel || "—"} href={creator.discordChannel} />
+        <Row label="Email" value={creator.email || "—"} href={creator.email ? `mailto:${creator.email}` : null} />
       </dl>
-      <button onClick={() => onSave({ markContactedNow: true })} disabled={busy} className="btn btn-primary mt-3 w-full justify-center disabled:opacity-60">Mark contacted now</button>
-
-      <div className="mt-4">
-        <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Follow-up date</label>
-        <div className="flex gap-2">
-          <input type="date" value={followUp} onChange={(e) => setFollowUp(e.target.value)} className="min-w-0 flex-1 px-2.5 py-1.5 text-sm" />
-          <button onClick={() => onSave({ followUpAt: followUp || null })} disabled={busy} className="btn px-3 py-1.5 text-sm disabled:opacity-60">Set</button>
-        </div>
-      </div>
 
       <div className="mt-4">
         <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Notes</label>
@@ -228,22 +244,26 @@ function CommsPanel({ creator, onSave, busy }: { creator: CreatorDTO; onSave: (b
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, href }: { label: string; value: string; href?: string | null }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <dt className="text-[var(--muted)]">{label}</dt>
-      <dd className="truncate text-right">{value}</dd>
+      <dt className="shrink-0 text-[var(--muted)]">{label}</dt>
+      <dd className="min-w-0 truncate text-right">
+        {href && value !== "—" ? (
+          <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className="text-[var(--signal)] hover:underline">{value.replace(/^https?:\/\//, "")}</a>
+        ) : value}
+      </dd>
     </div>
   );
 }
 
 function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; onDelete: () => void; busy: boolean }) {
   const [f, setF] = useState({
-    displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "",
+    displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "", youtubeUrl: creator.youtubeUrl ?? "",
     source: creator.source, sourceDetail: creator.sourceDetail ?? "", sideshiftUrl: creator.sideshiftUrl ?? "",
     paymentMethod: creator.paymentMethod ?? "sideshift", paymentHandle: creator.paymentHandle ?? "", expectedPerWeek: creator.expectedPerWeek,
     status: creator.status, phone: creator.phone ?? "", email: creator.email ?? "", contactHandle: creator.contactHandle ?? "",
-    discord: creator.discord ?? "", whatsapp: creator.whatsapp ?? "", preferredChannel: creator.preferredChannel ?? "",
+    discord: creator.discord ?? "", discordChannel: creator.discordChannel ?? "", whatsapp: creator.whatsapp ?? "", preferredChannel: creator.preferredChannel ?? "",
     onboardedAt: creator.onboardedAt ? creator.onboardedAt.slice(0, 10) : "",
   });
   const field = "w-full px-3 py-2 text-sm";
@@ -256,6 +276,7 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         <div><label className={label}>Name</label><input className={field} value={f.displayName} onChange={(e) => set("displayName", e.target.value)} /></div>
         <div><label className={label}>TikTok URL</label><input className={field} value={f.tiktokUrl} onChange={(e) => set("tiktokUrl", e.target.value)} /></div>
         <div><label className={label}>Instagram URL</label><input className={field} value={f.instagramUrl} onChange={(e) => set("instagramUrl", e.target.value)} /></div>
+        <div><label className={label}>YouTube channel URL <span className="text-[var(--faint)]">(Shorts)</span></label><input className={field} value={f.youtubeUrl} onChange={(e) => set("youtubeUrl", e.target.value)} placeholder="youtube.com/@handle" /></div>
         <div><label className={label}>Source</label><Select className="w-full" value={f.source} onChange={(v) => set("source", v)} options={["sideshift", "referral", "outreach", "agency", "other"].map((s) => [s, SOURCE_LABEL[s] ?? s] as [string, string])} /></div>
         <div><label className={label}>Source detail</label><input className={field} value={f.sourceDetail} onChange={(e) => set("sourceDetail", e.target.value)} /></div>
         <div className="sm:col-span-2 lg:col-span-3"><label className={label}>Sideshift chat URL <span className="text-[var(--faint)]">(pay them here)</span></label><input className={field} value={f.sideshiftUrl} onChange={(e) => set("sideshiftUrl", e.target.value)} placeholder="link to their Sideshift chat" /></div>
@@ -269,7 +290,8 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         <div><label className={label}>Preferred channel</label><Select className="w-full" value={f.preferredChannel} onChange={(v) => set("preferredChannel", v)} options={["", "imessage", "instagram", "whatsapp", "discord", "email", "other"].map((s) => [s, s || "—"] as [string, string])} /></div>
         <div><label className={label}>Phone (iMessage/SMS)</label><input className={field} value={f.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+1…" /></div>
         <div><label className={label}>WhatsApp <span className="text-[var(--faint)]">(if different)</span></label><input className={field} value={f.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="+1…" /></div>
-        <div><label className={label}>Discord <span className="text-[var(--faint)]">(user id or link)</span></label><input className={field} value={f.discord} onChange={(e) => set("discord", e.target.value)} placeholder="user id / invite link" /></div>
+        <div><label className={label}>Discord handle</label><input className={field} value={f.discord} onChange={(e) => set("discord", e.target.value)} placeholder="username" /></div>
+        <div><label className={label}>Discord channel <span className="text-[var(--faint)]">(link to their creator channel)</span></label><input className={field} value={f.discordChannel} onChange={(e) => set("discordChannel", e.target.value)} placeholder="https://discord.com/channels/…" /></div>
         <div><label className={label}>Contact handle</label><input className={field} value={f.contactHandle} onChange={(e) => set("contactHandle", e.target.value)} /></div>
         <div><label className={label}>Email</label><input className={field} value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
       </div>

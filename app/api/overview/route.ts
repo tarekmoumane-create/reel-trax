@@ -31,8 +31,6 @@ export async function GET(request: Request) {
         timeZone: tz,
         calendarDays: 84,
       });
-      const needsFollowUp =
-        !!c.followUpAt && new Date(c.followUpAt).getTime() <= now.getTime();
       const cutoff30 = now.getTime() - 30 * 86_400_000;
       const viewsTotal = c.posts.reduce((s, p) => s + p.views, 0);
       const views30d = c.posts.reduce(
@@ -47,10 +45,8 @@ export async function GET(request: Request) {
         source: c.source,
         tiktokHandle: c.tiktokHandle,
         instagramHandle: c.instagramHandle,
+        youtubeHandle: c.youtubeHandle,
         expectedPerWeek: c.expectedPerWeek,
-        lastContactedAt: c.lastContactedAt,
-        followUpAt: c.followUpAt,
-        needsFollowUp,
         lastSyncedAt: c.lastSyncedAt,
         lastSyncStatus: c.lastSyncStatus,
         preferredChannel: c.preferredChannel,
@@ -59,6 +55,7 @@ export async function GET(request: Request) {
         contactHandle: c.contactHandle,
         email: c.email,
         discord: c.discord,
+        discordChannel: c.discordChannel,
         whatsapp: c.whatsapp,
         sideshiftUrl: c.sideshiftUrl,
         createdAt: c.createdAt,
@@ -84,7 +81,6 @@ export async function GET(request: Request) {
       behind: rows.filter((r) => r.cadence.status === "behind").length,
       quiet: rows.filter((r) => r.cadence.status === "quiet").length,
       noData: rows.filter((r) => r.cadence.status === "no_data").length,
-      needFollowUp: rows.filter((r) => r.needsFollowUp).length,
     };
 
     return ok({ summary, rows, timeZone: tz });

@@ -2,18 +2,22 @@
 
 Your creator-tracking OS — every creator, across every client, in one place.
 Inspired by viral.app, built for an agency workflow: **automatic posting-cadence
-tracking**, a **client switcher**, **sourcing tags** (Sideshift & others), and
-**comms tracking** so you always know who to text next.
+tracking** across TikTok, Instagram Reels and YouTube Shorts, a **client
+switcher**, **sourcing tags** (Sideshift & others), payout tracking with
+per-video pay controls, and client invoices for any date range.
 
 ## What it does
 
 - **Client switcher** (top-left) — toggle between all your clients; everything
   scopes to the selected one.
-- **Automatic posting cadence** — add a creator's TikTok / Instagram profile URL
-  once and a scheduled job tracks their posts for you. Calendars, streaks, and
-  "on track / behind / gone quiet" flags update themselves.
+- **Automatic posting cadence** — add a creator's TikTok / Instagram / YouTube
+  profile URL once and a scheduled job tracks their posts for you. Calendars,
+  streaks, and "on track / behind / gone quiet" flags update themselves.
 - **Roster dashboard** — the people you need to chase float to the top.
-- **Comms tracking** — last-contacted, follow-up dates, preferred channel, notes.
+- **Contact launcher** — one click opens iMessage, WhatsApp, IG DM, Discord or
+  email for a creator (Reel Trax doesn't log conversations).
+- **Payouts & invoices** — per-video pay controls (warm-up posts, fixed prices),
+  and a print-ready invoice for any date range.
 - **Sourcing** — tag where each creator came from (Sideshift, referral, outreach…).
 
 Automatic tracking is powered by [ScrapeCreators](https://scrapecreators.com)
@@ -35,7 +39,7 @@ Then open **Settings → ScrapeCreators API key** and paste your key
 (create a free account at scrapecreators.com — 100 free credits to test).
 Click **Sync now** on the dashboard to pull real posts.
 
-> Without an API key the app still works for organizing creators, clients, comms,
+> Without an API key the app still works for organizing creators, clients, payouts,
 > and manual post logging — only the automatic pull is paused.
 
 ---

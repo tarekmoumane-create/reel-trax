@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     });
     const posts = await prisma.post.findMany({
       where: { creatorId, creator: { campaignLinks: { some: { campaignId } } } },
-      select: { postedAt: true, views: true, payExclusions: true, snapshots: { select: { day: true, views: true } } },
+      select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true, snapshots: { select: { day: true, views: true } } },
     });
 
     const bounds = periodBounds(campaign.period, periodStart);

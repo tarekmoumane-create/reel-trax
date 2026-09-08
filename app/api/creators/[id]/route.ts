@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
-import { parseTikTokHandle, parseInstagramHandle } from "@/lib/scrapecreators";
+import { parseTikTokHandle, parseInstagramHandle, parseYouTube } from "@/lib/scrapecreators";
 
 export async function GET(
   _request: Request,
@@ -49,6 +49,7 @@ export async function PATCH(
       "email",
       "contactHandle",
       "discord",
+      "discordChannel",
       "whatsapp",
       "preferredChannel",
       "status",
@@ -69,6 +70,13 @@ export async function PATCH(
       data.instagramUrl = u;
       data.instagramHandle = u ? parseInstagramHandle(u) : null;
     }
+    if ("youtubeUrl" in body) {
+      const u = (body.youtubeUrl ?? "").trim() || null;
+      const yt = parseYouTube(u ?? "");
+      data.youtubeUrl = u;
+      data.youtubeHandle = yt.handle;
+      data.youtubeChannelId = yt.channelId; // re-resolved on next sync when null
+    }
     if ("expectedPerWeek" in body) {
       data.expectedPerWeek = Math.max(
         1,
@@ -76,12 +84,6 @@ export async function PATCH(
       );
     }
 
-    // Comms shortcuts
-    if (body.markContactedNow === true) data.lastContactedAt = new Date();
-    if ("lastContactedAt" in body)
-      data.lastContactedAt = body.lastContactedAt ? new Date(body.lastContactedAt) : null;
-    if ("followUpAt" in body)
-      data.followUpAt = body.followUpAt ? new Date(body.followUpAt) : null;
     if ("onboardedAt" in body)
       data.onboardedAt = body.onboardedAt ? new Date(body.onboardedAt) : null;
 

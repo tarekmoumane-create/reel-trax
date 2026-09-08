@@ -9,7 +9,25 @@ export const SETTING_KEYS = {
   lightReelApiKey: "lightreel_api_key",
   timeZone: "time_zone",
   cronSecret: "cron_secret",
+  // "Bill from" block on exported invoices
+  invoiceFromName: "invoice_from_name",
+  invoiceFromDetails: "invoice_from_details",
+  invoicePaymentInstructions: "invoice_payment_instructions",
 } as const;
+
+export interface InvoiceProfile {
+  fromName: string;
+  fromDetails: string;
+  paymentInstructions: string;
+}
+
+export async function getInvoiceProfile(): Promise<InvoiceProfile> {
+  return {
+    fromName: (await getSetting(SETTING_KEYS.invoiceFromName)) || "",
+    fromDetails: (await getSetting(SETTING_KEYS.invoiceFromDetails)) || "",
+    paymentInstructions: (await getSetting(SETTING_KEYS.invoicePaymentInstructions)) || "",
+  };
+}
 
 export async function getSetting(key: string): Promise<string | null> {
   const row = await prisma.setting.findUnique({ where: { key } });

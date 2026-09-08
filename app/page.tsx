@@ -51,16 +51,6 @@ export default function Overview() {
     setSyncing(false);
   }
 
-  async function markContacted(id: string) {
-    setBusyRow(id);
-    await fetch(`/api/creators/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markContactedNow: true }),
-    });
-    await load();
-    setBusyRow(null);
-  }
   async function resync(id: string) {
     setBusyRow(id);
     await fetch(`/api/creators/${id}/sync`, { method: "POST" });
@@ -77,7 +67,8 @@ export default function Overview() {
         (x) =>
           x.displayName.toLowerCase().includes(s) ||
           x.tiktokHandle?.toLowerCase().includes(s) ||
-          x.instagramHandle?.toLowerCase().includes(s)
+          x.instagramHandle?.toLowerCase().includes(s) ||
+          x.youtubeHandle?.toLowerCase().includes(s)
       );
     }
     return r;
@@ -171,7 +162,7 @@ export default function Overview() {
             </div>
           ) : (
             rows.map((r) => (
-              <CreatorRow key={r.id} row={r} busy={busyRow === r.id} onContacted={() => markContacted(r.id)} onResync={() => resync(r.id)} />
+              <CreatorRow key={r.id} row={r} busy={busyRow === r.id} onResync={() => resync(r.id)} />
             ))
           )}
         </div>
@@ -206,7 +197,7 @@ function Kpi({ label, value, tone, active, onClick }: { label: string; value: nu
   );
 }
 
-function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; busy: boolean; onContacted: () => Promise<void>; onResync: () => void }) {
+function CreatorRow({ row, busy, onResync }: { row: OverviewRow; busy: boolean; onResync: () => void }) {
   const c = row.cadence;
   return (
     <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(190px,1.6fr)_auto_78px_64px_56px_100px_140px] lg:gap-4">
@@ -221,6 +212,7 @@ function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; bu
           <div className="mono flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--faint)]">
             {row.tiktokHandle && <span>TT @{row.tiktokHandle}</span>}
             {row.instagramHandle && <span>IG @{row.instagramHandle}</span>}
+            {row.youtubeHandle && <span>YT @{row.youtubeHandle}</span>}
             <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">{SOURCE_LABEL[row.source] ?? row.source}</span>
           </div>
         </div>
@@ -237,13 +229,7 @@ function CreatorRow({ row, busy, onContacted, onResync }: { row: OverviewRow; bu
 
       {/* actions */}
       <div className="flex items-center justify-end gap-1.5">
-        <ContactButton
-          creator={row}
-          lastContactedAt={row.lastContactedAt}
-          needsFollowUp={row.needsFollowUp}
-          onContacted={onContacted}
-          compact
-        />
+        <ContactButton creator={row} compact />
         <button onClick={onResync} disabled={busy} title={`Synced ${timeAgo(row.lastSyncedAt)}`} className="btn px-2.5 py-1.5 text-xs disabled:opacity-50">
           {busy ? "…" : "Sync"}
         </button>

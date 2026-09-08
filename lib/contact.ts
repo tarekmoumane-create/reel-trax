@@ -5,6 +5,7 @@ export interface ContactCreator {
   whatsapp?: string | null;
   instagramHandle?: string | null;
   discord?: string | null;
+  discordChannel?: string | null;
   email?: string | null;
   contactHandle?: string | null;
   sideshiftUrl?: string | null;
@@ -35,13 +36,19 @@ export function contactLinks(c: ContactCreator): ContactLink[] {
     links.push({ channel: "instagram", label: "Instagram DM", href: `https://ig.me/m/${c.instagramHandle}`, hint: `@${c.instagramHandle}` });
   }
   if (c.discord) {
-    const d = c.discord.trim();
+    const d = c.discord.trim().replace(/^@/, "");
+    // A pasted profile link opens as-is; a numeric id deep-links to the user;
+    // a plain username can't be deep-linked, so open Discord's app instead.
     const href = /^https?:\/\//.test(d)
       ? d
       : /^\d{5,}$/.test(d)
         ? `https://discord.com/users/${d}`
-        : `https://discord.com/users/${d}`;
-    links.push({ channel: "discord", label: "Discord", href, hint: d });
+        : "https://discord.com/channels/@me";
+    links.push({ channel: "discord", label: "Discord DM", href, hint: `@${d}` });
+  }
+  if (c.discordChannel) {
+    const ch = c.discordChannel.trim();
+    if (/^https?:\/\//.test(ch)) links.push({ channel: "discordChannel", label: "Creator channel", href: ch, hint: "their Discord channel" });
   }
   if (c.email) {
     links.push({ channel: "email", label: "Email", href: `mailto:${c.email}`, hint: c.email });

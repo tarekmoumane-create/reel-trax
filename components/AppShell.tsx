@@ -9,7 +9,7 @@ import { Copilot } from "@/components/Copilot";
 // (and any future standalone pages) bare — no sidebar, no data fetching.
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname === "/login") return <>{children}</>;
+  if (pathname === "/login" || pathname.startsWith("/payouts/invoice")) return <>{children}</>;
   return (
     <ClientsProvider>
       <div className="flex h-screen overflow-hidden">

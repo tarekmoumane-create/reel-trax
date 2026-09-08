@@ -3,7 +3,7 @@ import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 
-// One row per social account (a creator can have TikTok and/or Instagram),
+// One row per social account (a creator can have TikTok, Instagram and/or YouTube),
 // each with its own post-activity strip and totals.
 export async function GET(request: Request) {
   try {
@@ -21,9 +21,11 @@ export async function GET(request: Request) {
     const rows: unknown[] = [];
 
     for (const c of creators) {
-      const platforms: { platform: "tiktok" | "instagram"; handle: string | null; url: string | null }[] = [];
+      const platforms: { platform: "tiktok" | "instagram" | "youtube"; handle: string | null; url: string | null }[] = [];
       if (c.tiktokHandle) platforms.push({ platform: "tiktok", handle: c.tiktokHandle, url: c.tiktokUrl });
       if (c.instagramHandle) platforms.push({ platform: "instagram", handle: c.instagramHandle, url: c.instagramUrl });
+      if (c.youtubeHandle || c.youtubeChannelId || c.youtubeUrl)
+        platforms.push({ platform: "youtube", handle: c.youtubeHandle ?? c.youtubeChannelId ?? "youtube", url: c.youtubeUrl });
 
       for (const p of platforms) {
         const posts = c.posts.filter((x) => x.platform === p.platform);

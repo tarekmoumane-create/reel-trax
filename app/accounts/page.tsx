@@ -12,7 +12,7 @@ import { daysLabel, fmtNum } from "@/lib/ui";
 interface AccountRow {
   creatorId: string;
   creatorName: string;
-  platform: "tiktok" | "instagram";
+  platform: "tiktok" | "instagram" | "youtube";
   handle: string;
   url: string | null;
   postsCount: number;
@@ -21,6 +21,12 @@ interface AccountRow {
   status: CadenceStatus;
   calendar: CadenceResult["calendar"];
 }
+
+const PLATFORM_CHIP: Record<AccountRow["platform"], { label: string; bg: string; color: string }> = {
+  tiktok: { label: "TT", bg: "var(--chip-tt)", color: "var(--ink)" },
+  instagram: { label: "IG", bg: "rgba(214,67,143,0.12)", color: "var(--ig)" },
+  youtube: { label: "YT", bg: "rgba(224,60,60,0.12)", color: "var(--yt)" },
+};
 
 export default function AccountsPage() {
   const { currentClientId, currentClient } = useClients();
@@ -52,12 +58,12 @@ export default function AccountsPage() {
           {loading ? (
             <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
           ) : rows.length === 0 ? (
-            <div className="py-16 text-center text-sm text-[var(--muted)]">No accounts tracked yet. Add a creator with a TikTok or Instagram URL.</div>
+            <div className="py-16 text-center text-sm text-[var(--muted)]">No accounts tracked yet. Add a creator with a TikTok, Instagram or YouTube URL.</div>
           ) : (
             rows.map((a) => (
               <div key={`${a.creatorId}-${a.platform}`} className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] lg:gap-4">
-                <span className="mono w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: a.platform === "tiktok" ? "var(--chip-tt)" : "rgba(214,67,143,0.12)", color: a.platform === "tiktok" ? "var(--ink)" : "var(--ig)" }}>
-                  {a.platform === "tiktok" ? "TT" : "IG"}
+                <span className="mono w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: PLATFORM_CHIP[a.platform].bg, color: PLATFORM_CHIP[a.platform].color }}>
+                  {PLATFORM_CHIP[a.platform].label}
                 </span>
                 <div className="min-w-0">
                   <a href={a.url ?? "#"} target="_blank" rel="noreferrer" className="mono block truncate text-sm hover:text-[var(--signal)]">@{a.handle}</a>

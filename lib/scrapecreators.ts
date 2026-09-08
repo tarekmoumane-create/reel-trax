@@ -5,7 +5,7 @@
 
 const BASE = "https://api.scrapecreators.com";
 
-export type Platform = "tiktok" | "instagram";
+export type Platform = "tiktok" | "instagram" | "youtube";
 
 export interface NormalizedPost {
   platform: Platform;
@@ -65,6 +65,30 @@ export function parseInstagramHandle(input: string): string | null {
   if (s.startsWith("@")) return s.slice(1);
   if (/^[A-Za-z0-9._]+$/.test(s)) return s;
   return null;
+}
+
+/**
+ * YouTube channel identity from whatever got pasted: "@handle", a bare handle,
+ * youtube.com/@handle, youtube.com/channel/UC…, or a youtube.com/c|user/… URL
+ * (those only resolve to an id via the API — see fetchYouTubeProfile).
+ */
+export function parseYouTube(input: string): { handle: string | null; channelId: string | null } {
+  const none = { handle: null, channelId: null };
+  if (!input) return none;
+  const s = input.trim();
+  const ch = s.match(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{10,})/i);
+  if (ch) return { handle: null, channelId: ch[1] };
+  const at = s.match(/youtube\.com\/@([A-Za-z0-9._-]+)/i);
+  if (at) return { handle: at[1], channelId: null };
+  if (/youtube\.com|youtu\.be/i.test(s)) return none; // /c/… or /user/… — resolve later
+  if (/^UC[A-Za-z0-9_-]{10,}$/.test(s)) return { handle: null, channelId: s };
+  if (s.startsWith("@")) return { handle: s.slice(1), channelId: null };
+  if (/^[A-Za-z0-9._-]+$/.test(s)) return { handle: s, channelId: null };
+  return none;
+}
+
+export function parseYouTubeHandle(input: string): string | null {
+  return parseYouTube(input).handle;
 }
 
 // ---------- helpers ----------
@@ -275,6 +299,95 @@ export async function fetchTikTokProfile(
   const userId =
     (pick(data, ["user.id", "user.uid", "data.user.id"]) as string) || null;
   return { avatarUrls, followers, userId: userId ? String(userId) : null };
+}
+
+// ---------- YouTube (Shorts) ----------
+
+/**
+ * YouTube channel details — subscriber count, avatar, and the channel id we
+ * cache so later calls skip handle resolution. Accepts any one identifier.
+ */
+export async function fetchYouTubeProfile(
+  opts: { handle?: string | null; channelId?: string | null; url?: string | null },
+  apiKey: string
+): Promise<ProfileResult> {
+  const params: Record<string, string> = {};
+  if (opts.channelId) params.channelId = opts.channelId;
+  else if (opts.handle) params.handle = opts.handle;
+  else if (opts.url) params.url = opts.url;
+  else throw new ScrapeCreatorsError("YouTube: need handle, channelId or url");
+  const data = await scGet("/v1/youtube/channel", params, apiKey);
+
+  // The avatar comes as an image object with several sizes; collect every
+  // source, largest first. Fall back to plain URL fields if the shape drifts.
+  const sources = (pick(data, ["avatar.image.sources", "avatar.sources", "avatar.thumbnails"]) as unknown) ?? [];
+  const fromSources = Array.isArray(sources)
+    ? (sources as any[])
+        .map((x) => ({ url: x?.url, size: num(x?.width) }))
+        .filter((x) => typeof x.url === "string" && x.url)
+        .sort((a, b) => b.size - a.size)
+        .map((x) => x.url as string)
+    : [];
+  const avatarUrls = [...new Set([...fromSources, ...pickAll(data, ["avatar.url", "avatar", "thumbnail"])])];
+  const followers = num(pick(data, ["subscriberCount", "subscriber_count"])) || null;
+  const channelId = (pick(data, ["channelId", "channel_id", "id"]) as string) || null;
+  return { avatarUrls, followers, userId: channelId ? String(channelId) : null };
+}
+
+/** One Short's details — used to backfill a publish date the list omitted. */
+async function fetchYouTubeVideoDate(url: string, apiKey: string): Promise<Date | null> {
+  try {
+    const data = await scGet("/v1/youtube/video", { url }, apiKey);
+    return toDate(pick(data, ["publishDate", "publish_date", "uploadDate"]));
+  } catch {
+    return null;
+  }
+}
+
+// Shorts the list endpoint didn't date get one details call each, capped so
+// a brand-new channel with a huge backlog can't burn credits in one sync.
+const YT_DATE_LOOKUP_CAP = 12;
+
+export async function fetchYouTubeShorts(
+  opts: { handle?: string | null; channelId?: string | null },
+  apiKey: string
+): Promise<FetchResult> {
+  const params: Record<string, string> = { sort: "newest" };
+  if (opts.channelId) params.channelId = opts.channelId;
+  else if (opts.handle) params.handle = opts.handle;
+  else throw new ScrapeCreatorsError("YouTube: need handle or channelId");
+
+  const data = await scGet("/v1/youtube/channel/shorts", params, apiKey);
+  const list: any[] = (pick(data, ["shorts", "data.shorts", "videos", "items"]) as any[]) ?? [];
+  const posts: NormalizedPost[] = [];
+  let lookups = 0;
+
+  for (const it of Array.isArray(list) ? list : []) {
+    const id = String(pick(it, ["id", "videoId", "video_id"]) ?? "");
+    if (!id) continue;
+    const url = (pick(it, ["url"]) as string) || `https://www.youtube.com/shorts/${id}`;
+    let postedAt = toDate(pick(it, ["publishDate", "publishedTime", "publish_date", "publishedAt"]));
+    if (!postedAt && lookups < YT_DATE_LOOKUP_CAP) {
+      lookups++;
+      postedAt = await fetchYouTubeVideoDate(url, apiKey);
+    }
+    if (!postedAt) continue;
+    posts.push({
+      platform: "youtube",
+      platformPostId: id,
+      url,
+      caption: (pick(it, ["title"]) as string) ?? null,
+      thumbnailUrl:
+        (pick(it, ["thumbnail", "thumbnails.0.url", "thumbnail.url"]) as string) ??
+        `https://i.ytimg.com/vi/${id}/oardefault.jpg`,
+      postedAt,
+      views: num(pick(it, ["viewCountInt", "viewCount", "views"])),
+      likes: num(pick(it, ["likeCountInt", "likeCount", "likes"])),
+      comments: num(pick(it, ["commentCountInt", "commentCount", "comments"])),
+      shares: 0, // YouTube doesn't expose share counts
+    });
+  }
+  return { posts, rawCount: Array.isArray(list) ? list.length : 0 };
 }
 
 // ---------- Instagram ----------

@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const clientId = searchParams.get("clientId");
     if (!clientId) return bad("clientId is required");
     const sort = searchParams.get("sort") || "recent"; // recent | views
-    const platform = searchParams.get("platform"); // tiktok | instagram | null
+    const platform = searchParams.get("platform"); // tiktok | instagram | youtube | null
     const limit = Math.min(500, Number(searchParams.get("limit")) || 200);
 
     const posts = await prisma.post.findMany({
@@ -34,6 +34,8 @@ export async function GET(request: Request) {
         comments: p.comments,
         source: p.source,
         payExclusions: p.payExclusions,
+        isWarmUp: p.isWarmUp,
+        payOverride: p.payOverride,
         creatorId: p.creator.id,
         creatorName: p.creator.displayName,
       }))

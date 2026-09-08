@@ -21,10 +21,8 @@ export interface OverviewRow {
   source: string;
   tiktokHandle: string | null;
   instagramHandle: string | null;
+  youtubeHandle: string | null;
   expectedPerWeek: number;
-  lastContactedAt: string | null;
-  followUpAt: string | null;
-  needsFollowUp: boolean;
   lastSyncedAt: string | null;
   lastSyncStatus: string | null;
   preferredChannel: string | null;
@@ -32,6 +30,7 @@ export interface OverviewRow {
   contactHandle: string | null;
   email: string | null;
   discord: string | null;
+  discordChannel: string | null;
   whatsapp: string | null;
   sideshiftUrl: string | null;
   createdAt: string;
@@ -47,7 +46,6 @@ export interface OverviewResponse {
     behind: number;
     quiet: number;
     noData: number;
-    needFollowUp: number;
   };
   rows: OverviewRow[];
   timeZone: string;
@@ -62,6 +60,9 @@ export interface CreatorDTO {
   tiktokUrl: string | null;
   instagramHandle: string | null;
   instagramUrl: string | null;
+  youtubeHandle: string | null;
+  youtubeUrl: string | null;
+  youtubeChannelId: string | null;
   source: string;
   sourceDetail: string | null;
   sideshiftUrl: string | null;
@@ -72,14 +73,13 @@ export interface CreatorDTO {
   email: string | null;
   contactHandle: string | null;
   discord: string | null;
+  discordChannel: string | null;
   whatsapp: string | null;
   preferredChannel: string | null;
   expectedPerWeek: number;
   status: string;
   onboardedAt: string | null;
   notes: string | null;
-  lastContactedAt: string | null;
-  followUpAt: string | null;
   lastSyncedAt: string | null;
   lastSyncStatus: string | null;
   lastSyncError: string | null;
@@ -101,6 +101,9 @@ export interface PostDTO {
   comments: number;
   shares: number;
   source: string;
+  payExclusions: string | null;
+  isWarmUp: boolean;
+  payOverride: number | null;
 }
 
 export interface CreatorDetailResponse {

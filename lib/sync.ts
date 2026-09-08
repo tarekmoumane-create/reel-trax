@@ -4,8 +4,11 @@ import {
   fetchInstagram,
   fetchInstagramProfile,
   fetchTikTokProfile,
+  fetchYouTubeProfile,
+  fetchYouTubeShorts,
   parseTikTokHandle,
   parseInstagramHandle,
+  parseYouTube,
   type NormalizedPost,
 } from "./scrapecreators";
 import { downloadFirstWebSafe, isWebSafeMime, type StoredImage } from "./avatar";
@@ -29,7 +32,7 @@ async function snapshotFollowers(
 }
 
 export interface PlatformSyncResult {
-  platform: "tiktok" | "instagram";
+  platform: "tiktok" | "instagram" | "youtube";
   ok: boolean;
   fetched: number;
   upserted: number;
@@ -53,6 +56,7 @@ export type SyncableCreator = Omit<Creator, "avatarData">;
 interface AvatarSource {
   igHandle: string | null;
   tiktokHandle: string | null;
+  youtube: { handle: string | null; channelId: string | null } | null;
   postsAvatars: string[];
 }
 
@@ -82,6 +86,13 @@ async function resolveAvatar(
       candidates.push(...(await fetchTikTokProfile(src.tiktokHandle, apiKey)).avatarUrls);
     } catch (e) {
       console.warn(`avatar (tt @${src.tiktokHandle}):`, (e as Error).message);
+    }
+  }
+  if (candidates.length === 0 && src.youtube && (src.youtube.handle || src.youtube.channelId)) {
+    try {
+      candidates.push(...(await fetchYouTubeProfile(src.youtube, apiKey)).avatarUrls);
+    } catch (e) {
+      console.warn(`avatar (yt ${src.youtube.handle ?? src.youtube.channelId}):`, (e as Error).message);
     }
   }
   candidates.push(...src.postsAvatars);
@@ -222,6 +233,34 @@ export async function syncCreator(
     }
   }
 
+  // ---- YouTube Shorts ----
+  const ytParsed = parseYouTube(creator.youtubeUrl || "");
+  const yt = {
+    handle: creator.youtubeHandle || ytParsed.handle,
+    channelId: creator.youtubeChannelId || ytParsed.channelId,
+  };
+  if (yt.handle || yt.channelId || creator.youtubeUrl) {
+    try {
+      // Channel details every sync: subscriber count for the followers chart,
+      // and the channel id (a /c/… or /user/… URL only resolves through here).
+      const prof = await fetchYouTubeProfile(
+        yt.handle || yt.channelId ? yt : { url: creator.youtubeUrl },
+        apiKey
+      );
+      if (prof.userId && prof.userId !== creator.youtubeChannelId) {
+        yt.channelId = prof.userId;
+        await prisma.creator.update({ where: { id: creator.id }, data: { youtubeChannelId: prof.userId } });
+      }
+      if (prof.avatarUrls.length) postsAvatars.push(...prof.avatarUrls);
+      const r = await fetchYouTubeShorts(yt, apiKey);
+      const upserted = await upsertPosts(creator.id, r.posts, tz);
+      await snapshotFollowers(creator.id, "youtube", prof.followers, tz);
+      results.push({ platform: "youtube", ok: true, fetched: r.rawCount, upserted });
+    } catch (e) {
+      results.push({ platform: "youtube", ok: false, fetched: 0, upserted: 0, error: (e as Error).message });
+    }
+  }
+
   // ---- Profile picture ----
   // Fetched once and then left alone: creators almost never change their photo,
   // so once we've stored a usable image every later sync skips this entirely —
@@ -231,7 +270,7 @@ export async function syncCreator(
   const hasGoodAvatar = !!creator.avatarAt && isWebSafeMime(creator.avatarMime);
   const avatar =
     opts.refreshAvatar || !hasGoodAvatar
-      ? await resolveAvatar({ igHandle, tiktokHandle, postsAvatars }, apiKey)
+      ? await resolveAvatar({ igHandle, tiktokHandle, youtube: yt, postsAvatars }, apiKey)
       : null;
 
   const anyTried = results.length > 0;

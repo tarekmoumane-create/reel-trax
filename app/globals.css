@@ -23,6 +23,7 @@
   --bad: #bf4536;
   --tt: #1a1d27;
   --ig: #c2438c;
+  --yt: #c4302b;
   --field: #fcfcfe;       /* input fill */
   --scroll: #d4d7e0;      /* scrollbar thumb */
   --card-shadow: 0 1px 2px rgba(20, 22, 32, 0.04);
@@ -57,6 +58,7 @@
   --bad: #e0644e;
   --tt: #e8eaf0;
   --ig: #d9679f;
+  --yt: #ef6a5a;
   --field: #101117;
   --scroll: #2a2c36;
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
@@ -89,6 +91,7 @@
     --bad: #e0644e;
     --tt: #e8eaf0;
     --ig: #d9679f;
+    --yt: #ef6a5a;
     --field: #101117;
     --scroll: #2a2c36;
     --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
@@ -238,4 +241,32 @@ textarea::placeholder {
 .btn-primary:hover {
   background: var(--primary);
   filter: brightness(1.08);
+}
+
+/* ============ Invoice (printable) ============
+   A paper document, not an app screen: always light, no chrome when printed. */
+.invoice-root {
+  color-scheme: light;
+  background: #e9ebf0;
+  color: #1a1d27;
+  min-height: 100vh;
+}
+.invoice-root input,
+.invoice-root textarea {
+  background: #fff;
+  border-color: #d9dce4;
+  color: #1a1d27;
+}
+.invoice-sheet {
+  background: #fff;
+  color: #1a1d27;
+  box-shadow: 0 1px 2px rgba(20, 22, 32, 0.08), 0 12px 40px -18px rgba(20, 22, 32, 0.35);
+}
+@media print {
+  @page { margin: 14mm; }
+  html, body { background: #fff !important; }
+  .no-print { display: none !important; }
+  .invoice-root { background: #fff; min-height: 0; }
+  .invoice-sheet { box-shadow: none; margin: 0; max-width: none; width: auto; padding: 0; border: 0; }
+  .invoice-avoid-break { break-inside: avoid; }
 }

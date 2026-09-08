@@ -17,7 +17,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Reel Trax",
   description:
-    "Track every creator across every client — posting cadence, sourcing, comms and payouts in one place.",
+    "Track every creator across every client — posting cadence, sourcing, payouts and invoices in one place.",
 };
 
 // Apply the saved theme before first paint so there's no flash of the wrong palette.

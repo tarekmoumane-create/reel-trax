@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { sanitizePayRules } from "@/lib/payouts";
 import { syncAutoCampaign } from "@/lib/autocampaign";
-import { parseTikTokHandle, parseInstagramHandle } from "@/lib/scrapecreators";
+import { parseTikTokHandle, parseInstagramHandle, parseYouTube } from "@/lib/scrapecreators";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreator } from "@/lib/sync";
 
@@ -37,6 +37,8 @@ export async function POST(request: Request) {
     const instagramHandle = instagramUrl
       ? parseInstagramHandle(instagramUrl)
       : parseInstagramHandle((body?.instagramHandle ?? "").trim());
+    const youtubeUrl = (body?.youtubeUrl ?? "").trim() || null;
+    const yt = parseYouTube(youtubeUrl ?? (body?.youtubeHandle ?? "").trim());
 
     const creator = await prisma.creator.create({
       data: {
@@ -46,6 +48,9 @@ export async function POST(request: Request) {
         tiktokHandle,
         instagramUrl,
         instagramHandle,
+        youtubeUrl,
+        youtubeHandle: yt.handle,
+        youtubeChannelId: yt.channelId,
         source: body?.source || "sideshift",
         sourceDetail: body?.sourceDetail || null,
         sideshiftUrl: body?.sideshiftUrl || null,
@@ -59,6 +64,7 @@ export async function POST(request: Request) {
         email: body?.email || null,
         contactHandle: body?.contactHandle || null,
         discord: body?.discord || null,
+        discordChannel: body?.discordChannel || null,
         whatsapp: body?.whatsapp || null,
         preferredChannel: body?.preferredChannel || null,
         expectedPerWeek: Number.isFinite(body?.expectedPerWeek)
@@ -80,7 +86,7 @@ export async function POST(request: Request) {
     // Best-effort immediate first sync so the creator isn't blank on arrival.
     let firstSync: unknown = null;
     const apiKey = await getScrapeCreatorsKey();
-    if (apiKey && (tiktokHandle || instagramHandle)) {
+    if (apiKey && (tiktokHandle || instagramHandle || youtubeUrl)) {
       try {
         firstSync = await syncCreator(creator, apiKey);
       } catch {

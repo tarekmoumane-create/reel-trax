@@ -16,7 +16,7 @@ async function buildSnapshot(clientId: string) {
 
   const creators = await prisma.creator.findMany({
     where: { clientId },
-    include: { posts: { select: { postedAt: true, views: true, payExclusions: true } } },
+    include: { posts: { select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true } } },
   });
 
   const creatorRows = creators.map((c) => {
@@ -27,19 +27,18 @@ async function buildSnapshot(clientId: string) {
       source: c.source,
       tiktok: c.tiktokHandle,
       instagram: c.instagramHandle,
+      youtube: c.youtubeHandle,
       cadenceStatus: cad.status,
       postsLast7d: cad.postsLast7d,
       target: c.expectedPerWeek,
       streakDays: cad.currentStreakDays,
       daysSinceLastPost: cad.daysSinceLastPost,
-      lastContacted: c.lastContactedAt,
-      followUpDue: c.followUpAt && c.followUpAt <= now ? c.followUpAt : null,
     };
   });
 
   const campaigns = await prisma.campaign.findMany({
     where: { clientId },
-    include: { assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true } } } } } } },
+    include: { assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true } } } } } } },
   });
   const campaignRows = campaigns.map((c) => {
     const bounds = periodBounds(c.period, now);
@@ -79,7 +78,7 @@ export async function POST(request: Request) {
     const anthropic = new Anthropic({ apiKey });
 
     const system =
-      "You are the Reel Trax copilot, an assistant for a UGC creator agency. You answer questions about ONE client's creators, their posting cadence, campaigns, and payouts using ONLY the JSON snapshot provided. Be concise and specific: name creators, cite numbers (posts, streaks, days since last post, dollar amounts). When asked who needs attention, prioritize 'quiet' then 'behind' cadence and overdue follow-ups. If the snapshot doesn't contain the answer, say so briefly. Format with short markdown (bullets, bold names). Do not invent data.";
+      "You are the Reel Trax copilot, an assistant for a UGC creator agency. You answer questions about ONE client's creators, their posting cadence, campaigns, and payouts using ONLY the JSON snapshot provided. Be concise and specific: name creators, cite numbers (posts, streaks, days since last post, dollar amounts). When asked who needs attention, prioritize 'quiet' then 'behind' cadence. If the snapshot doesn't contain the answer, say so briefly. Format with short markdown (bullets, bold names). Do not invent data.";
 
     const msg = await anthropic.messages.create({
       model: "claude-opus-4-8",

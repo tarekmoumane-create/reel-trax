@@ -34,6 +34,9 @@ async function run(request: Request) {
         { tiktokHandle: { not: null } },
         { instagramHandle: { not: null } },
         { tiktokUserId: { not: null } },
+        { youtubeHandle: { not: null } },
+        { youtubeChannelId: { not: null } },
+        { youtubeUrl: { not: null } },
       ],
     },
   });

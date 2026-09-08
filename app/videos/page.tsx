@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useClients } from "../providers";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { VideoThumb } from "@/components/VideoThumb";
 import { fmtNum } from "@/lib/ui";
-import { parsePayExclusions, PAY_COMPONENTS, type PayComponent, type PayExclusion } from "@/lib/payouts";
+import { parsePayExclusions } from "@/lib/payouts";
+import { VideoPayMenu, type VideoPayPatch } from "@/components/VideoPayMenu";
 
 interface VideoRow {
   id: string;
@@ -20,6 +21,8 @@ interface VideoRow {
   comments: number;
   source: string;
   payExclusions: string | null;
+  isWarmUp: boolean;
+  payOverride: number | null;
   creatorId: string;
   creatorName: string;
 }
@@ -29,7 +32,7 @@ export default function VideosPage() {
   const [rows, setRows] = useState<VideoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<"recent" | "views">("recent");
-  const [platform, setPlatform] = useState<"" | "tiktok" | "instagram">("");
+  const [platform, setPlatform] = useState<"" | "tiktok" | "instagram" | "youtube">("");
 
   const load = useCallback(async () => {
     if (!currentClientId) return;
@@ -45,13 +48,20 @@ export default function VideosPage() {
     load();
   }, [load]);
 
-  async function saveExclusions(id: string, list: PayExclusion[]) {
-    // optimistic — the menu closes instantly, the PATCH lands behind it
-    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, payExclusions: list.length ? JSON.stringify(list) : null } : r)));
+  async function savePay(id: string, patch: VideoPayPatch) {
+    // optimistic — the menu updates instantly, the PATCH lands behind it
+    setRows((rs) => rs.map((r) => {
+      if (r.id !== id) return r;
+      const next = { ...r };
+      if (patch.payExclusions) next.payExclusions = patch.payExclusions.length ? JSON.stringify(patch.payExclusions) : null;
+      if ("isWarmUp" in patch) next.isWarmUp = !!patch.isWarmUp;
+      if ("payOverride" in patch) next.payOverride = patch.payOverride ?? null;
+      return next;
+    }));
     await fetch(`/api/videos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payExclusions: list }),
+      body: JSON.stringify(patch),
     });
   }
 
@@ -64,7 +74,7 @@ export default function VideosPage() {
         <PageTitle title="Videos" sub={`Every tracked post for ${currentClient?.name ?? "this client"}.`} />
 
         <div className="mb-3 flex items-center gap-2">
-          <Seg value={platform} onChange={setPlatform} options={[["", "All"], ["tiktok", "TikTok"], ["instagram", "Instagram"]]} />
+          <Seg value={platform} onChange={setPlatform} options={[["", "All"], ["tiktok", "TikTok"], ["instagram", "Instagram"], ["youtube", "YouTube"]]} />
           <div className="ml-auto">
             <Seg value={sort} onChange={setSort} options={[["recent", "Newest"], ["views", "Top views"]]} />
           </div>
@@ -93,91 +103,18 @@ export default function VideosPage() {
                   <span className="mono text-[13px]">{fmtNum(p.views)}</span>
                   <span className="mono text-[13px] text-[var(--muted)]">{fmtNum(p.likes)}</span>
                   <span className="mono text-[13px] text-[var(--muted)]">{fmtNum(p.comments)}</span>
-                  <PayFlagsMenu exclusions={parsePayExclusions(p.payExclusions)} onChange={(list) => saveExclusions(p.id, list)} />
+                  <VideoPayMenu
+                    value={{ exclusions: parsePayExclusions(p.payExclusions), isWarmUp: p.isWarmUp, payOverride: p.payOverride }}
+                    onChange={(patch) => savePay(p.id, patch)}
+                  />
                 </div>
               );
             })
           )}
         </div>
-        {rows.length > 0 && <p className="mt-3 text-xs text-[var(--faint)]">Showing {rows.length} posts. The Pay column controls which pay rules each video counts toward.</p>}
+        {rows.length > 0 && <p className="mt-3 text-xs text-[var(--faint)]">Showing {rows.length} posts. The Pay column sets what each video earns — mark warm-up posts so they skip view bonuses, or give a video a fixed price.</p>}
       </div>
     </>
-  );
-}
-
-const COMPONENT_LABEL: Record<PayComponent, string> = {
-  perPost: "Per-post fee",
-  cpm: "CPM / view pay",
-  tiers: "View bonuses",
-};
-
-function paySummary(ex: PayExclusion[]): { label: string; tone: string } {
-  if (ex.includes("all")) return { label: "Excluded", tone: "text-[var(--bad)]" };
-  if (ex.length === 0) return { label: "Counts", tone: "text-[var(--muted)]" };
-  const short: Record<PayComponent, string> = { perPost: "post fee", cpm: "CPM", tiers: "bonuses" };
-  return { label: `No ${ex.map((e) => short[e as PayComponent]).join(", ")}`, tone: "text-[var(--warn)]" };
-}
-
-function PayFlagsMenu({ exclusions, onChange }: { exclusions: PayExclusion[]; onChange: (list: PayExclusion[]) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    function onDoc(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  const all = exclusions.includes("all");
-  const { label, tone } = paySummary(exclusions);
-
-  function toggleComponent(c: PayComponent) {
-    const cur = exclusions.filter((e) => e !== "all");
-    onChange(cur.includes(c) ? cur.filter((e) => e !== c) : [...cur, c]);
-  }
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`inline-flex w-full items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-medium hover:border-[var(--signal)] ${open ? "border-[var(--signal)]" : "border-[var(--line)]"} ${tone}`}
-      >
-        <span className="truncate">{label}</span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="shrink-0 text-[var(--faint)]">
-          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute right-0 z-40 mt-1.5 w-52 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] py-1 shadow-2xl">
-          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)]">Counts toward</div>
-          {PAY_COMPONENTS.map((c) => {
-            const counts = !all && !exclusions.includes(c);
-            return (
-              <button
-                key={c}
-                disabled={all}
-                onClick={() => toggleComponent(c)}
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs hover:bg-[var(--panel2)] disabled:opacity-40"
-              >
-                {COMPONENT_LABEL[c]}
-                <span className={`grid h-4 w-4 place-items-center rounded border ${counts ? "border-[var(--signal)] bg-[var(--signal)] text-white" : "border-[var(--line)]"}`}>
-                  {counts && (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-          <div className="mt-1 border-t border-[var(--line2)] p-1">
-            <button
-              onClick={() => { onChange(all ? [] : ["all"]); setOpen(false); }}
-              className={`w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium ${all ? "text-[var(--ok)] hover:bg-[var(--panel2)]" : "text-[var(--bad)] hover:bg-[color:rgba(242,104,95,0.1)]"}`}
-            >
-              {all ? "Include in pay again" : "Exclude from all pay"}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 
