@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
-import { parseTikTokHandle, parseInstagramHandle, parseYouTube } from "@/lib/scrapecreators";
+import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle } from "@/lib/scrapecreators";
 
 export async function GET(
   _request: Request,
@@ -76,6 +76,11 @@ export async function PATCH(
       data.youtubeUrl = u;
       data.youtubeHandle = yt.handle;
       data.youtubeChannelId = yt.channelId; // re-resolved on next sync when null
+    }
+    if ("threadsUrl" in body) {
+      const u = (body.threadsUrl ?? "").trim() || null;
+      data.threadsUrl = u;
+      data.threadsHandle = u ? parseThreadsHandle(u) : null;
     }
     if ("expectedPerWeek" in body) {
       data.expectedPerWeek = Math.max(

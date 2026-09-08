@@ -5,7 +5,7 @@
 
 const BASE = "https://api.scrapecreators.com";
 
-export type Platform = "tiktok" | "instagram" | "youtube";
+export type Platform = "tiktok" | "instagram" | "youtube" | "threads";
 
 export interface NormalizedPost {
   platform: Platform;
@@ -85,6 +85,16 @@ export function parseYouTube(input: string): { handle: string | null; channelId:
   if (s.startsWith("@")) return { handle: s.slice(1), channelId: null };
   if (/^[A-Za-z0-9._-]+$/.test(s)) return { handle: s, channelId: null };
   return none;
+}
+
+export function parseThreadsHandle(input: string): string | null {
+  if (!input) return null;
+  const s = input.trim();
+  const m = s.match(/threads\.(?:net|com)\/@?([A-Za-z0-9._]+)/i);
+  if (m) return m[1];
+  if (s.startsWith("@")) return s.slice(1);
+  if (/^[A-Za-z0-9._]+$/.test(s)) return s;
+  return null;
 }
 
 export function parseYouTubeHandle(input: string): string | null {
@@ -388,6 +398,64 @@ export async function fetchYouTubeShorts(
     });
   }
   return { posts, rawCount: Array.isArray(list) ? list.length : 0 };
+}
+
+// ---------- Threads ----------
+
+export async function fetchThreadsProfile(handle: string, apiKey: string): Promise<ProfileResult> {
+  const data = await scGet("/v1/threads/profile", { handle }, apiKey);
+  const hd = (pick(data, ["hd_profile_pic_versions", "user.hd_profile_pic_versions"]) as unknown) ?? [];
+  const fromHd = Array.isArray(hd)
+    ? (hd as any[])
+        .map((x) => ({ url: x?.url, size: num(x?.width) }))
+        .filter((x) => typeof x.url === "string" && x.url)
+        .sort((a, b) => b.size - a.size)
+        .map((x) => x.url as string)
+    : [];
+  const avatarUrls = [...new Set([...fromHd, ...pickAll(data, ["profile_pic_url", "user.profile_pic_url"])])];
+  const followers = num(pick(data, ["follower_count", "user.follower_count"])) || null;
+  const userId = (pick(data, ["pk", "id", "user.pk", "user.id"]) as string) || null;
+  return { avatarUrls, followers, userId: userId ? String(userId) : null };
+}
+
+/**
+ * A creator's recent Threads posts. Threads only exposes the last ~20–30
+ * posts and reports no view counts, so views stay 0 — cadence still works.
+ */
+export async function fetchThreads(opts: { handle: string }, apiKey: string): Promise<FetchResult> {
+  const data = await scGet("/v1/threads/user/posts", { handle: opts.handle }, apiKey);
+  const list: any[] = (pick(data, ["posts", "data.posts", "items", "data"]) as any[]) ?? [];
+  const posts: NormalizedPost[] = [];
+  for (const raw of Array.isArray(list) ? list : []) {
+    const it = raw?.post ?? raw?.node ?? raw;
+    const id = String(pick(it, ["pk", "id", "code"]) ?? "");
+    if (!id) continue;
+    const postedAt = toDate(pick(it, ["taken_at", "taken_at_timestamp", "timestamp"]));
+    if (!postedAt) continue;
+    const code = pick(it, ["code"]) as string | undefined;
+    const user = (pick(it, ["user.username"]) as string) || opts.handle;
+    const caption = pick(it, ["caption.text", "caption", "text_post_app_info.text", "text"]);
+    const info = "text_post_app_info";
+    posts.push({
+      platform: "threads",
+      platformPostId: id,
+      url: (pick(it, ["url"]) as string) || (code ? `https://www.threads.com/@${user}/post/${code}` : null),
+      caption: typeof caption === "string" ? caption : null,
+      thumbnailUrl:
+        (pick(it, [
+          "image_versions2.candidates.0.url",
+          "carousel_media.0.image_versions2.candidates.0.url",
+          "video_versions.0.thumbnail_url",
+        ]) as string) ?? null,
+      postedAt,
+      views: num(pick(it, ["view_count", "play_count", `${info}.view_count`, "video_view_count"])),
+      likes: num(pick(it, ["like_count", `${info}.like_count`])),
+      comments: num(pick(it, [`${info}.direct_reply_count`, "reply_count", "comment_count"])),
+      shares: num(pick(it, [`${info}.repost_count`])) + num(pick(it, [`${info}.reshare_count`])),
+    });
+  }
+  const avatarUrls = list.length ? pickAll(list[0], ["user.profile_pic_url", "post.user.profile_pic_url"]) : [];
+  return { posts, avatarUrls, rawCount: Array.isArray(list) ? list.length : 0 };
 }
 
 // ---------- Instagram ----------

@@ -6,9 +6,12 @@ import {
   fetchTikTokProfile,
   fetchYouTubeProfile,
   fetchYouTubeShorts,
+  fetchThreads,
+  fetchThreadsProfile,
   parseTikTokHandle,
   parseInstagramHandle,
   parseYouTube,
+  parseThreadsHandle,
   type NormalizedPost,
 } from "./scrapecreators";
 import { downloadFirstWebSafe, isWebSafeMime, type StoredImage } from "./avatar";
@@ -32,7 +35,7 @@ async function snapshotFollowers(
 }
 
 export interface PlatformSyncResult {
-  platform: "tiktok" | "instagram" | "youtube";
+  platform: "tiktok" | "instagram" | "youtube" | "threads";
   ok: boolean;
   fetched: number;
   upserted: number;
@@ -57,6 +60,7 @@ interface AvatarSource {
   igHandle: string | null;
   tiktokHandle: string | null;
   youtube: { handle: string | null; channelId: string | null } | null;
+  threadsHandle: string | null;
   postsAvatars: string[];
 }
 
@@ -93,6 +97,13 @@ async function resolveAvatar(
       candidates.push(...(await fetchYouTubeProfile(src.youtube, apiKey)).avatarUrls);
     } catch (e) {
       console.warn(`avatar (yt ${src.youtube.handle ?? src.youtube.channelId}):`, (e as Error).message);
+    }
+  }
+  if (candidates.length === 0 && src.threadsHandle) {
+    try {
+      candidates.push(...(await fetchThreadsProfile(src.threadsHandle, apiKey)).avatarUrls);
+    } catch (e) {
+      console.warn(`avatar (threads @${src.threadsHandle}):`, (e as Error).message);
     }
   }
   candidates.push(...src.postsAvatars);
@@ -261,6 +272,27 @@ export async function syncCreator(
     }
   }
 
+  // ---- Threads ----
+  const threadsHandle = creator.threadsHandle || parseThreadsHandle(creator.threadsUrl || "") || null;
+  if (threadsHandle) {
+    try {
+      const r = await fetchThreads({ handle: threadsHandle }, apiKey);
+      const upserted = await upsertPosts(creator.id, r.posts, tz);
+      if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
+      // Follower count only lives on the profile endpoint (1 credit).
+      try {
+        const prof = await fetchThreadsProfile(threadsHandle, apiKey);
+        await snapshotFollowers(creator.id, "threads", prof.followers, tz);
+        if (prof.avatarUrls.length) postsAvatars.unshift(...prof.avatarUrls);
+      } catch (e) {
+        console.warn(`threads profile @${threadsHandle}:`, (e as Error).message);
+      }
+      results.push({ platform: "threads", ok: true, fetched: r.rawCount, upserted });
+    } catch (e) {
+      results.push({ platform: "threads", ok: false, fetched: 0, upserted: 0, error: (e as Error).message });
+    }
+  }
+
   // ---- Profile picture ----
   // Fetched once and then left alone: creators almost never change their photo,
   // so once we've stored a usable image every later sync skips this entirely —
@@ -270,7 +302,7 @@ export async function syncCreator(
   const hasGoodAvatar = !!creator.avatarAt && isWebSafeMime(creator.avatarMime);
   const avatar =
     opts.refreshAvatar || !hasGoodAvatar
-      ? await resolveAvatar({ igHandle, tiktokHandle, youtube: yt, postsAvatars }, apiKey)
+      ? await resolveAvatar({ igHandle, tiktokHandle, youtube: yt, threadsHandle, postsAvatars }, apiKey)
       : null;
 
   const anyTried = results.length > 0;

@@ -37,6 +37,7 @@ async function run(request: Request) {
         { youtubeHandle: { not: null } },
         { youtubeChannelId: { not: null } },
         { youtubeUrl: { not: null } },
+        { threadsHandle: { not: null } },
       ],
     },
   });

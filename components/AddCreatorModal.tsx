@@ -56,6 +56,7 @@ export function AddCreatorModal({
     tiktokUrl: "",
     instagramUrl: "",
     youtubeUrl: "",
+    threadsUrl: "",
     source: "sideshift",
     sourceDetail: "",
     onboardedAt: todayStr(),
@@ -84,8 +85,8 @@ export function AddCreatorModal({
       setError("Creator name is required");
       return;
     }
-    if (!form.tiktokUrl.trim() && !form.instagramUrl.trim() && !form.youtubeUrl.trim()) {
-      setError("Add at least a TikTok, Instagram or YouTube profile URL to track");
+    if (!form.tiktokUrl.trim() && !form.instagramUrl.trim() && !form.youtubeUrl.trim() && !form.threadsUrl.trim()) {
+      setError("Add at least one profile URL (TikTok, Instagram, YouTube or Threads) to track");
       return;
     }
     setSaving(true);
@@ -146,7 +147,7 @@ export function AddCreatorModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={label}>TikTok profile URL</label>
               <input
@@ -172,6 +173,15 @@ export function AddCreatorModal({
                 value={form.youtubeUrl}
                 onChange={(e) => set("youtubeUrl", e.target.value)}
                 placeholder="youtube.com/@handle"
+              />
+            </div>
+            <div>
+              <label className={label}>Threads profile URL</label>
+              <input
+                className={field}
+                value={form.threadsUrl}
+                onChange={(e) => set("threadsUrl", e.target.value)}
+                placeholder="threads.com/@handle"
               />
             </div>
           </div>

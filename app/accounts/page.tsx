@@ -12,7 +12,7 @@ import { daysLabel, fmtNum } from "@/lib/ui";
 interface AccountRow {
   creatorId: string;
   creatorName: string;
-  platform: "tiktok" | "instagram" | "youtube";
+  platform: "tiktok" | "instagram" | "youtube" | "threads";
   handle: string;
   url: string | null;
   postsCount: number;
@@ -26,6 +26,7 @@ const PLATFORM_CHIP: Record<AccountRow["platform"], { label: string; bg: string;
   tiktok: { label: "TT", bg: "var(--chip-tt)", color: "var(--ink)" },
   instagram: { label: "IG", bg: "rgba(214,67,143,0.12)", color: "var(--ig)" },
   youtube: { label: "YT", bg: "rgba(224,60,60,0.12)", color: "var(--yt)" },
+  threads: { label: "TH", bg: "var(--chip-tt)", color: "var(--ink)" },
 };
 
 export default function AccountsPage() {
@@ -58,7 +59,7 @@ export default function AccountsPage() {
           {loading ? (
             <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
           ) : rows.length === 0 ? (
-            <div className="py-16 text-center text-sm text-[var(--muted)]">No accounts tracked yet. Add a creator with a TikTok, Instagram or YouTube URL.</div>
+            <div className="py-16 text-center text-sm text-[var(--muted)]">No accounts tracked yet. Add a creator with a TikTok, Instagram, YouTube or Threads URL.</div>
           ) : (
             rows.map((a) => (
               <div key={`${a.creatorId}-${a.platform}`} className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] lg:gap-4">

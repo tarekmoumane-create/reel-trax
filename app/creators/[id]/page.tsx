@@ -109,6 +109,7 @@ export default function CreatorDetail() {
                 {creator.tiktokUrl && <a href={creator.tiktokUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">TT @{creator.tiktokHandle}</a>}
                 {creator.instagramUrl && <a href={creator.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">IG @{creator.instagramHandle}</a>}
                 {creator.youtubeUrl && <a href={creator.youtubeUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">YT {creator.youtubeHandle ? `@${creator.youtubeHandle}` : "channel"}</a>}
+                {creator.threadsHandle && <a href={creator.threadsUrl ?? `https://www.threads.com/@${creator.threadsHandle}`} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">TH @{creator.threadsHandle}</a>}
                 <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[10px]">from {SOURCE_LABEL[creator.source] ?? creator.source}{creator.sourceDetail ? ` · ${creator.sourceDetail}` : ""}</span>
                 <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[10px] text-[var(--signal)]">pay via {PAYMENT_LABEL[creator.paymentMethod] ?? creator.paymentMethod}</span>
                 {creator.onboardedAt && (
@@ -259,7 +260,7 @@ function Row({ label, value, href }: { label: string; value: string; href?: stri
 
 function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; onDelete: () => void; busy: boolean }) {
   const [f, setF] = useState({
-    displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "", youtubeUrl: creator.youtubeUrl ?? "",
+    displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "", youtubeUrl: creator.youtubeUrl ?? "", threadsUrl: creator.threadsUrl ?? "",
     source: creator.source, sourceDetail: creator.sourceDetail ?? "", sideshiftUrl: creator.sideshiftUrl ?? "",
     paymentMethod: creator.paymentMethod ?? "sideshift", paymentHandle: creator.paymentHandle ?? "", expectedPerWeek: creator.expectedPerWeek,
     status: creator.status, phone: creator.phone ?? "", email: creator.email ?? "", contactHandle: creator.contactHandle ?? "",
@@ -277,6 +278,7 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         <div><label className={label}>TikTok URL</label><input className={field} value={f.tiktokUrl} onChange={(e) => set("tiktokUrl", e.target.value)} /></div>
         <div><label className={label}>Instagram URL</label><input className={field} value={f.instagramUrl} onChange={(e) => set("instagramUrl", e.target.value)} /></div>
         <div><label className={label}>YouTube channel URL <span className="text-[var(--faint)]">(Shorts)</span></label><input className={field} value={f.youtubeUrl} onChange={(e) => set("youtubeUrl", e.target.value)} placeholder="youtube.com/@handle" /></div>
+        <div><label className={label}>Threads URL</label><input className={field} value={f.threadsUrl} onChange={(e) => set("threadsUrl", e.target.value)} placeholder="threads.com/@handle" /></div>
         <div><label className={label}>Source</label><Select className="w-full" value={f.source} onChange={(v) => set("source", v)} options={["sideshift", "referral", "outreach", "agency", "other"].map((s) => [s, SOURCE_LABEL[s] ?? s] as [string, string])} /></div>
         <div><label className={label}>Source detail</label><input className={field} value={f.sourceDetail} onChange={(e) => set("sourceDetail", e.target.value)} /></div>
         <div className="sm:col-span-2 lg:col-span-3"><label className={label}>Sideshift chat URL <span className="text-[var(--faint)]">(pay them here)</span></label><input className={field} value={f.sideshiftUrl} onChange={(e) => set("sideshiftUrl", e.target.value)} placeholder="link to their Sideshift chat" /></div>

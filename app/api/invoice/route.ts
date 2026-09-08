@@ -57,7 +57,7 @@ export async function GET(request: Request) {
           include: {
             creator: {
               select: {
-                id: true, displayName: true, tiktokHandle: true, instagramHandle: true, youtubeHandle: true,
+                id: true, displayName: true, tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true,
                 posts: {
                   select: {
                     platform: true, url: true, caption: true, postedAt: true, views: true,
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
           const cr = a.creator;
           const line = lines.get(cr.id) ?? {
             creatorId: cr.id, creatorName: cr.displayName,
-            handles: [cr.tiktokHandle && `TT @${cr.tiktokHandle}`, cr.instagramHandle && `IG @${cr.instagramHandle}`, cr.youtubeHandle && `YT @${cr.youtubeHandle}`].filter(Boolean) as string[],
+            handles: [cr.tiktokHandle && `TT @${cr.tiktokHandle}`, cr.instagramHandle && `IG @${cr.instagramHandle}`, cr.youtubeHandle && `YT @${cr.youtubeHandle}`, cr.threadsHandle && `TH @${cr.threadsHandle}`].filter(Boolean) as string[],
             campaigns: [], posts: 0, views: 0, amount: 0, breakdown: [], videos: [],
           };
           if (!line.campaigns.includes(c.name)) line.campaigns.push(c.name);

@@ -39,4 +39,4 @@ export function invoiceCsv(d: InvoiceData): string {
   return rows.map((r) => r.map(csvCell).join(",")).join("\n");
 }
 
-export const PLATFORM_SHORT: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
+export const PLATFORM_SHORT: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", threads: "Threads" };

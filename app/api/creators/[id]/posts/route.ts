@@ -19,9 +19,10 @@ export async function POST(
       if (/tiktok\.com/i.test(url)) platform = "tiktok";
       else if (/instagram\.com/i.test(url)) platform = "instagram";
       else if (/youtube\.com|youtu\.be/i.test(url)) platform = "youtube";
+      else if (/threads\.(?:net|com)/i.test(url)) platform = "threads";
     }
-    if (platform !== "tiktok" && platform !== "instagram" && platform !== "youtube")
-      return bad("platform must be tiktok, instagram or youtube");
+    if (!platform || !["tiktok", "instagram", "youtube", "threads"].includes(platform))
+      return bad("platform must be tiktok, instagram, youtube or threads");
 
     const postedAt = body?.postedAt ? new Date(body.postedAt) : new Date();
     if (isNaN(postedAt.getTime())) return bad("Invalid postedAt date");
@@ -32,7 +33,8 @@ export async function POST(
       url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/i) ||
       url.match(/instagram\.com\/(?:p|reel|reels)\/([^/?#]+)/i) ||
       url.match(/youtube\.com\/(?:shorts|watch\?v=)([A-Za-z0-9_-]{6,})/i) ||
-      url.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/i);
+      url.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/i) ||
+      url.match(/threads\.(?:net|com)\/@[^/]+\/post\/([A-Za-z0-9_-]+)/i);
     if (m) platformPostId = m[1];
     if (!platformPostId)
       platformPostId = `manual-${id}-${postedAt.getTime()}`;

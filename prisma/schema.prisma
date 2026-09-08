@@ -61,6 +61,10 @@ model Creator {
   youtubeUrl       String?
   youtubeChannelId String? // UC… id, resolved on first sync when only a URL was given
 
+  // Threads
+  threadsHandle String?
+  threadsUrl    String?
+
   // Where this creator came from (Sideshift is the common one)
   source       String  @default("sideshift") // sideshift | referral | outreach | agency | other
   sourceDetail String?
@@ -250,7 +254,7 @@ model Post {
   id             String  @id @default(cuid())
   creatorId      String
   creator        Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  platform       String // tiktok | instagram | youtube
+  platform       String // tiktok | instagram | youtube | threads
   platformPostId String
 
   url          String?

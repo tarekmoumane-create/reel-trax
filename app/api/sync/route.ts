@@ -25,6 +25,10 @@ export async function POST(request: Request) {
           { tiktokHandle: { not: null } },
           { instagramHandle: { not: null } },
           { tiktokUserId: { not: null } },
+          { youtubeHandle: { not: null } },
+          { youtubeChannelId: { not: null } },
+          { youtubeUrl: { not: null } },
+          { threadsHandle: { not: null } },
         ],
       },
     });

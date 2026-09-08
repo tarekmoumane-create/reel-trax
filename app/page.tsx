@@ -68,7 +68,8 @@ export default function Overview() {
           x.displayName.toLowerCase().includes(s) ||
           x.tiktokHandle?.toLowerCase().includes(s) ||
           x.instagramHandle?.toLowerCase().includes(s) ||
-          x.youtubeHandle?.toLowerCase().includes(s)
+          x.youtubeHandle?.toLowerCase().includes(s) ||
+          x.threadsHandle?.toLowerCase().includes(s)
       );
     }
     return r;
@@ -213,6 +214,7 @@ function CreatorRow({ row, busy, onResync }: { row: OverviewRow; busy: boolean; 
             {row.tiktokHandle && <span>TT @{row.tiktokHandle}</span>}
             {row.instagramHandle && <span>IG @{row.instagramHandle}</span>}
             {row.youtubeHandle && <span>YT @{row.youtubeHandle}</span>}
+            {row.threadsHandle && <span>TH @{row.threadsHandle}</span>}
             <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">{SOURCE_LABEL[row.source] ?? row.source}</span>
           </div>
         </div>

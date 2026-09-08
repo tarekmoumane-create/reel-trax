@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { sanitizePayRules } from "@/lib/payouts";
 import { syncAutoCampaign } from "@/lib/autocampaign";
-import { parseTikTokHandle, parseInstagramHandle, parseYouTube } from "@/lib/scrapecreators";
+import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle } from "@/lib/scrapecreators";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreator } from "@/lib/sync";
 
@@ -39,6 +39,8 @@ export async function POST(request: Request) {
       : parseInstagramHandle((body?.instagramHandle ?? "").trim());
     const youtubeUrl = (body?.youtubeUrl ?? "").trim() || null;
     const yt = parseYouTube(youtubeUrl ?? (body?.youtubeHandle ?? "").trim());
+    const threadsUrl = (body?.threadsUrl ?? "").trim() || null;
+    const threadsHandle = parseThreadsHandle(threadsUrl ?? (body?.threadsHandle ?? "").trim());
 
     const creator = await prisma.creator.create({
       data: {
@@ -51,6 +53,8 @@ export async function POST(request: Request) {
         youtubeUrl,
         youtubeHandle: yt.handle,
         youtubeChannelId: yt.channelId,
+        threadsUrl,
+        threadsHandle,
         source: body?.source || "sideshift",
         sourceDetail: body?.sourceDetail || null,
         sideshiftUrl: body?.sideshiftUrl || null,
@@ -86,7 +90,7 @@ export async function POST(request: Request) {
     // Best-effort immediate first sync so the creator isn't blank on arrival.
     let firstSync: unknown = null;
     const apiKey = await getScrapeCreatorsKey();
-    if (apiKey && (tiktokHandle || instagramHandle || youtubeUrl)) {
+    if (apiKey && (tiktokHandle || instagramHandle || youtubeUrl || threadsHandle)) {
       try {
         firstSync = await syncCreator(creator, apiKey);
       } catch {

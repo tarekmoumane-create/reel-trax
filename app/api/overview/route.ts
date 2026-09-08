@@ -46,6 +46,7 @@ export async function GET(request: Request) {
         tiktokHandle: c.tiktokHandle,
         instagramHandle: c.instagramHandle,
         youtubeHandle: c.youtubeHandle,
+        threadsHandle: c.threadsHandle,
         expectedPerWeek: c.expectedPerWeek,
         lastSyncedAt: c.lastSyncedAt,
         lastSyncStatus: c.lastSyncStatus,

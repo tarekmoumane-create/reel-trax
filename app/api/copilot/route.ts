@@ -28,6 +28,7 @@ async function buildSnapshot(clientId: string) {
       tiktok: c.tiktokHandle,
       instagram: c.instagramHandle,
       youtube: c.youtubeHandle,
+      threads: c.threadsHandle,
       cadenceStatus: cad.status,
       postsLast7d: cad.postsLast7d,
       target: c.expectedPerWeek,
