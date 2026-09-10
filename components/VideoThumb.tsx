@@ -25,9 +25,10 @@ export function VideoThumb({
   const isTT = platform === "tiktok";
   const isYT = platform === "youtube";
   const isTH = platform === "threads";
-  const badge = isTT ? "TT" : isYT ? "YT" : isTH ? "TH" : "IG";
-  const tint = isTT || isTH ? "var(--chip-tt)" : isYT ? "rgba(224,60,60,0.12)" : "rgba(214,67,143,0.12)";
-  const tintInk = isTT || isTH ? "var(--muted)" : isYT ? "var(--yt)" : "var(--ig)";
+  const isFB = platform === "facebook";
+  const badge = isTT ? "TT" : isYT ? "YT" : isTH ? "TH" : isFB ? "FB" : "IG";
+  const tint = isTT || isTH ? "var(--chip-tt)" : isYT ? "rgba(224,60,60,0.12)" : isFB ? "rgba(24,119,242,0.12)" : "rgba(214,67,143,0.12)";
+  const tintInk = isTT || isTH ? "var(--muted)" : isYT ? "var(--yt)" : isFB ? "var(--fb)" : "var(--ig)";
   const thumb = imgSrc(thumbnailUrl);
   const showImg = thumb && !broken;
 

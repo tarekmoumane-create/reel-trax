@@ -57,7 +57,7 @@ interface Analytics {
   series: { date: string; posts: number; views: number; likes: number; comments: number; shares: number }[];
   viewsGained: { date: string; viewsGained: number | null }[];
   followers: { date: string; followers: number | null }[];
-  topVideos: { platform: string; url: string | null; caption: string | null; thumbnailUrl: string | null; views: number; likes: number; creatorId: string; creatorName: string }[];
+  topVideos: { platform: string; url: string | null; caption: string | null; thumbnailUrl: string | null; views: number; likes: number; comments: number; creatorId: string; creatorName: string }[];
   topCreators: { creatorId: string; name: string; views: number; posts: number }[];
   totals: { posts: number; views: number; likes: number; comments: number; shares: number; viewsGained: number | null; followers: number | null; creators: number };
 }
@@ -242,26 +242,47 @@ export function AnalyticsPanel({ clientId, onTotals }: { clientId: string; onTot
 
 // ---------- leaderboards ----------
 
+const PLATFORM_LABEL: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", threads: "Threads", facebook: "Facebook" };
+const PLATFORM_ORDER = ["tiktok", "instagram", "youtube", "threads", "facebook"];
+
 function TopVideosCard({ videos, rangeLabel }: { videos: Analytics["topVideos"]; rangeLabel: string }) {
-  const [sortBy, setSortBy] = useState<"views" | "likes">("views");
+  const [sortBy, setSortBy] = useState<"views" | "likes" | "comments">("views");
+  const [platform, setPlatform] = useState("");
   const [count, setCount] = useState(5);
+  // Only offer platforms that actually have posts in this range.
+  const platforms = useMemo(() => {
+    const present = new Set(videos.map((v) => v.platform));
+    return PLATFORM_ORDER.filter((p) => present.has(p));
+  }, [videos]);
+  const pool = useMemo(() => (platform ? videos.filter((v) => v.platform === platform) : videos), [videos, platform]);
   const rows = useMemo(
-    () => [...videos].sort((a, b) => b[sortBy] - a[sortBy]).slice(0, count),
-    [videos, sortBy, count]
+    () => [...pool].sort((a, b) => b[sortBy] - a[sortBy]).slice(0, count),
+    [pool, sortBy, count]
   );
+  const threadsByViews = platform === "threads" && sortBy === "views";
   return (
     <div className="card p-4">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Top videos <span className="font-normal text-[var(--muted)]">· {rangeLabel}</span></h3>
         <div className="flex items-center gap-1.5">
-          <Select size="sm" align="right" value={sortBy} onChange={(v) => setSortBy(v as "views" | "likes")} options={[["views", "Views"], ["likes", "Likes"]]} />
-          <CountPicker value={count} onChange={setCount} max={videos.length || 1} />
+          {platforms.length > 1 && (
+            <Select
+              size="sm"
+              align="right"
+              value={platform}
+              onChange={(v) => { setPlatform(v); if (v === "threads" && sortBy === "views") setSortBy("likes"); }}
+              options={[["", "All platforms"], ...platforms.map((p) => [p, PLATFORM_LABEL[p] ?? p] as [string, string])]}
+            />
+          )}
+          <Select size="sm" align="right" value={sortBy} onChange={(v) => setSortBy(v as "views" | "likes" | "comments")} options={[["views", "Views"], ["likes", "Likes"], ["comments", "Comments"]]} />
+          <CountPicker value={count} onChange={setCount} max={pool.length || 1} />
         </div>
       </div>
       {rows.length === 0 && <p className="py-6 text-center text-xs text-[var(--muted)]">No posts in this range.</p>}
+      {threadsByViews && <p className="mb-1.5 text-[11px] text-[var(--faint)]">Threads doesn&apos;t report view counts — sort by likes or comments.</p>}
       <div className="space-y-0.5">
         {rows.map((v, i) => (
-          <a key={i} href={v.url ?? "#"} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg px-1.5 py-1.5 hover:bg-[var(--panel2)]">
+          <a key={v.url ?? `${v.creatorId}-${i}`} href={v.url ?? "#"} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg px-1.5 py-1.5 hover:bg-[var(--panel2)]">
             <span className="mono w-4 shrink-0 text-center text-xs text-[var(--faint)]">{i + 1}</span>
             <VideoThumb url={v.url} thumbnailUrl={v.thumbnailUrl} platform={v.platform} w={30} h={42} asLink={false} />
             <span className="min-w-0 flex-1">

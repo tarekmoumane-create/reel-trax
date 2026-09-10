@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreators } from "@/lib/sync";
+import { dedupePosts } from "@/lib/dedupe";
 
 export const maxDuration = 300;
 
@@ -17,6 +18,9 @@ export async function POST(request: Request) {
     if (!apiKey)
       return bad("No ScrapeCreators API key set. Add it in Settings.", 400);
 
+    // Collapse any posts stored twice under drifting ids before refreshing.
+    await dedupePosts();
+
     const creators = await prisma.creator.findMany({
       where: {
         clientId,
@@ -29,6 +33,7 @@ export async function POST(request: Request) {
           { youtubeChannelId: { not: null } },
           { youtubeUrl: { not: null } },
           { threadsHandle: { not: null } },
+          { facebookUrl: { not: null } },
         ],
       },
     });

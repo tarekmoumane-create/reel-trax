@@ -124,12 +124,21 @@ export async function GET(request: Request) {
     // leaderboards — the client's sort/count selectors slice; videos capped
     // to keep the payload sane, creators returned in full so "top N" can be
     // any number up to the roster size
+    // One entry per video: a post stored twice under drifting platform ids
+    // (repaired by lib/dedupe on the next sync) must not rank twice here.
+    const seenUrls = new Set<string>();
     const topVideos = [...posts]
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 100)
+      .sort((a, b) => b.views - a.views || b.likes - a.likes)
+      .filter((p) => {
+        if (!p.url) return true;
+        if (seenUrls.has(p.url)) return false;
+        seenUrls.add(p.url);
+        return true;
+      })
+      .slice(0, 300)
       .map((p) => ({
         platform: p.platform, url: p.url, caption: p.caption, thumbnailUrl: p.thumbnailUrl,
-        views: p.views, likes: p.likes, creatorId: p.creatorId, creatorName: nameById.get(p.creatorId) ?? "—",
+        views: p.views, likes: p.likes, comments: p.comments, creatorId: p.creatorId, creatorName: nameById.get(p.creatorId) ?? "—",
         postedAt: p.postedAt,
       }));
 

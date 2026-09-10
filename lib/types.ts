@@ -23,6 +23,7 @@ export interface OverviewRow {
   instagramHandle: string | null;
   youtubeHandle: string | null;
   threadsHandle: string | null;
+  facebookHandle: string | null;
   expectedPerWeek: number;
   lastSyncedAt: string | null;
   lastSyncStatus: string | null;
@@ -66,6 +67,9 @@ export interface CreatorDTO {
   youtubeChannelId: string | null;
   threadsHandle: string | null;
   threadsUrl: string | null;
+  facebookHandle: string | null;
+  facebookUrl: string | null;
+  facebookPageId: string | null;
   source: string;
   sourceDetail: string | null;
   sideshiftUrl: string | null;

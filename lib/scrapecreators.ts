@@ -5,7 +5,27 @@
 
 const BASE = "https://api.scrapecreators.com";
 
-export type Platform = "tiktok" | "instagram" | "youtube" | "threads";
+export type Platform = "tiktok" | "instagram" | "youtube" | "threads" | "facebook";
+
+/**
+ * The key a post is stored under, derived from its public URL. Instagram and
+ * Threads payloads carry the same post under several id formats (`pk`,
+ * `id` = "pk_ownerid", …) and the format drifts between API responses, so
+ * keying on a raw id stored the same reel twice. The shortcode in the URL is
+ * the one identifier that never changes. TikTok and YouTube ids are already
+ * stable, so for them this simply re-derives the same id.
+ */
+export function canonicalPostKey(platform: string, url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m =
+    platform === "instagram" ? url.match(/instagram\.com\/(?:[^/]+\/)?(?:p|reel|reels)\/([A-Za-z0-9_-]+)/i)
+    : platform === "threads" ? url.match(/threads\.(?:net|com)\/@?[^/]+\/post\/([A-Za-z0-9_-]+)/i)
+    : platform === "tiktok" ? url.match(/tiktok\.com\/@[^/]+\/(?:video|photo)\/(\d+)/i)
+    : platform === "youtube" ? url.match(/(?:youtube\.com\/(?:shorts\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i)
+    : platform === "facebook" ? url.match(/facebook\.com\/(?:reel|[^/]+\/videos)\/(\d+)/i)
+    : null;
+  return m ? m[1] : null;
+}
 
 export interface NormalizedPost {
   platform: Platform;
@@ -95,6 +115,25 @@ export function parseThreadsHandle(input: string): string | null {
   if (s.startsWith("@")) return s.slice(1);
   if (/^[A-Za-z0-9._]+$/.test(s)) return s;
   return null;
+}
+
+/**
+ * Facebook page identity from whatever got pasted: facebook.com/<slug>,
+ * facebook.com/profile.php?id=123, fb.com/<slug>, "@slug" or a bare slug.
+ * Returns the slug (or numeric id) plus the canonical page URL the API takes.
+ */
+export function parseFacebook(input: string): { handle: string | null; url: string | null } {
+  const none = { handle: null, url: null };
+  if (!input) return none;
+  const s = input.trim();
+  const byId = s.match(/(?:facebook|fb)\.com\/profile\.php\?(?:.*&)?id=(\d+)/i);
+  if (byId) return { handle: byId[1], url: `https://www.facebook.com/profile.php?id=${byId[1]}` };
+  const slug = s.match(/(?:facebook|fb)\.com\/(?!reel\b|watch\b|share\b|groups\b|events\b|photo\b)([A-Za-z0-9.\-_]+)/i);
+  if (slug) return { handle: slug[1], url: `https://www.facebook.com/${slug[1]}` };
+  if (/facebook\.com|fb\.com/i.test(s)) return none;
+  const bare = s.startsWith("@") ? s.slice(1) : s;
+  if (/^[A-Za-z0-9.\-_]+$/.test(bare)) return { handle: bare, url: `https://www.facebook.com/${bare}` };
+  return none;
 }
 
 export function parseYouTubeHandle(input: string): string | null {
@@ -428,11 +467,12 @@ export async function fetchThreads(opts: { handle: string }, apiKey: string): Pr
   const posts: NormalizedPost[] = [];
   for (const raw of Array.isArray(list) ? list : []) {
     const it = raw?.post ?? raw?.node ?? raw;
-    const id = String(pick(it, ["pk", "id", "code"]) ?? "");
+    const code = pick(it, ["code"]) as string | undefined;
+    // Keyed by shortcode — see canonicalPostKey for why not pk/id.
+    const id = String(code || pick(it, ["pk", "id"]) || "");
     if (!id) continue;
     const postedAt = toDate(pick(it, ["taken_at", "taken_at_timestamp", "timestamp"]));
     if (!postedAt) continue;
-    const code = pick(it, ["code"]) as string | undefined;
     const user = (pick(it, ["user.username"]) as string) || opts.handle;
     const caption = pick(it, ["caption.text", "caption", "text_post_app_info.text", "text"]);
     const info = "text_post_app_info";
@@ -478,10 +518,10 @@ export async function fetchInstagram(
   for (const raw of Array.isArray(list) ? list : []) {
     // Some responses wrap the media object.
     const it = raw?.media ?? raw?.node ?? raw;
-    const code =
-      (pick(it, ["code", "shortcode"]) as string) ??
-      (pick(it, ["pk", "id"]) as string);
-    const id = String(pick(it, ["pk", "id", "code", "shortcode"]) ?? "");
+    const code = pick(it, ["code", "shortcode"]) as string | undefined;
+    // Keyed by shortcode: `pk` and `id` ("pk_ownerid") name the same post and
+    // the API alternates between them, which used to store every reel twice.
+    const id = String(code || pick(it, ["pk", "id"]) || "");
     if (!id) continue;
     const postedAt = toDate(
       pick(it, ["taken_at", "taken_at_timestamp", "device_timestamp", "timestamp"])
@@ -528,4 +568,73 @@ export async function fetchInstagram(
     "data.user.profile_pic_url",
   ]);
   return { posts, followers, avatarUrls, rawCount: Array.isArray(list) ? list.length : 0 };
+}
+
+// ---------- Facebook (Reels) ----------
+
+/** Facebook page details — follower count + profile picture. */
+export async function fetchFacebookProfile(url: string, apiKey: string): Promise<ProfileResult> {
+  const data = await scGet("/v1/facebook/profile", { url }, apiKey);
+  const avatarUrls = pickAll(data, ["profilePicLarge", "profilePicMedium", "profilePicSmall", "profile_pic_url"]);
+  const followers = num(pick(data, ["followerCount", "follower_count"])) || num(pick(data, ["likeCount", "like_count"])) || null;
+  const userId = (pick(data, ["id"]) as string) || null;
+  return { avatarUrls, followers, userId: userId ? String(userId) : null };
+}
+
+/**
+ * A page's Reels, newest first. The endpoint returns 10 per call with a
+ * cursor, so `maxPages` bounds the credits one sync can spend: a creator's
+ * first sync digs deeper for history, later syncs just refresh the newest.
+ * Facebook only exposes a view count here — likes/comments/shares stay 0.
+ */
+export async function fetchFacebookReels(
+  opts: { url: string; maxPages?: number },
+  apiKey: string
+): Promise<FetchResult> {
+  const maxPages = Math.max(1, opts.maxPages ?? 2);
+  const posts: NormalizedPost[] = [];
+  const seen = new Set<string>();
+  const avatarUrls: string[] = [];
+  let rawCount = 0;
+  let cursor: string | null = null;
+  let nextPageId: string | null = null;
+
+  for (let page = 0; page < maxPages; page++) {
+    const params: Record<string, string> = { url: opts.url };
+    if (cursor) params.cursor = cursor;
+    if (nextPageId) params.next_page_id = nextPageId;
+    const data = await scGet("/v1/facebook/profile/reels", params, apiKey);
+    const list: any[] = (pick(data, ["reels", "data.reels", "items"]) as any[]) ?? [];
+    if (!Array.isArray(list) || list.length === 0) break;
+    rawCount += list.length;
+
+    for (const it of list) {
+      const videoId = pick(it, ["video_id", "post_id", "id"]) as string | undefined;
+      const url = (pick(it, ["url"]) as string) || (videoId ? `https://www.facebook.com/reel/${videoId}` : null);
+      const id = canonicalPostKey("facebook", url) || (videoId ? String(videoId) : "");
+      if (!id || seen.has(id)) continue;
+      const postedAt = toDate(pick(it, ["creation_time", "created_time", "publish_time"]));
+      if (!postedAt) continue;
+      seen.add(id);
+      const caption = pick(it, ["description", "message", "text"]);
+      posts.push({
+        platform: "facebook",
+        platformPostId: id,
+        url,
+        caption: typeof caption === "string" ? caption : null,
+        thumbnailUrl: (pick(it, ["thumbnail", "thumbnail_url", "image"]) as string) ?? null,
+        postedAt,
+        views: num(pick(it, ["view_count", "play_count", "views"])),
+        likes: num(pick(it, ["like_count", "reaction_count", "reactions"])),
+        comments: num(pick(it, ["comment_count", "comments"])),
+        shares: num(pick(it, ["share_count", "shares"])),
+      });
+      if (avatarUrls.length === 0) avatarUrls.push(...pickAll(it, ["author.image", "author.profile_pic_url"]));
+    }
+
+    cursor = (pick(data, ["cursor"]) as string) || null;
+    nextPageId = (pick(data, ["next_page_id"]) as string) || null;
+    if (!cursor && !nextPageId) break;
+  }
+  return { posts, avatarUrls, rawCount };
 }

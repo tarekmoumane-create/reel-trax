@@ -12,6 +12,9 @@ import {
   parseInstagramHandle,
   parseYouTube,
   parseThreadsHandle,
+  parseFacebook,
+  fetchFacebookProfile,
+  fetchFacebookReels,
   type NormalizedPost,
 } from "./scrapecreators";
 import { downloadFirstWebSafe, isWebSafeMime, type StoredImage } from "./avatar";
@@ -35,7 +38,7 @@ async function snapshotFollowers(
 }
 
 export interface PlatformSyncResult {
-  platform: "tiktok" | "instagram" | "youtube" | "threads";
+  platform: "tiktok" | "instagram" | "youtube" | "threads" | "facebook";
   ok: boolean;
   fetched: number;
   upserted: number;
@@ -106,6 +109,7 @@ async function resolveAvatar(
       console.warn(`avatar (threads @${src.threadsHandle}):`, (e as Error).message);
     }
   }
+  // Facebook's page photo is already in postsAvatars (fetched during sync).
   candidates.push(...src.postsAvatars);
 
   return downloadFirstWebSafe(candidates);
@@ -114,6 +118,10 @@ async function resolveAvatar(
 // Per-post daily history is only kept while a payout view-window could still
 // reference it; beyond that the post's current totals are all anyone needs.
 const POST_SNAPSHOT_MAX_AGE_DAYS = 60;
+
+// Facebook's reels endpoint pages 10 at a time, one credit per page.
+const FB_FIRST_SYNC_PAGES = 8; // up to 80 reels of history on first sync
+const FB_SYNC_PAGES = 2; // the 20 newest get fresh view counts after that
 
 async function upsertPosts(creatorId: string, posts: NormalizedPost[], tz: string): Promise<number> {
   let count = 0;
@@ -290,6 +298,35 @@ export async function syncCreator(
       results.push({ platform: "threads", ok: true, fetched: r.rawCount, upserted });
     } catch (e) {
       results.push({ platform: "threads", ok: false, fetched: 0, upserted: 0, error: (e as Error).message });
+    }
+  }
+
+  // ---- Facebook Reels ----
+  const fb = creator.facebookUrl ? { handle: creator.facebookHandle, url: creator.facebookUrl } : parseFacebook(creator.facebookHandle || "");
+  if (fb.url) {
+    try {
+      // Page details every sync: follower count for the chart, numeric id cached.
+      let followers: number | null = null;
+      try {
+        const prof = await fetchFacebookProfile(fb.url, apiKey);
+        followers = prof.followers;
+        if (prof.avatarUrls.length) postsAvatars.unshift(...prof.avatarUrls);
+        if (prof.userId && prof.userId !== creator.facebookPageId) {
+          await prisma.creator.update({ where: { id: creator.id }, data: { facebookPageId: prof.userId } });
+        }
+      } catch (e) {
+        console.warn(`facebook profile ${fb.url}:`, (e as Error).message);
+      }
+      // 10 reels per page: a creator we've never pulled gets a deep first
+      // pass for history, after that just the newest pages get refreshed.
+      const known = await prisma.post.count({ where: { creatorId: creator.id, platform: "facebook" } });
+      const r = await fetchFacebookReels({ url: fb.url, maxPages: known === 0 ? FB_FIRST_SYNC_PAGES : FB_SYNC_PAGES }, apiKey);
+      const upserted = await upsertPosts(creator.id, r.posts, tz);
+      await snapshotFollowers(creator.id, "facebook", followers, tz);
+      if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
+      results.push({ platform: "facebook", ok: true, fetched: r.rawCount, upserted });
+    } catch (e) {
+      results.push({ platform: "facebook", ok: false, fetched: 0, upserted: 0, error: (e as Error).message });
     }
   }
 

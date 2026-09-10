@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreators } from "@/lib/sync";
+import { dedupePosts } from "@/lib/dedupe";
 
 export const maxDuration = 300; // allow long-running sync on Vercel
 
@@ -26,6 +27,9 @@ async function run(request: Request) {
   const url = new URL(request.url);
   const clientId = url.searchParams.get("clientId") || undefined;
 
+  // Collapse any posts stored twice under drifting ids before refreshing.
+  const deduped = await dedupePosts();
+
   const creators = await prisma.creator.findMany({
     where: {
       status: "active",
@@ -38,6 +42,7 @@ async function run(request: Request) {
         { youtubeChannelId: { not: null } },
         { youtubeUrl: { not: null } },
         { threadsHandle: { not: null } },
+        { facebookUrl: { not: null } },
       ],
     },
   });
@@ -57,6 +62,7 @@ async function run(request: Request) {
     postsUpserted: upserted,
     failedCreators: failed,
     durationMs: ms,
+    deduped,
   });
 }
 

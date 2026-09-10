@@ -57,6 +57,7 @@ export function AddCreatorModal({
     instagramUrl: "",
     youtubeUrl: "",
     threadsUrl: "",
+    facebookUrl: "",
     source: "sideshift",
     sourceDetail: "",
     onboardedAt: todayStr(),
@@ -85,8 +86,8 @@ export function AddCreatorModal({
       setError("Creator name is required");
       return;
     }
-    if (!form.tiktokUrl.trim() && !form.instagramUrl.trim() && !form.youtubeUrl.trim() && !form.threadsUrl.trim()) {
-      setError("Add at least one profile URL (TikTok, Instagram, YouTube or Threads) to track");
+    if (!form.tiktokUrl.trim() && !form.instagramUrl.trim() && !form.youtubeUrl.trim() && !form.threadsUrl.trim() && !form.facebookUrl.trim()) {
+      setError("Add at least one profile URL (TikTok, Instagram, YouTube, Threads or Facebook) to track");
       return;
     }
     setSaving(true);
@@ -182,6 +183,15 @@ export function AddCreatorModal({
                 value={form.threadsUrl}
                 onChange={(e) => set("threadsUrl", e.target.value)}
                 placeholder="threads.com/@handle"
+              />
+            </div>
+            <div>
+              <label className={label}>Facebook page URL <span className="text-[var(--faint)]">(Reels)</span></label>
+              <input
+                className={field}
+                value={form.facebookUrl}
+                onChange={(e) => set("facebookUrl", e.target.value)}
+                placeholder="facebook.com/pagename"
               />
             </div>
           </div>

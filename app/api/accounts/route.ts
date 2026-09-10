@@ -3,7 +3,7 @@ import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 
-// One row per social account (TikTok, Instagram, YouTube and/or Threads),
+// One row per social account (TikTok, Instagram, YouTube, Threads and/or Facebook),
 // each with its own post-activity strip and totals.
 export async function GET(request: Request) {
   try {
@@ -21,12 +21,13 @@ export async function GET(request: Request) {
     const rows: unknown[] = [];
 
     for (const c of creators) {
-      const platforms: { platform: "tiktok" | "instagram" | "youtube" | "threads"; handle: string | null; url: string | null }[] = [];
+      const platforms: { platform: "tiktok" | "instagram" | "youtube" | "threads" | "facebook"; handle: string | null; url: string | null }[] = [];
       if (c.tiktokHandle) platforms.push({ platform: "tiktok", handle: c.tiktokHandle, url: c.tiktokUrl });
       if (c.instagramHandle) platforms.push({ platform: "instagram", handle: c.instagramHandle, url: c.instagramUrl });
       if (c.youtubeHandle || c.youtubeChannelId || c.youtubeUrl)
         platforms.push({ platform: "youtube", handle: c.youtubeHandle ?? c.youtubeChannelId ?? "youtube", url: c.youtubeUrl });
       if (c.threadsHandle) platforms.push({ platform: "threads", handle: c.threadsHandle, url: c.threadsUrl ?? `https://www.threads.com/@${c.threadsHandle}` });
+      if (c.facebookUrl) platforms.push({ platform: "facebook", handle: c.facebookHandle ?? "facebook", url: c.facebookUrl });
 
       for (const p of platforms) {
         const posts = c.posts.filter((x) => x.platform === p.platform);

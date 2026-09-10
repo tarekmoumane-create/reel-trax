@@ -69,7 +69,8 @@ export default function Overview() {
           x.tiktokHandle?.toLowerCase().includes(s) ||
           x.instagramHandle?.toLowerCase().includes(s) ||
           x.youtubeHandle?.toLowerCase().includes(s) ||
-          x.threadsHandle?.toLowerCase().includes(s)
+          x.threadsHandle?.toLowerCase().includes(s) ||
+          x.facebookHandle?.toLowerCase().includes(s)
       );
     }
     return r;
@@ -215,6 +216,7 @@ function CreatorRow({ row, busy, onResync }: { row: OverviewRow; busy: boolean; 
             {row.instagramHandle && <span>IG @{row.instagramHandle}</span>}
             {row.youtubeHandle && <span>YT @{row.youtubeHandle}</span>}
             {row.threadsHandle && <span>TH @{row.threadsHandle}</span>}
+            {row.facebookHandle && <span>FB {row.facebookHandle}</span>}
             <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">{SOURCE_LABEL[row.source] ?? row.source}</span>
           </div>
         </div>

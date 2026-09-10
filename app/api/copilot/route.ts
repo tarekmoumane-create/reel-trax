@@ -29,6 +29,7 @@ async function buildSnapshot(clientId: string) {
       instagram: c.instagramHandle,
       youtube: c.youtubeHandle,
       threads: c.threadsHandle,
+      facebook: c.facebookHandle,
       cadenceStatus: cad.status,
       postsLast7d: cad.postsLast7d,
       target: c.expectedPerWeek,

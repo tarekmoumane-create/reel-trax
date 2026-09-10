@@ -65,6 +65,11 @@ model Creator {
   threadsHandle String?
   threadsUrl    String?
 
+  // Facebook (Reels) — a public page/profile
+  facebookHandle String? // page slug (or numeric profile id)
+  facebookUrl    String? // canonical page URL, what the API takes
+  facebookPageId String? // numeric id, cached from the first profile fetch
+
   // Where this creator came from (Sideshift is the common one)
   source       String  @default("sideshift") // sideshift | referral | outreach | agency | other
   sourceDetail String?
@@ -147,7 +152,7 @@ model FollowerSnapshot {
   id         String   @id @default(cuid())
   creatorId  String
   creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  platform   String // tiktok | instagram
+  platform   String // tiktok | instagram | youtube | threads | facebook
   day        String // YYYY-MM-DD in the app timezone
   followers  Int
   capturedAt DateTime @default(now())
@@ -256,7 +261,9 @@ model Post {
   id             String  @id @default(cuid())
   creatorId      String
   creator        Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  platform       String // tiktok | instagram | youtube | threads
+  platform       String // tiktok | instagram | youtube | threads | facebook
+  // Stable per-platform key — the id from the post URL (IG/Threads shortcode,
+  // TikTok/FB video id, YouTube video id). See canonicalPostKey.
   platformPostId String
 
   url          String?

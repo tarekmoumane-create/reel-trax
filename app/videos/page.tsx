@@ -32,7 +32,7 @@ export default function VideosPage() {
   const [rows, setRows] = useState<VideoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<"recent" | "views">("recent");
-  const [platform, setPlatform] = useState<"" | "tiktok" | "instagram" | "youtube" | "threads">("");
+  const [platform, setPlatform] = useState<"" | "tiktok" | "instagram" | "youtube" | "threads" | "facebook">("");
 
   const load = useCallback(async () => {
     if (!currentClientId) return;
@@ -74,7 +74,7 @@ export default function VideosPage() {
         <PageTitle title="Videos" sub={`Every tracked post for ${currentClient?.name ?? "this client"}.`} />
 
         <div className="mb-3 flex items-center gap-2">
-          <Seg value={platform} onChange={setPlatform} options={[["", "All"], ["tiktok", "TikTok"], ["instagram", "Instagram"], ["youtube", "YouTube"], ["threads", "Threads"]]} />
+          <Seg value={platform} onChange={setPlatform} options={[["", "All"], ["tiktok", "TikTok"], ["instagram", "Instagram"], ["youtube", "YouTube"], ["threads", "Threads"], ["facebook", "Facebook"]]} />
           <div className="ml-auto">
             <Seg value={sort} onChange={setSort} options={[["recent", "Newest"], ["views", "Top views"]]} />
           </div>
