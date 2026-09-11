@@ -48,10 +48,11 @@ async function buildSnapshot(clientId: string) {
       period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
       cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
       bonus: c.bonus, minViews: c.minViews, viewWindowDays: c.viewWindowDays, payoutCap: c.payoutCap,
+      starterDays: c.starterDays, starterPerPost: c.starterPerPost,
     };
     const creatorsPay = c.assignments.map((a) => ({
       name: a.creator.displayName,
-      earned: computeEarnings(effectiveRules(base, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds).amount,
+      earned: computeEarnings(effectiveRules(base, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt }).amount,
     }));
     return {
       name: c.name, status: c.status, period: c.period, targetVideos: c.targetVideos,

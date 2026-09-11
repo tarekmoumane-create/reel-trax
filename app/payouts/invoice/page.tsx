@@ -35,8 +35,9 @@ function defaultMeta(clientId: string, to: string): Meta {
   const issue = new Date();
   const due = new Date();
   due.setDate(due.getDate() + 14);
+  const seed = /^\d{4}-\d{2}/.test(to) ? to : dstr(issue);
   return {
-    number: `INV-${to.slice(0, 7).replace("-", "")}-${clientId.slice(-4).toUpperCase()}`,
+    number: `INV-${seed.slice(0, 7).replace("-", "")}-${clientId.slice(-4).toUpperCase()}`,
     issueDate: dstr(issue),
     dueDate: dstr(due),
     feePct: "",
@@ -58,6 +59,9 @@ function Invoice() {
   const clientId = sp.get("clientId") ?? "";
   const from = sp.get("from") ?? "";
   const to = sp.get("to") ?? "";
+  // `all=1` lets the statement cover the client's whole history — the server
+  // resolves the dates and hands them back on the response.
+  const all = sp.get("all") === "1";
   const lsKey = `rt.invoice.${clientId}`;
 
   const [data, setData] = useState<InvoiceData | null>(null);
@@ -86,8 +90,9 @@ function Invoice() {
   };
 
   useEffect(() => {
-    if (!clientId || !from || !to) { setError("Missing clientId / from / to."); return; }
-    fetch(`/api/invoice?clientId=${clientId}&from=${from}&to=${to}`)
+    if (!clientId || (!all && (!from || !to))) { setError("Missing clientId / from / to."); return; }
+    const qs = all ? "all=1" : `from=${from}&to=${to}`;
+    fetch(`/api/invoice?clientId=${clientId}&${qs}`)
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw new Error(d?.error || "Failed to load");
@@ -95,7 +100,7 @@ function Invoice() {
         setProfile(d.profile);
       })
       .catch((e) => setError(e.message));
-  }, [clientId, from, to]);
+  }, [clientId, from, to, all]);
 
   async function saveProfile() {
     setSavingProfile(true);
@@ -104,6 +109,9 @@ function Invoice() {
     setProfileDirty(false);
   }
 
+  // With `all=1` the URL carries no dates; the response says what was billed.
+  const periodFrom = data?.from ?? from;
+  const periodTo = data?.to ?? to;
   const cur = data?.currency ?? "USD";
   const feePct = Number(meta.feePct) || 0;
   const subtotal = data?.totals.amount ?? 0;
@@ -134,7 +142,7 @@ function Invoice() {
       <div className="no-print sticky top-0 z-10 border-b border-[#d9dce4] bg-[#f6f7fa]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[900px] flex-wrap items-center gap-2 px-6 py-3">
           <Link href="/payouts" className="rounded-md border border-[#d9dce4] bg-white px-3 py-1.5 text-[12.5px] font-medium hover:bg-[#f0f1f6]">← Payouts</Link>
-          <span className="text-[13px] text-[#5c6270]">Invoice for <b className="text-[#1a1d27]">{data.client.name}</b> · {fmtShort(from)} – {fmtShort(to)}</span>
+          <span className="text-[13px] text-[#5c6270]">Invoice for <b className="text-[#1a1d27]">{data.client.name}</b> · {fmtShort(periodFrom)} – {fmtShort(periodTo)}</span>
           <div className="ml-auto flex items-center gap-1.5">
             <button onClick={downloadCsv} className="rounded-md border border-[#d9dce4] bg-white px-3 py-1.5 text-[12.5px] font-medium hover:bg-[#f0f1f6]">CSV</button>
             <button onClick={() => window.print()} className="rounded-md bg-[#6553d6] px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:brightness-110">Print / Save as PDF</button>
@@ -182,7 +190,7 @@ function Invoice() {
               <tbody>
                 <tr><td className="pr-4 text-[#5c6270]">Issued</td><td className="text-right">{fmtLong(meta.issueDate)}</td></tr>
                 <tr><td className="pr-4 text-[#5c6270]">Due</td><td className="text-right">{fmtLong(meta.dueDate)}</td></tr>
-                <tr><td className="pr-4 text-[#5c6270]">Period</td><td className="text-right">{fmtShort(from)} – {fmtShort(to)}</td></tr>
+                <tr><td className="pr-4 text-[#5c6270]">Period</td><td className="text-right">{fmtShort(periodFrom)} – {fmtShort(periodTo)}</td></tr>
               </tbody>
             </table>
           </div>
@@ -247,7 +255,7 @@ function Invoice() {
         {/* per-video appendix */}
         {meta.showVideos && data.totals.videos > 0 && (
           <div className="mt-12 border-t border-[#e4e6ee] pt-6">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#979dab]">Appendix · videos posted {fmtShort(from)} – {fmtShort(to)}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#979dab]">Appendix · videos posted {fmtShort(periodFrom)} – {fmtShort(periodTo)}</div>
             {data.lines.filter((l) => l.videos.length).map((l) => (
               <div key={l.creatorId} className="invoice-avoid-break mt-5">
                 <div className="text-[13px] font-semibold">{l.creatorName} <span className="font-normal text-[#979dab]">· {l.videos.length} videos</span></div>

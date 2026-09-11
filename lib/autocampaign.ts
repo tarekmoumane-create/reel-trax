@@ -22,6 +22,8 @@ function campaignDataFromRules(r: PayRulesJson) {
     minViews: r.minViews ?? 0,
     viewWindowDays: r.viewWindowDays ?? null,
     payoutCap: r.payoutCap ?? null,
+    starterDays: r.starterDays ?? null,
+    starterPerPost: r.starterPerPost ?? null,
     currency: r.currency || "USD",
   };
 }
@@ -29,7 +31,7 @@ function campaignDataFromRules(r: PayRulesJson) {
 /** Does the structure actually pay anything? All-zero structures don't earn an auto campaign. */
 function paysAnything(r: PayRulesJson | null): r is PayRulesJson {
   if (!r) return false;
-  return Boolean(r.baseFee || r.perPost || r.cpmRate || r.viewTiers?.length || r.bonus || r.flatDeal);
+  return Boolean(r.baseFee || r.perPost || r.cpmRate || r.viewTiers?.length || r.bonus || r.flatDeal || (r.starterDays && r.starterPerPost));
 }
 
 export async function syncAutoCampaign(clientId: string): Promise<void> {

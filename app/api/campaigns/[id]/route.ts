@@ -16,6 +16,8 @@ function rulesOf(c: {
   minViews: number;
   viewWindowDays: number | null;
   payoutCap: number | null;
+  starterDays: number | null;
+  starterPerPost: number | null;
 }): CampaignRules {
   return {
     period: c.period,
@@ -30,6 +32,8 @@ function rulesOf(c: {
     minViews: c.minViews,
     viewWindowDays: c.viewWindowDays,
     payoutCap: c.payoutCap,
+    starterDays: c.starterDays,
+    starterPerPost: c.starterPerPost,
   };
 }
 
@@ -49,7 +53,7 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
     const creators = campaign.assignments.map((a) => {
       const overrideTiers = parseViewTiers(a.viewTiers);
       const rules = effectiveRules(baseRules, { ...a, viewTiers: overrideTiers });
-      const earnings = computeEarnings(rules, a.creator.posts, bounds);
+      const earnings = computeEarnings(rules, a.creator.posts, bounds, new Date(), { onboardedAt: a.creator.onboardedAt });
       const overridden =
         a.baseFee != null || a.perPost != null || a.cpmRate != null ||
         a.cpmBasis != null || a.cpmCapPerVideo != null || overrideTiers.length > 0 ||
@@ -98,6 +102,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       data.viewTiers = tiers.length ? JSON.stringify(tiers) : null;
     }
     if ("payoutCap" in b) data.payoutCap = b.payoutCap === "" || b.payoutCap == null ? null : NUM(b.payoutCap);
+    if ("starterDays" in b) data.starterDays = b.starterDays === "" || b.starterDays == null ? null : Math.round(NUM(b.starterDays));
+    if ("starterPerPost" in b) data.starterPerPost = b.starterPerPost === "" || b.starterPerPost == null ? null : NUM(b.starterPerPost);
     if ("currency" in b) data.currency = b.currency;
 
     const campaign = await prisma.campaign.update({ where: { id }, data });

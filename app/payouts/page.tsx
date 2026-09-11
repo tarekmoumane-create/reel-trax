@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useClients } from "../providers";
 import { TopBar, PageTitle } from "@/components/PageHeader";
-import { RangePicker, PRESETS, type Range } from "@/components/RangePicker";
+import { RangePicker, type Range } from "@/components/RangePicker";
 import { money } from "@/lib/payouts";
 import { payLink } from "@/lib/pay";
 import { fmtNum } from "@/lib/ui";
@@ -163,20 +163,49 @@ export default function PayoutsPage() {
  * (across all campaigns), then open the print-ready invoice or grab a CSV.
  */
 function InvoiceTab({ clientId }: { clientId: string }) {
-  const [range, setRange] = useState<Range>(() => PRESETS.find((p) => p.key === "mtd")!.range());
+  // null = "everything up to today" — the server works out the start date from
+  // the client's own history, so a statement bills the whole engagement by
+  // default instead of only the current month.
+  const [range, setRange] = useState<Range | null>(null);
   const [data, setData] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
+  // Guards the extra round-trip when an all-time fetch resolves into a real
+  // from/to and re-runs this effect with the range it just returned.
+  const fetched = useRef("");
 
   useEffect(() => {
+    const key = range ? `${range.from}|${range.to}` : "all";
+    if (fetched.current === key) return;
+    fetched.current = key;
     let alive = true;
     setLoading(true);
-    fetch(`/api/invoice?clientId=${clientId}&from=${range.from}&to=${range.to}`)
+    const qs = range ? `from=${range.from}&to=${range.to}` : "all=1";
+    fetch(`/api/invoice?clientId=${clientId}&${qs}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (alive) { setData(d); setLoading(false); } });
+      .then((d: InvoiceData | null) => {
+        if (!alive) return;
+        setData(d);
+        setLoading(false);
+        if (d && !range) {
+          fetched.current = `${d.from}|${d.to}`;
+          setRange({ from: d.from, to: d.to, label: "All time" });
+        }
+      });
     return () => { alive = false; };
-  }, [clientId, range.from, range.to]);
+  }, [clientId, range]);
 
-  const invoiceHref = `/payouts/invoice?clientId=${clientId}&from=${range.from}&to=${range.to}`;
+  // Reset to all-time when the client changes — the previous client's history
+  // says nothing about this one's.
+  useEffect(() => {
+    fetched.current = "";
+    setRange(null);
+  }, [clientId]);
+
+  const allTime = range?.label === "All time";
+  const rangeLabel = range?.label ?? "All time";
+  const invoiceHref = range
+    ? `/payouts/invoice?clientId=${clientId}&from=${range.from}&to=${range.to}`
+    : `/payouts/invoice?clientId=${clientId}&all=1`;
 
   function downloadCsv() {
     if (!data) return;
@@ -195,7 +224,14 @@ function InvoiceTab({ clientId }: { clientId: string }) {
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="text-xs text-[var(--muted)]">Statement period</span>
-        <RangePicker range={range} onChange={setRange} />
+        {range && (
+          <RangePicker
+            range={range}
+            onChange={setRange}
+            onAllTime={() => { fetched.current = ""; setRange(null); }}
+            allTimeActive={allTime}
+          />
+        )}
         <div className="ml-auto flex items-center gap-1.5">
           <button onClick={downloadCsv} disabled={!data || data.lines.length === 0} className="btn px-3 py-1.5 text-xs disabled:opacity-50">CSV</button>
           <a href={invoiceHref} target="_blank" rel="noreferrer" className={`btn btn-primary px-3 py-1.5 text-xs ${!data || data.lines.length === 0 ? "pointer-events-none opacity-50" : ""}`}>
@@ -206,7 +242,7 @@ function InvoiceTab({ clientId }: { clientId: string }) {
 
       {data && (
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Kpi label={`Total · ${range.label}`} value={money(data.totals.amount, cur)} tone="var(--signal)" />
+          <Kpi label={`Total · ${rangeLabel}`} value={money(data.totals.amount, cur)} tone="var(--signal)" />
           <Kpi label="Creators" value={`${data.totals.creators}`} />
           <Kpi label="Qualifying posts" value={`${data.totals.posts}`} />
           <Kpi label="Views" value={fmtNum(data.totals.views)} />
@@ -237,7 +273,7 @@ function InvoiceTab({ clientId }: { clientId: string }) {
               </div>
             ))}
             <div className="flex items-center justify-between px-4 py-3 text-sm">
-              <span className="text-[var(--muted)]">Total for {range.label.toLowerCase()}</span>
+              <span className="text-[var(--muted)]">Total for {rangeLabel.toLowerCase()}</span>
               <span className="mono text-base font-bold text-[var(--signal)]">{money(data.totals.amount, cur)}</span>
             </div>
           </>

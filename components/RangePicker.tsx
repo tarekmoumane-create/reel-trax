@@ -41,7 +41,17 @@ export const fmtRangeDate = (d: string) => {
   return new Date(2000, m - 1, day).toLocaleDateString("en", { month: "short", day: "numeric" });
 };
 
-export function RangePicker({ range, onChange }: { range: Range; onChange: (r: Range, presetKey?: string) => void }) {
+/**
+ * `onAllTime` adds an "All time" entry above the fixed presets. The range it
+ * covers depends on the data being shown, so the caller resolves it rather
+ * than the picker computing a date.
+ */
+export function RangePicker({ range, onChange, onAllTime, allTimeActive }: {
+  range: Range;
+  onChange: (r: Range, presetKey?: string) => void;
+  onAllTime?: () => void;
+  allTimeActive?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(range.from);
   const [to, setTo] = useState(range.to);
@@ -63,6 +73,12 @@ export function RangePicker({ range, onChange }: { range: Range; onChange: (r: R
         <div className="absolute right-0 z-40 mt-1.5 flex w-[290px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] shadow-2xl">
           {/* presets */}
           <div className="max-h-72 w-1/2 overflow-y-auto border-r border-[var(--line2)] py-1">
+            {onAllTime && (
+              <button
+                onClick={() => { onAllTime(); setOpen(false); }}
+                className={`block w-full border-b border-[var(--line2)] px-3 py-1.5 text-left text-xs hover:bg-[var(--panel2)] ${allTimeActive ? "bg-[var(--panel2)] font-semibold" : ""}`}
+              >All time</button>
+            )}
             {PRESETS.map((p) => (
               <button
                 key={p.key}

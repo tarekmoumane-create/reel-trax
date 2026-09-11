@@ -200,6 +200,11 @@ model Campaign {
   // Null = all-time (no deadline). Judged from PostStatSnapshot history.
   viewWindowDays Int?
   payoutCap Float? // max per creator per period
+  // New-creator ramp-up: for `starterDays` after a creator's onboarding date,
+  // each of their videos earns a flat `starterPerPost` instead of view-based
+  // pay, and qualifies regardless of views. Null/0 = no starter window.
+  starterDays    Int?
+  starterPerPost Float?
   currency  String @default("USD")
 
   createdAt   DateTime          @default(now())

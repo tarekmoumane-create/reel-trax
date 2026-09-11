@@ -18,6 +18,8 @@ export interface PayForm {
   minViews: string; // min views for a post to qualify
   viewWindowDays: string; // days a video has to hit minViews / the tiers
   payoutCap: string; // max per period
+  starterDays: string; // new-creator ramp-up length, in days
+  starterPerPost: string; // flat pay per video during that ramp-up
 }
 
 export function emptyPayForm(): PayForm {
@@ -34,6 +36,8 @@ export function emptyPayForm(): PayForm {
     minViews: "",
     viewWindowDays: "",
     payoutCap: "",
+    starterDays: "",
+    starterPerPost: "",
   };
 }
 
@@ -53,6 +57,8 @@ export function payFormFromRules(r: PayRulesJson | null | undefined): PayForm {
   f.minViews = s(r.minViews);
   f.viewWindowDays = s(r.viewWindowDays);
   f.payoutCap = s(r.payoutCap);
+  f.starterDays = s(r.starterDays);
+  f.starterPerPost = s(r.starterPerPost);
   return f;
 }
 
@@ -82,6 +88,11 @@ export function payFormToRules(f: PayForm): PayRulesJson {
   if (num(f.minViews)) rules.minViews = num(f.minViews);
   if (num(f.viewWindowDays)) rules.viewWindowDays = Math.round(num(f.viewWindowDays)!);
   if (num(f.payoutCap)) rules.payoutCap = num(f.payoutCap);
+  // Both halves are needed for the window to mean anything.
+  if (num(f.starterDays) && num(f.starterPerPost)) {
+    rules.starterDays = Math.round(num(f.starterDays)!);
+    rules.starterPerPost = num(f.starterPerPost)!;
+  }
   return rules;
 }
 
@@ -100,6 +111,8 @@ export function payFormSummary(f: PayForm): string {
   const extras: string[] = [];
   if (Number(f.minViews) > 0) extras.push(`min ${f.minViews} views`);
   if (Number(f.viewWindowDays) > 0) extras.push(`${f.viewWindowDays}d window`);
+  if (Number(f.starterDays) > 0 && Number(f.starterPerPost) > 0)
+    extras.push(`$${f.starterPerPost}/video for first ${f.starterDays}d`);
   const main = parts.join(" + ") || "No pay set";
   return extras.length ? `${main} (${extras.join(", ")})` : main;
 }
@@ -252,6 +265,25 @@ export function PayStructureEditor({
           </div>
         </div>
       )}
+
+      <details className="rounded-xl border border-[var(--line)] p-3" open={!!(value.starterDays || value.starterPerPost)}>
+        <summary className="cursor-pointer text-xs font-semibold text-[var(--muted)]">New creator starter pay</summary>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <label className={label}>Starter window (days)</label>
+            <input type="number" className={field} value={value.starterDays} onChange={(e) => set("starterDays", e.target.value)} placeholder="off" />
+          </div>
+          <div>
+            <label className={label}>Pay / video in window</label>
+            <input type="number" className={field} value={value.starterPerPost} onChange={(e) => set("starterPerPost", e.target.value)} placeholder="0" />
+          </div>
+        </div>
+        <p className="mt-2 text-[11px] text-[var(--faint)]">
+          For this many days after a creator&apos;s onboarding date, every video they post earns this flat amount.
+          Those videos count no matter how few views they get, and they don&apos;t earn per-post, CPM or view-bonus
+          pay on top. Set both boxes to switch it on; leave either blank and it&apos;s off.
+        </p>
+      </details>
 
       <details className="rounded-xl border border-[var(--line)] p-3" open={!!(value.minViews || value.viewWindowDays)}>
         <summary className="cursor-pointer text-xs font-semibold text-[var(--muted)]">More rules</summary>

@@ -7,11 +7,13 @@ function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
   cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null; viewTiers: string | null;
   bonus: number; minViews: number; viewWindowDays: number | null; payoutCap: number | null;
+  starterDays: number | null; starterPerPost: number | null;
 }): CampaignRules {
   return {
     period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
     cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
     bonus: c.bonus, minViews: c.minViews, viewWindowDays: c.viewWindowDays, payoutCap: c.payoutCap,
+    starterDays: c.starterDays, starterPerPost: c.starterPerPost,
   };
 }
 
@@ -67,7 +69,7 @@ export async function GET(request: Request) {
         for (const a of c.assignments) {
           const key = `${c.id}|${a.creatorId}|${bounds.start.toISOString()}`;
           if (map.has(key)) continue; // stored wins
-          const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds);
+          const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt });
           // Skip empty past periods (nothing earned, nothing posted) — noise.
           if (!isCurrent && e.amount === 0 && e.qualifyingPosts === 0) continue;
           map.set(key, {

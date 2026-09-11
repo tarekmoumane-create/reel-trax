@@ -18,7 +18,7 @@ interface Detail {
     id: string; clientId: string; name: string; status: string; period: string; isAuto: boolean; targetVideos: number | null;
     baseFee: number; perPost: number; cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null;
     viewTiers: string | null; bonus: number; minViews: number; viewWindowDays: number | null;
-    payoutCap: number | null; currency: string;
+    payoutCap: number | null; starterDays: number | null; starterPerPost: number | null; currency: string;
   };
   period: { label: string; total: number; start: string; end: string };
   creators: {
@@ -215,6 +215,7 @@ function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"
       cpmRate: campaign.cpmRate, cpmBasis: campaign.cpmBasis, cpmCapPerVideo: campaign.cpmCapPerVideo,
       viewTiers: parseViewTiers(campaign.viewTiers), bonus: campaign.bonus,
       minViews: campaign.minViews, viewWindowDays: campaign.viewWindowDays, payoutCap: campaign.payoutCap,
+      starterDays: campaign.starterDays, starterPerPost: campaign.starterPerPost,
     })
   );
   const [saving, setSaving] = useState(false);
@@ -231,6 +232,7 @@ function EditModal({ campaign, onClose, onSaved }: { campaign: Detail["campaign"
         cpmBasis: rules.cpmBasis ?? "aggregate", cpmCapPerVideo: rules.cpmCapPerVideo ?? "",
         viewTiers: rules.viewTiers ?? [], bonus: rules.bonus ?? 0, minViews: rules.minViews ?? 0,
         viewWindowDays: rules.viewWindowDays ?? "", payoutCap: rules.payoutCap ?? "",
+        starterDays: rules.starterDays ?? "", starterPerPost: rules.starterPerPost ?? "",
       }),
     });
     onSaved();

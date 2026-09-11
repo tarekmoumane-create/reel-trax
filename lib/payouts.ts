@@ -37,6 +37,12 @@ export interface CampaignRules {
   viewWindowDays?: number | null; // views count only up to N days after posting (null = all-time)
   payoutCap: number | null;
   flatDeal?: number | null; // fixed total for the period, ignores all other rules
+  // A new creator's ramp-up: for `starterDays` after their onboarding date,
+  // every video earns a flat `starterPerPost` and nothing else — it qualifies
+  // regardless of views, and earns no per-post, CPM or tier pay on top.
+  // Null/0 days = no starter window.
+  starterDays?: number | null;
+  starterPerPost?: number | null;
 }
 
 // Per-creator overrides (null = inherit the campaign value).
@@ -73,6 +79,8 @@ export function effectiveRules(base: CampaignRules, o?: RuleOverride | null): Ca
     // null/undefined = inherit — matches the "leave blank to inherit" UI.
     payoutCap: o.payoutCap == null ? base.payoutCap : o.payoutCap,
     flatDeal: o.flatDeal == null ? base.flatDeal : o.flatDeal,
+    starterDays: base.starterDays ?? null,
+    starterPerPost: base.starterPerPost ?? null,
   };
 }
 
@@ -205,11 +213,18 @@ function windowedViews(p: EarningPost, windowDays: number | null | undefined, no
   return [...snaps].sort((a, b) => (a.day > b.day ? 1 : -1))[0].views;
 }
 
+/** Extra context the rules need about the creator being paid. */
+export interface EarningContext {
+  /** When this creator started, for the starter-window rule. */
+  onboardedAt?: Date | string | null;
+}
+
 export function computeEarnings(
   rules: CampaignRules,
   posts: EarningPost[],
   bounds: PeriodBounds,
-  now: Date = new Date()
+  now: Date = new Date(),
+  ctx: EarningContext = {}
 ): Earnings {
   const inPeriod = posts
     .filter((p) => {
@@ -221,14 +236,31 @@ export function computeEarnings(
     .filter((p) => hasOverride(p) || !exclusionsOf(p).includes("all"))
     // From here on, "views" means countable views under the view window.
     .map((p) => ({ ...p, views: windowedViews(p, rules.viewWindowDays, now) }));
-  // Hand-priced videos always qualify (someone decided what they're worth);
-  // the rest have to clear the minimum views.
-  const qualifying = inPeriod.filter((p) => hasOverride(p) || p.views >= (rules.minViews || 0));
+  // Starter window: the first N days after a creator was onboarded. Videos
+  // posted inside it are paid a flat rate instead of by views.
+  const onboarded = ctx.onboardedAt ? new Date(ctx.onboardedAt) : null;
+  const starterDays = rules.starterDays ?? 0;
+  const starterRate = rules.starterPerPost ?? 0;
+  const starterEnd =
+    onboarded && !isNaN(onboarded.getTime()) && starterDays > 0
+      ? onboarded.getTime() + starterDays * DAY
+      : null;
+  const isStarter = (p: EarningPost) => {
+    if (starterEnd == null || hasOverride(p)) return false;
+    const t = (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
+    return t >= (onboarded as Date).getTime() && t <= starterEnd;
+  };
+
+  // Hand-priced videos always qualify (someone decided what they're worth) and
+  // so do starter-window videos; the rest have to clear the minimum views.
+  const qualifying = inPeriod.filter((p) => hasOverride(p) || isStarter(p) || p.views >= (rules.minViews || 0));
   // Per-component opt-outs: a video can count for some pay rules but not
-  // others. Hand-priced videos sit outside every rule-computed component.
+  // others. Hand-priced and starter videos sit outside every rule-computed
+  // component — they are already priced.
   const counted = (list: typeof qualifying, c: PayComponent) =>
-    list.filter((p) => !hasOverride(p) && !exclusionsOf(p).includes(c));
+    list.filter((p) => !hasOverride(p) && !isStarter(p) && !exclusionsOf(p).includes(c));
   const custom = qualifying.filter(hasOverride);
+  const starters = qualifying.filter(isStarter);
   const qCount = qualifying.length;
   const qViews = qualifying.reduce((s, p) => s + p.views, 0);
   const targetMet = rules.targetVideos != null && qCount >= rules.targetVideos;
@@ -247,6 +279,9 @@ export function computeEarnings(
 
   const breakdown: { label: string; amount: number }[] = [];
   if (rules.baseFee) breakdown.push({ label: "Base fee", amount: rules.baseFee });
+  if (starters.length && starterRate) {
+    breakdown.push({ label: `Starter pay × ${starters.length}`, amount: starterRate * starters.length });
+  }
   if (rules.perPost) {
     const pp = counted(qualifying, "perPost");
     if (pp.length) breakdown.push({ label: `Per post × ${pp.length}`, amount: rules.perPost * pp.length });
@@ -315,6 +350,8 @@ export interface PayRulesJson {
   payoutCap?: number | null;
   flatDeal?: number | null;
   targetVideos?: number | null;
+  starterDays?: number | null;
+  starterPerPost?: number | null;
   currency?: string;
   note?: string;
 }

@@ -27,6 +27,10 @@ export async function POST(request: Request) {
     const link = await prisma.campaignCreator.findUnique({
       where: { campaignId_creatorId: { campaignId, creatorId } },
     });
+    const creator = await prisma.creator.findUnique({
+      where: { id: creatorId },
+      select: { onboardedAt: true },
+    });
     const posts = await prisma.post.findMany({
       where: { creatorId, creator: { campaignLinks: { some: { campaignId } } } },
       select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true, snapshots: { select: { day: true, views: true } } },
@@ -39,11 +43,14 @@ export async function POST(request: Request) {
       cpmCapPerVideo: campaign.cpmCapPerVideo, viewTiers: parseViewTiers(campaign.viewTiers),
       bonus: campaign.bonus, minViews: campaign.minViews, viewWindowDays: campaign.viewWindowDays,
       payoutCap: campaign.payoutCap,
+      starterDays: campaign.starterDays, starterPerPost: campaign.starterPerPost,
     };
     const e = computeEarnings(
       effectiveRules(baseRules, link ? { ...link, viewTiers: parseViewTiers(link.viewTiers) } : null),
       posts,
-      bounds
+      bounds,
+      new Date(),
+      { onboardedAt: creator?.onboardedAt ?? null }
     );
 
     const record = await prisma.payout.upsert({

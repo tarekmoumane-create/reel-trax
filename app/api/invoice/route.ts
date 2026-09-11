@@ -20,15 +20,45 @@ import type { InvoiceLine } from "@/lib/invoice";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DAY = 86_400_000;
 
+const dayStr = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * The start of this client's history: whichever came first, their earliest
+ * tracked post or their earliest campaign. Falls back to the start of the
+ * current month when there is nothing to bill yet.
+ */
+async function allTimeFrom(clientId: string): Promise<string> {
+  const [post, campaign] = await Promise.all([
+    prisma.post.findFirst({
+      where: { creator: { clientId } },
+      orderBy: { postedAt: "asc" },
+      select: { postedAt: true },
+    }),
+    prisma.campaign.findFirst({
+      where: { clientId },
+      orderBy: { createdAt: "asc" },
+      select: { startDate: true, createdAt: true },
+    }),
+  ]);
+  const candidates = [post?.postedAt, campaign?.startDate ?? campaign?.createdAt].filter(Boolean) as Date[];
+  if (!candidates.length) {
+    const n = new Date();
+    return dayStr(new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 1)));
+  }
+  return dayStr(new Date(Math.min(...candidates.map((d) => d.getTime()))));
+}
+
 function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
   cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null; viewTiers: string | null;
   bonus: number; minViews: number; viewWindowDays: number | null; payoutCap: number | null;
+  starterDays: number | null; starterPerPost: number | null;
 }): CampaignRules {
   return {
     period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
     cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
     bonus: c.bonus, minViews: c.minViews, viewWindowDays: c.viewWindowDays, payoutCap: c.payoutCap,
+    starterDays: c.starterDays, starterPerPost: c.starterPerPost,
   };
 }
 
@@ -36,13 +66,22 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
-    const from = searchParams.get("from") ?? "";
-    const to = searchParams.get("to") ?? "";
     if (!clientId) return bad("clientId is required");
-    if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) return bad("from/to must be YYYY-MM-DD with from <= to");
 
     const client = await prisma.client.findUnique({ where: { id: clientId } });
     if (!client) return bad("Client not found", 404);
+
+    // `all=1` means "the whole thing up to today": the server works out the
+    // earliest date this client has any history for, so the statement covers
+    // everything instead of the caller guessing a start date.
+    let from = searchParams.get("from") ?? "";
+    let to = searchParams.get("to") ?? "";
+    if (searchParams.get("all") === "1") {
+      const bounds = await allTimeFrom(clientId);
+      from = bounds;
+      to = dayStr(new Date());
+    }
+    if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) return bad("from/to must be YYYY-MM-DD with from <= to");
 
     await syncAutoCampaign(clientId);
 
@@ -57,7 +96,7 @@ export async function GET(request: Request) {
           include: {
             creator: {
               select: {
-                id: true, displayName: true, tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true, facebookHandle: true,
+                id: true, displayName: true, onboardedAt: true, tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true, facebookHandle: true,
                 posts: {
                   select: {
                     platform: true, url: true, caption: true, postedAt: true, views: true,
@@ -82,7 +121,7 @@ export async function GET(request: Request) {
       const campaignStart = c.startDate ?? c.createdAt;
       // Periods from campaign start through the range end, then keep the
       // ones that overlap the range (and the campaign's own lifetime).
-      const periods = periodsSince(c.period, campaignStart, rangeEnd, 120).filter((p) => {
+      const periods = periodsSince(c.period, campaignStart, rangeEnd, 600).filter((p) => {
         if (p.end.getTime() < rangeStart.getTime() || p.start.getTime() > rangeEnd.getTime()) return false;
         if (c.endDate && p.start.getTime() > c.endDate.getTime()) return false;
         return true;
@@ -95,7 +134,7 @@ export async function GET(request: Request) {
         };
         for (const a of c.assignments) {
           const rules = effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) });
-          const e = computeEarnings(rules, a.creator.posts, bounds, now);
+          const e = computeEarnings(rules, a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt });
           const inRange = a.creator.posts.filter((v) => v.postedAt.getTime() >= bounds.start.getTime() && v.postedAt.getTime() <= bounds.end.getTime());
           if (e.amount === 0 && inRange.length === 0) continue;
 
