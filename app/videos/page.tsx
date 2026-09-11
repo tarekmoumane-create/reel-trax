@@ -8,6 +8,7 @@ import { VideoThumb } from "@/components/VideoThumb";
 import { fmtNum } from "@/lib/ui";
 import { parsePayExclusions } from "@/lib/payouts";
 import { VideoPayMenu, type VideoPayPatch } from "@/components/VideoPayMenu";
+import { RangePicker, PRESETS, type Range } from "@/components/RangePicker";
 
 interface VideoRow {
   id: string;
@@ -33,16 +34,19 @@ export default function VideosPage() {
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<"recent" | "views">("recent");
   const [platform, setPlatform] = useState<"" | "tiktok" | "instagram" | "youtube" | "threads" | "facebook">("");
+  // null = all time (the default); otherwise videos posted inside the window
+  const [range, setRange] = useState<Range | null>(null);
 
   const load = useCallback(async () => {
     if (!currentClientId) return;
     setLoading(true);
     const qs = new URLSearchParams({ clientId: currentClientId, sort });
     if (platform) qs.set("platform", platform);
+    if (range) { qs.set("from", range.from); qs.set("to", range.to); }
     const res = await fetch(`/api/videos?${qs}`);
     if (res.ok) setRows(await res.json());
     setLoading(false);
-  }, [currentClientId, sort, platform]);
+  }, [currentClientId, sort, platform, range]);
 
   useEffect(() => {
     load();
@@ -65,6 +69,10 @@ export default function VideosPage() {
     });
   }
 
+  // the picker always needs a concrete range — on "all time" it only supplies
+  // sensible defaults for the custom From/To inputs
+  const pickerRange: Range = range ?? { ...PRESETS[4].range(), label: "All time" };
+
   const grid = "md:grid-cols-[48px_minmax(220px,2fr)_140px_100px_84px_84px_84px_112px]";
 
   return (
@@ -75,7 +83,13 @@ export default function VideosPage() {
 
         <div className="mb-3 flex items-center gap-2">
           <Seg value={platform} onChange={setPlatform} options={[["", "All"], ["tiktok", "TikTok"], ["instagram", "Instagram"], ["youtube", "YouTube"], ["threads", "Threads"], ["facebook", "Facebook"]]} />
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <RangePicker
+              range={pickerRange}
+              onChange={(r) => setRange(r)}
+              onAllTime={() => setRange(null)}
+              allTimeActive={!range}
+            />
             <Seg value={sort} onChange={setSort} options={[["recent", "Newest"], ["views", "Top views"]]} />
           </div>
         </div>
@@ -88,7 +102,9 @@ export default function VideosPage() {
           {loading ? (
             <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
           ) : rows.length === 0 ? (
-            <div className="py-16 text-center text-sm text-[var(--muted)]">No posts tracked yet.</div>
+            <div className="py-16 text-center text-sm text-[var(--muted)]">
+              {range ? "No posts in this date range. Widen the dates or switch back to all time." : "No posts tracked yet."}
+            </div>
           ) : (
             rows.map((p) => {
               const dt = new Date(p.postedAt);
@@ -112,7 +128,7 @@ export default function VideosPage() {
             })
           )}
         </div>
-        {rows.length > 0 && <p className="mt-3 text-xs text-[var(--faint)]">Showing {rows.length} posts. The Pay column sets what each video earns — mark warm-up posts so they skip view bonuses, or give a video a fixed price.</p>}
+        {rows.length > 0 && <p className="mt-3 text-xs text-[var(--faint)]">Showing {rows.length} posts{range ? ` posted ${range.label.toLowerCase()}` : ""}. The Pay column sets what each video earns — mark warm-up posts so they skip view bonuses, or give a video a fixed price.</p>}
       </div>
     </>
   );
