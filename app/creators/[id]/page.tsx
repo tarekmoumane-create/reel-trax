@@ -160,17 +160,7 @@ export default function CreatorDetail() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="card p-5 lg:col-span-1"><ContactPanel creator={creator} onSave={patch} busy={busy} /></div>
           <div className="card p-5 lg:col-span-2">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold">Recent posts <span className="text-[var(--muted)]">({posts.length})</span></h2>
-              <span className="text-[11px] text-[var(--faint)]">Pay column: mark warm-ups or set a fixed price per video</span>
-            </div>
-            {posts.length === 0 ? (
-              <p className="py-8 text-center text-sm text-[var(--muted)]">No posts tracked yet. They&apos;ll appear after the next sync.</p>
-            ) : (
-              <div className="max-h-[420px] space-y-1 overflow-y-auto pr-1">
-                {posts.slice(0, 60).map((p) => <PostRow key={p.id} post={p} onPay={(patch) => savePostPay(p.id, patch)} />)}
-              </div>
-            )}
+            <PostsPanel posts={posts} onPay={savePostPay} />
           </div>
         </div>
       </div>
@@ -200,17 +190,142 @@ function Kpi({ icon, label, value, tone }: { icon: string; label: string; value:
   );
 }
 
-function PostRow({ post, onPay }: { post: PostDTO; onPay: (patch: VideoPayPatch) => void }) {
+type PostSortKey = "newest" | "oldest" | "views" | "likes" | "comments" | "shares" | "engagement";
+
+const POST_SORT_OPTIONS: [PostSortKey, string][] = [
+  ["newest", "Newest first"],
+  ["oldest", "Oldest first"],
+  ["views", "Most views"],
+  ["likes", "Most likes"],
+  ["comments", "Most comments"],
+  ["shares", "Most shares"],
+  ["engagement", "Best engagement"],
+];
+
+const PLATFORM_LABEL: Record<string, string> = {
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  youtube: "YouTube",
+  threads: "Threads",
+  facebook: "Facebook",
+};
+
+// engagement rate: reactions per view, so a small post that punched above its
+// weight can outrank a big one. No views yet, no rate.
+const engagementRate = (p: PostDTO) => (p.views > 0 ? (p.likes + p.comments + p.shares) / p.views : 0);
+const postedMs = (p: PostDTO) => new Date(p.postedAt).getTime();
+
+const POST_SORTS: Record<PostSortKey, (a: PostDTO, b: PostDTO) => number> = {
+  newest: (a, b) => postedMs(b) - postedMs(a),
+  oldest: (a, b) => postedMs(a) - postedMs(b),
+  views: (a, b) => b.views - a.views,
+  likes: (a, b) => b.likes - a.likes,
+  comments: (a, b) => b.comments - a.comments,
+  shares: (a, b) => b.shares - a.shares,
+  engagement: (a, b) => engagementRate(b) - engagementRate(a),
+};
+
+const POST_SORT_LS_KEY = "rt.creatorPostsSort";
+const PAGE = 60;
+
+function PostsPanel({ posts, onPay }: { posts: PostDTO[]; onPay: (postId: string, patch: VideoPayPatch) => void }) {
+  const [sort, setSort] = useState<PostSortKey>("newest");
+  const [platform, setPlatform] = useState("");
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(POST_SORT_LS_KEY) as PostSortKey | null;
+    if (saved && POST_SORT_OPTIONS.some(([k]) => k === saved)) setSort(saved);
+  }, []);
+
+  // only offer the platform filter when this creator actually posts on more than one
+  const platforms = useMemo(() => [...new Set(posts.map((p) => p.platform))].sort(), [posts]);
+
+  const rows = useMemo(() => {
+    const filtered = platform ? posts.filter((p) => p.platform === platform) : posts;
+    return [...filtered].sort(POST_SORTS[sort]);
+  }, [posts, platform, sort]);
+
+  const visible = showAll ? rows : rows.slice(0, PAGE);
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">
+          Posts <span className="text-[var(--muted)]">({rows.length}{platform ? ` of ${posts.length}` : ""})</span>
+        </h2>
+        <div className="flex items-center gap-2">
+          {platforms.length > 1 && (
+            <Select
+              size="sm"
+              align="right"
+              value={platform}
+              onChange={setPlatform}
+              options={[["", "All platforms"] as [string, string], ...platforms.map((p) => [p, PLATFORM_LABEL[p] ?? p] as [string, string])]}
+            />
+          )}
+          <Select
+            size="sm"
+            align="right"
+            value={sort}
+            onChange={(v) => {
+              setSort(v as PostSortKey);
+              localStorage.setItem(POST_SORT_LS_KEY, v);
+            }}
+            options={POST_SORT_OPTIONS as [string, string][]}
+          />
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="py-8 text-center text-sm text-[var(--muted)]">
+          {posts.length === 0 ? "No posts tracked yet. They’ll appear after the next sync." : "No posts on this platform."}
+        </p>
+      ) : (
+        <>
+          <div className="max-h-[420px] space-y-1 overflow-y-auto pr-1">
+            {visible.map((p) => <PostRow key={p.id} post={p} sort={sort} onPay={(patch) => onPay(p.id, patch)} />)}
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-[var(--faint)]">
+            <span>
+              {showAll || rows.length <= PAGE ? `Showing all ${rows.length}` : `Showing top ${PAGE} of ${rows.length}`}
+              {" · "}Pay column: mark warm-ups or set a fixed price per video
+            </span>
+            {rows.length > PAGE && (
+              <button onClick={() => setShowAll((s) => !s)} className="shrink-0 text-[var(--signal)] hover:underline">
+                {showAll ? `Show top ${PAGE}` : `Show all ${rows.length}`}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PostRow({ post, sort, onPay }: { post: PostDTO; sort: PostSortKey; onPay: (patch: VideoPayPatch) => void }) {
   const dt = new Date(post.postedAt);
+  // views and likes always show; the third stat follows whatever you sorted by
+  const extra: { key: PostSortKey; glyph: string; value: string } =
+    sort === "shares"
+      ? { key: "shares", glyph: "↻", value: fmtNum(post.shares) }
+      : sort === "engagement"
+        ? { key: "engagement", glyph: "⚡", value: `${(engagementRate(post) * 100).toFixed(1)}%` }
+        : { key: "comments", glyph: "≡", value: fmtNum(post.comments) };
+  const hot = (k: PostSortKey) => (sort === k ? "text-[var(--signal)]" : "text-[var(--muted)]");
+
   return (
     <div className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[var(--panel2)]">
       <VideoThumb url={post.url} thumbnailUrl={post.thumbnailUrl} platform={post.platform} w={32} h={44} />
-      <span className="mono w-24 shrink-0 text-[11px] text-[var(--muted)]">{dt.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" })}</span>
+      <span className={`mono w-24 shrink-0 text-[11px] ${sort === "newest" || sort === "oldest" ? "text-[var(--signal)]" : "text-[var(--muted)]"}`}>
+        {dt.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" })}
+      </span>
       <a href={post.url ?? "#"} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm hover:text-[var(--signal)]">
         {post.caption || <span className="text-[var(--faint)]">(no caption)</span>}
       </a>
-      <span className="mono shrink-0 text-[11px] text-[var(--muted)]">▶ {fmtNum(post.views)}</span>
-      <span className="mono shrink-0 text-[11px] text-[var(--muted)]">♥ {fmtNum(post.likes)}</span>
+      <span className={`mono w-[52px] shrink-0 text-right text-[11px] ${hot("views")}`} title="Views">▶ {fmtNum(post.views)}</span>
+      <span className={`mono w-[52px] shrink-0 text-right text-[11px] ${hot("likes")}`} title="Likes">♥ {fmtNum(post.likes)}</span>
+      <span className={`mono w-[52px] shrink-0 text-right text-[11px] ${hot(extra.key)}`} title={extra.key === "engagement" ? "Engagement rate" : extra.key === "shares" ? "Shares" : "Comments"}>{extra.glyph} {extra.value}</span>
       {post.source === "manual" && <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--faint)]">manual</span>}
       <div className="w-[108px] shrink-0">
         <VideoPayMenu
