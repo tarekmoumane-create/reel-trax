@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 export interface Series {
   name: string;
@@ -14,11 +14,31 @@ export interface Series {
 }
 
 const M = { top: 14, right: 14, bottom: 22, left: 46 };
+// The narrowest a zoom can go, in intervals between points.
+const MIN_SPAN = 4;
+// How far the y-axis can be stretched past "fit the tallest point" — enough
+// to bring 500-view days up to readable height under a 500K spike.
+const MAX_Y_ZOOM = 2000;
+// Stretch per pixel dragged, exponential: a full-height drag is ~400×.
+const Y_DRAG_RATE = 0.025;
+const SCALE_LS_KEY = "rt.chartScale";
+
+type Scale = "linear" | "log";
+// The visible window, stamped with the label count it was made for: new data
+// (another range or aggregation) no longer matches and falls back to the full
+// view, with no effect needed to reset it.
+type View = { n: number; start: number; end: number; yZoom: number };
 
 // Mixed-metric chart in the viral.app mold: every series is scaled to its own
 // max so views (100K) and posts (5) can share one plot; the y-axis labels
 // belong to the first series; hovering shows a floating tooltip with the exact
 // value of every series at that x.
+//
+// One viral day flattens everything else against the floor, so the chart
+// navigates like a trading chart: pinch / ⌘-scroll zooms around the cursor,
+// dragging pans, and the y-axis refits to whatever is on screen. Dragging the
+// y-axis stretches it further — anything pushed off the top gets a marker —
+// and a log scale shows small and huge days side by side. Double-click resets.
 export function Chart({
   labels,
   series,
@@ -36,8 +56,21 @@ export function Chart({
   formatHeader?: (s: string) => string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const clipId = `chart-clip-${useId().replace(/[^\w-]/g, "")}`;
   const [w, setW] = useState(600);
   const [hover, setHover] = useState<number | null>(null);
+  const [scale, setScaleState] = useState<Scale>(() => {
+    // Charts mount after their data loads, never during SSR — but guard anyway.
+    try {
+      return typeof window !== "undefined" && localStorage.getItem(SCALE_LS_KEY) === "log" ? "log" : "linear";
+    } catch {
+      return "linear";
+    }
+  });
+  const [viewState, setViewState] = useState<View | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef<{ kind: "pan" | "y"; x: number; y: number; view: View } | null>(null);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -46,133 +79,280 @@ export function Chart({
     return () => ro.disconnect();
   }, []);
 
-  const { maxes, plotW, plotH, xAt, yAt } = useMemo(() => {
-    // independent scale per series — the whole point of a mixed chart
-    const maxes = series.map((s) => {
-      const vals = s.values.filter((v): v is number => v != null);
-      return niceMax(vals.length ? Math.max(...vals) : 1);
-    });
-    const plotW = Math.max(1, w - M.left - M.right);
-    const plotH = Math.max(1, height - M.top - M.bottom);
-    const n = labels.length;
-    const xAt = (i: number) => M.left + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
-    const yAt = (v: number, si: number) => M.top + plotH - (v / maxes[si]) * plotH;
-    return { maxes, plotW, plotH, xAt, yAt };
-  }, [series, labels.length, w, height]);
+  function setScale(s: Scale) {
+    setScaleState(s);
+    try { localStorage.setItem(SCALE_LS_KEY, s); } catch { /* private mode */ }
+  }
+
+  const n = labels.length;
+  const last = Math.max(0, n - 1);
+  const view: View = viewState && viewState.n === n ? viewState : { n, start: 0, end: last, yZoom: 1 };
+  const { start, end, yZoom } = view;
+  const span = Math.max(1, end - start);
+  const zoomedX = start > 0 || end < last;
+  const zoomed = zoomedX || yZoom > 1;
+
+  const plotW = Math.max(1, w - M.left - M.right);
+  const plotH = Math.max(1, height - M.top - M.bottom);
+  const base = M.top + plotH;
+
+  // Log is log10(1 + v) so zero days sit on the floor instead of at -∞.
+  const tf = (v: number) => (scale === "log" ? Math.log10(1 + Math.max(0, v)) : v);
+  // Each series' top, in transformed units, fitted to the visible window only —
+  // that refit is what makes zooming in on a quiet stretch actually reveal it.
+  // Stretching only applies to line metrics: bars are small counts (posts a
+  // day) that never have the outlier problem, and stretching them just pushes
+  // every bar off the top.
+  const tops = series.map((s) => {
+    let mx = 0;
+    for (let i = start; i <= end; i++) {
+      const v = s.values[i];
+      if (v != null && v > mx) mx = v;
+    }
+    return Math.max(1e-9, tf(niceMax(mx || 1)) / (s.bars ? 1 : yZoom));
+  });
+  const xAt = (i: number) => M.left + (n <= 1 ? plotW / 2 : ((i - start) / span) * plotW);
+  const yAt = (v: number, si: number) => base - Math.min(1.05, tf(v) / tops[si]) * plotH;
+  const offTop = (v: number, si: number) => tf(v) > tops[si] * 1.0001;
+
+  // Draw one point past each edge so lines run to the border; the clip trims them.
+  const lo = Math.max(0, start - 1);
+  const hi = Math.min(last, end + 1);
+  const visible: number[] = [];
+  for (let i = lo; i <= hi; i++) visible.push(i);
 
   function linePath(vals: (number | null)[], si: number) {
     let d = "";
     let pen = false;
-    vals.forEach((v, i) => {
-      if (v == null) { pen = false; return; }
+    for (const i of visible) {
+      const v = vals[i];
+      if (v == null) { pen = false; continue; }
       d += `${pen ? "L" : "M"}${xAt(i).toFixed(1)} ${yAt(v, si).toFixed(1)} `;
       pen = true;
-    });
+    }
     return d.trim();
   }
   function areaPath(vals: (number | null)[], si: number) {
     const pts: [number, number][] = [];
-    vals.forEach((v, i) => { if (v != null) pts.push([xAt(i), yAt(v, si)]); });
+    for (const i of visible) { const v = vals[i]; if (v != null) pts.push([xAt(i), yAt(v, si)]); }
     if (pts.length < 2) return "";
-    const base = M.top + plotH;
     let d = `M${pts[0][0].toFixed(1)} ${base}`;
     for (const [x, y] of pts) d += ` L${x.toFixed(1)} ${y.toFixed(1)}`;
     d += ` L${pts[pts.length - 1][0].toFixed(1)} ${base} Z`;
     return d;
   }
 
-  const gridVals = [0, 0.25, 0.5, 0.75, 1];
-  const xTickIdx = tickIndexes(labels.length, Math.min(7, Math.max(2, Math.floor(w / 110))));
-  const barW = Math.max(3, Math.min(26, (plotW / Math.max(1, labels.length)) * 0.55));
-  const base = M.top + plotH;
+  // Gridlines on the first series' scale. Log gets powers of ten when it spans
+  // enough of them; otherwise evenly spaced fractions of the top.
+  const top0 = tops[0] ?? 1;
+  const grid: { y: number; label: string }[] =
+    scale === "log" && top0 >= 2
+      ? (() => {
+          const step = Math.ceil(Math.floor(top0) / 5);
+          const out = [{ y: base, label: "0" }];
+          for (let k = step; k <= top0; k += step) out.push({ y: base - (k / top0) * plotH, label: shortNum(Math.pow(10, k)) });
+          return out;
+        })()
+      : [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+          y: base - f * plotH,
+          label: shortNum(scale === "log" ? Math.pow(10, f * top0) - 1 : f * top0),
+        }));
+
+  const xTickIdx = tickIndexes(span + 1, Math.min(7, Math.max(2, Math.floor(w / 110)))).map((i) => i + start);
+  const barW = Math.max(3, Math.min(26, (plotW / (span + 1)) * 0.55));
+
+  /**
+   * Zoom the x-window by `factor` (>1 = in). `at` is where the cursor sits as a
+   * fraction of the plot width, so the day under it stays put. Works from the
+   * latest state, not this render's: a fast wheel delivers several events
+   * before React re-renders, and each has to build on the last.
+   */
+  function zoomAround(at: number, factor: number) {
+    if (n < 3) return;
+    setViewState((prev) => {
+      const from: View = prev && prev.n === n ? prev : { n, start: 0, end: last, yZoom: 1 };
+      const cur = from.end - from.start;
+      let next = factor > 1 ? Math.floor(cur / factor) : Math.ceil(cur / factor);
+      // Integer indexes: a gentle pinch must still move at least one step.
+      if (next === cur) next += factor > 1 ? -1 : 1;
+      next = Math.max(Math.min(MIN_SPAN, last), Math.min(last, next));
+      const anchor = from.start + at * cur;
+      const st = Math.max(0, Math.min(last - next, Math.round(anchor - at * next)));
+      return { ...from, start: st, end: st + next };
+    });
+  }
+
+  // Wheel needs a non-passive listener to stop the page scrolling, which
+  // React's onWheel can't provide. Plain scrolling still scrolls the page —
+  // only pinch (reported as ctrl+wheel) or ⌘/ctrl+scroll zooms.
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const rect = el!.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (e.clientX - rect.left - M.left) / plotW));
+      zoomAround(x, Math.max(0.67, Math.min(1.5, Math.exp(-e.deltaY * 0.01))));
+    }
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  });
+
+  function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    if (e.button !== 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const onAxis = e.clientX - rect.left < M.left;
+    drag.current = { kind: onAxis ? "y" : "pan", x: e.clientX, y: e.clientY, view };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    const d = drag.current;
+    if (d) {
+      const dx = e.clientX - d.x;
+      const dy = d.y - e.clientY;
+      if (!dragging && Math.abs(dx) + Math.abs(dy) < 3) return; // a click, not a drag
+      if (!dragging) setDragging(true);
+      setHover(null);
+      if (d.kind === "y") {
+        const yz = Math.max(1, Math.min(MAX_Y_ZOOM, d.view.yZoom * Math.exp(dy * Y_DRAG_RATE)));
+        setViewState({ ...d.view, n, yZoom: yz });
+      } else {
+        const w0 = d.view.end - d.view.start;
+        const shift = Math.round((-dx / plotW) * w0);
+        const st = Math.max(0, Math.min(last - w0, d.view.start + shift));
+        setViewState({ ...d.view, n, start: st, end: st + w0 });
+      }
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - M.left;
+    if (x < 0) { setHover(null); return; }
+    const i = Math.round(start + (x / plotW) * span);
+    setHover(Math.max(start, Math.min(end, i)));
+  }
+
+  function endDrag() {
+    drag.current = null;
+    setDragging(false);
+  }
 
   // tooltip placement — flips to the left of the guide near the right edge
   const TIP_W = 200;
   const tipLeft =
     hover == null ? 0 : xAt(hover) + 14 + TIP_W > w ? xAt(hover) - 14 - TIP_W : xAt(hover) + 14;
 
+  const btn = "grid h-6 min-w-6 place-items-center rounded-md px-1.5 text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--ink)] disabled:opacity-30 disabled:hover:bg-transparent";
+
   return (
-    <div ref={ref} className="relative w-full">
+    <div ref={ref} className="relative w-full select-none">
       <svg
+        ref={svgRef}
         width={w}
         height={height}
-        onMouseMove={(e) => {
-          const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
-          const x = e.clientX - rect.left - M.left;
-          const i = Math.round((x / plotW) * (labels.length - 1));
-          setHover(Math.max(0, Math.min(labels.length - 1, i)));
-        }}
-        onMouseLeave={() => setHover(null)}
+        style={{ touchAction: "pan-y", cursor: dragging ? "grabbing" : zoomedX ? "grab" : "crosshair" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onPointerLeave={() => { if (!drag.current) setHover(null); }}
+        onDoubleClick={() => setViewState(null)}
       >
+        <defs>
+          <clipPath id={clipId}>
+            <rect x={M.left} y={M.top - 4} width={plotW} height={plotH + 4} />
+          </clipPath>
+        </defs>
+
         {/* gridlines + y labels (labels read on the first series' scale) */}
-        {gridVals.map((f, i) => {
-          const y = M.top + plotH - f * plotH;
-          return (
-            <g key={i}>
-              <line x1={M.left} x2={w - M.right} y1={y} y2={y} stroke="var(--line)" strokeWidth={1} />
-              <text x={M.left - 8} y={y + 3} textAnchor="end" fontSize={10} fill="var(--faint)" className="mono">
-                {shortNum(f * (maxes[0] ?? 1))}
-              </text>
-            </g>
-          );
-        })}
+        {grid.map((g, i) => (
+          <g key={i}>
+            <line x1={M.left} x2={w - M.right} y1={g.y} y2={g.y} stroke="var(--line)" strokeWidth={1} />
+            <text x={M.left - 8} y={g.y + 3} textAnchor="end" fontSize={10} fill="var(--faint)" className="mono">
+              {g.label}
+            </text>
+          </g>
+        ))}
+        {/* y-axis grab strip — drag up to stretch the scale, down to relax it */}
+        <rect x={0} y={M.top} width={M.left} height={plotH} fill="transparent" style={{ cursor: "ns-resize" }}>
+          <title>Drag up or down to stretch the scale</title>
+        </rect>
         {/* x labels */}
         {xTickIdx.map((i) => (
           <text key={i} x={xAt(i)} y={height - 6} textAnchor="middle" fontSize={10} fill="var(--faint)" className="mono">{formatX(labels[i])}</text>
         ))}
-        {/* bars first (behind), then areas, then lines */}
+
+        <g clipPath={`url(#${clipId})`}>
+          {/* bars first (behind), then areas, then lines */}
+          {series.map((s, si) =>
+            s.bars
+              ? visible.map((i) => {
+                  const v = s.values[i];
+                  return v != null && v > 0 ? (
+                    <rect
+                      key={`b${si}-${i}`}
+                      x={xAt(i) - barW / 2}
+                      y={yAt(v, si)}
+                      width={barW}
+                      height={Math.max(1, base - yAt(v, si))}
+                      rx={Math.min(3, barW / 2)}
+                      fill={s.color}
+                      opacity={hover === i ? 0.95 : 0.65}
+                    />
+                  ) : null;
+                })
+              : null
+          )}
+          {series.map((s, si) => (s.area && !s.bars ? (
+            <path key={`a${si}`} d={areaPath(s.values, si)} fill={s.color} opacity={0.12} />
+          ) : null))}
+          {series.map((s, si) => (!s.bars ? (
+            <path key={`l${si}`} d={linePath(s.values, si)} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          ) : null))}
+          {/* always-visible point markers — same styling as the hover marker,
+              slightly smaller, shrinking further when the view is dense */}
+          {series.map((s, si) =>
+            !s.bars
+              ? visible.map((i) => {
+                  const v = s.values[i];
+                  return v != null && !offTop(v, si) ? (
+                    <circle
+                      key={`p${si}-${i}`}
+                      cx={xAt(i)}
+                      cy={yAt(v, si)}
+                      r={span > 45 ? 2 : 2.8}
+                      fill="var(--panel)"
+                      stroke={s.color}
+                      strokeWidth={1.6}
+                    />
+                  ) : null;
+                })
+              : null
+          )}
+        </g>
+
+        {/* points stretched past the top: a caret on the edge, so a clipped
+            spike reads as "keeps going", never as a flat line */}
         {series.map((s, si) =>
-          s.bars
-            ? s.values.map((v, i) =>
-                v != null && v > 0 ? (
-                  <rect
-                    key={`b${si}-${i}`}
-                    x={xAt(i) - barW / 2}
-                    y={yAt(v, si)}
-                    width={barW}
-                    height={Math.max(1, base - yAt(v, si))}
-                    rx={Math.min(3, barW / 2)}
-                    fill={s.color}
-                    opacity={hover === i ? 0.95 : 0.65}
-                  />
-                ) : null
-              )
-            : null
+          visible.map((i) => {
+            const v = s.values[i];
+            if (v == null || i < start || i > end || !offTop(v, si)) return null;
+            const x = xAt(i);
+            return <path key={`o${si}-${i}`} d={`M${x - 4} ${M.top + 2} L${x} ${M.top - 4} L${x + 4} ${M.top + 2} Z`} fill={s.color} />;
+          })
         )}
-        {series.map((s, si) => (s.area && !s.bars ? (
-          <path key={`a${si}`} d={areaPath(s.values, si)} fill={s.color} opacity={0.12} />
-        ) : null))}
-        {series.map((s, si) => (!s.bars ? (
-          <path key={`l${si}`} d={linePath(s.values, si)} fill="none" stroke={s.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-        ) : null))}
-        {/* always-visible point markers — same styling as the hover marker,
-            slightly smaller, shrinking further when the series is dense */}
-        {series.map((s, si) =>
-          !s.bars
-            ? s.values.map((v, i) =>
-                v != null ? (
-                  <circle
-                    key={`p${si}-${i}`}
-                    cx={xAt(i)}
-                    cy={yAt(v, si)}
-                    r={labels.length > 45 ? 2 : 2.8}
-                    fill="var(--panel)"
-                    stroke={s.color}
-                    strokeWidth={1.6}
-                  />
-                ) : null
-              )
-            : null
-        )}
+
         {/* hover guide + markers */}
         {hover != null && (
           <g>
             <line x1={xAt(hover)} x2={xAt(hover)} y1={M.top} y2={base} stroke="var(--faint)" strokeWidth={1} strokeDasharray="3 3" />
-            {series.map((s, si) =>
-              !s.bars && s.values[hover] != null ? (
-                <circle key={si} cx={xAt(hover)} cy={yAt(s.values[hover]!, si)} r={3.5} fill="var(--panel)" stroke={s.color} strokeWidth={2} />
-              ) : null
-            )}
+            {series.map((s, si) => {
+              const v = s.values[hover];
+              return !s.bars && v != null && !offTop(v, si) ? (
+                <circle key={si} cx={xAt(hover)} cy={yAt(v, si)} r={3.5} fill="var(--panel)" stroke={s.color} strokeWidth={2} />
+              ) : null;
+            })}
           </g>
         )}
       </svg>
@@ -196,7 +376,7 @@ export function Chart({
         </div>
       )}
 
-      {/* legend */}
+      {/* legend + view controls */}
       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11px]">
         {series.map((s) => (
           <span key={s.name} className="flex items-center gap-1.5 text-[var(--muted)]">
@@ -204,6 +384,28 @@ export function Chart({
             {s.name}
           </span>
         ))}
+        <div className="ml-auto flex items-center gap-1">
+          <span className="mr-1 hidden text-[10px] text-[var(--faint)] md:inline">
+            {zoomed ? "Double-click to reset" : "Pinch or ⌘-scroll to zoom · drag the axis to stretch"}
+          </span>
+          {zoomed && (
+            <button onClick={() => setViewState(null)} className={`${btn} text-[var(--signal)]`}>Reset</button>
+          )}
+          <button onClick={() => zoomAround(0.5, 0.67)} disabled={!zoomedX} className={btn} title="Zoom out" aria-label="Zoom out">−</button>
+          <button onClick={() => zoomAround(0.5, 1.5)} disabled={n < 3 || span <= Math.min(MIN_SPAN, last)} className={btn} title="Zoom in" aria-label="Zoom in">+</button>
+          <div className="ml-1 inline-flex rounded-md border border-[var(--line)] p-px">
+            {(["linear", "log"] as const).map((sc) => (
+              <button
+                key={sc}
+                onClick={() => setScale(sc)}
+                title={sc === "log" ? "Log scale: small and huge days both readable" : "Linear scale"}
+                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${scale === sc ? "bg-[var(--panel2)] text-[var(--ink)]" : "text-[var(--faint)] hover:text-[var(--ink)]"}`}
+              >
+                {sc === "log" ? "Log" : "Linear"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
