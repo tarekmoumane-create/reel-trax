@@ -111,6 +111,8 @@ export interface PostDTO {
   payExclusions: string | null;
   isWarmUp: boolean;
   payOverride: number | null;
+  groupKey: string | null;
+  groupPinned: boolean;
 }
 
 export interface CreatorDetailResponse {

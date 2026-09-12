@@ -16,6 +16,7 @@ import { PAYMENT_METHODS, PAYMENT_LABEL, payLink } from "@/lib/pay";
 import { Select } from "@/components/Select";
 import { RangePicker, PRESETS, dstr, fmtRangeDate, type Range } from "@/components/RangePicker";
 import { VideoPayMenu, type VideoPayPatch } from "@/components/VideoPayMenu";
+import { CrossPostMenu } from "@/components/CrossPostMenu";
 import { parsePayExclusions } from "@/lib/payouts";
 
 export default function CreatorDetail() {
@@ -160,7 +161,7 @@ export default function CreatorDetail() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="card p-5 lg:col-span-1"><ContactPanel creator={creator} onSave={patch} busy={busy} /></div>
           <div className="card p-5 lg:col-span-2">
-            <PostsPanel posts={posts} onPay={savePostPay} />
+            <PostsPanel posts={posts} onPay={savePostPay} onGrouped={load} />
           </div>
         </div>
       </div>
@@ -228,7 +229,7 @@ const POST_SORTS: Record<PostSortKey, (a: PostDTO, b: PostDTO) => number> = {
 const POST_SORT_LS_KEY = "rt.creatorPostsSort";
 const PAGE = 60;
 
-function PostsPanel({ posts, onPay }: { posts: PostDTO[]; onPay: (postId: string, patch: VideoPayPatch) => void }) {
+function PostsPanel({ posts, onPay, onGrouped }: { posts: PostDTO[]; onPay: (postId: string, patch: VideoPayPatch) => void; onGrouped: () => void }) {
   const [sort, setSort] = useState<PostSortKey>("newest");
   const [platform, setPlatform] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -240,6 +241,14 @@ function PostsPanel({ posts, onPay }: { posts: PostDTO[]; onPay: (postId: string
 
   // only offer the platform filter when this creator actually posts on more than one
   const platforms = useMemo(() => [...new Set(posts.map((p) => p.platform))].sort(), [posts]);
+
+  // This panel holds the creator's whole history, so group sizes can be counted
+  // here rather than fetched — the platform filter must not shrink them.
+  const groupSizes = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of posts) if (p.groupKey) m.set(p.groupKey, (m.get(p.groupKey) ?? 0) + 1);
+    return m;
+  }, [posts]);
 
   const rows = useMemo(() => {
     const filtered = platform ? posts.filter((p) => p.platform === platform) : posts;
@@ -284,7 +293,9 @@ function PostsPanel({ posts, onPay }: { posts: PostDTO[]; onPay: (postId: string
       ) : (
         <>
           <div className="max-h-[420px] space-y-1 overflow-y-auto pr-1">
-            {visible.map((p) => <PostRow key={p.id} post={p} sort={sort} onPay={(patch) => onPay(p.id, patch)} />)}
+            {visible.map((p) => (
+              <PostRow key={p.id} post={p} sort={sort} groupSize={groupSizes.get(p.groupKey ?? "") ?? 1} onPay={(patch) => onPay(p.id, patch)} onGrouped={onGrouped} />
+            ))}
           </div>
           <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-[var(--faint)]">
             <span>
@@ -303,7 +314,7 @@ function PostsPanel({ posts, onPay }: { posts: PostDTO[]; onPay: (postId: string
   );
 }
 
-function PostRow({ post, sort, onPay }: { post: PostDTO; sort: PostSortKey; onPay: (patch: VideoPayPatch) => void }) {
+function PostRow({ post, sort, groupSize, onPay, onGrouped }: { post: PostDTO; sort: PostSortKey; groupSize: number; onPay: (patch: VideoPayPatch) => void; onGrouped: () => void }) {
   const dt = new Date(post.postedAt);
   // views and likes always show; the third stat follows whatever you sorted by
   const extra: { key: PostSortKey; glyph: string; value: string } =
@@ -327,6 +338,15 @@ function PostRow({ post, sort, onPay }: { post: PostDTO; sort: PostSortKey; onPa
       <span className={`mono w-[52px] shrink-0 text-right text-[11px] ${hot("likes")}`} title="Likes">♥ {fmtNum(post.likes)}</span>
       <span className={`mono w-[52px] shrink-0 text-right text-[11px] ${hot(extra.key)}`} title={extra.key === "engagement" ? "Engagement rate" : extra.key === "shares" ? "Shares" : "Comments"}>{extra.glyph} {extra.value}</span>
       {post.source === "manual" && <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--faint)]">manual</span>}
+      <div className="w-[104px] shrink-0">
+        <CrossPostMenu
+          postId={post.id}
+          platform={post.platform}
+          groupSize={groupSize}
+          groupPinned={post.groupPinned}
+          onChanged={onGrouped}
+        />
+      </div>
       <div className="w-[108px] shrink-0">
         <VideoPayMenu
           value={{ exclusions: parsePayExclusions(post.payExclusions), isWarmUp: post.isWarmUp, payOverride: post.payOverride }}

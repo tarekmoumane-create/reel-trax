@@ -52,6 +52,9 @@ export async function POST(request: Request) {
         minViews: NUM(b.minViews),
         viewWindowDays: b.viewWindowDays != null && b.viewWindowDays !== "" ? Math.round(NUM(b.viewWindowDays)) : null,
         payoutCap: b.payoutCap != null && b.payoutCap !== "" ? NUM(b.payoutCap) : null,
+        starterDays: b.starterDays != null && b.starterDays !== "" ? Math.round(NUM(b.starterDays)) : null,
+        starterPerPost: b.starterPerPost != null && b.starterPerPost !== "" ? NUM(b.starterPerPost) : null,
+        payPerOriginal: b.payPerOriginal === true,
         currency: b.currency || "USD",
       },
     });

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import {
-  periodsSince, computeEarnings, effectiveRules, parseViewTiers, parsePayExclusions, paySummary,
+  periodsSince, computeEarnings, effectiveRules, parseViewTiers, parsePayExclusions, paySummary, starterAnchor,
   type CampaignRules, type PeriodBounds,
 } from "@/lib/payouts";
 import { syncAutoCampaign } from "@/lib/autocampaign";
@@ -52,13 +52,13 @@ function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
   cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null; viewTiers: string | null;
   bonus: number; minViews: number; viewWindowDays: number | null; payoutCap: number | null;
-  starterDays: number | null; starterPerPost: number | null;
+  starterDays: number | null; starterPerPost: number | null; payPerOriginal: boolean;
 }): CampaignRules {
   return {
     period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
     cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
     bonus: c.bonus, minViews: c.minViews, viewWindowDays: c.viewWindowDays, payoutCap: c.payoutCap,
-    starterDays: c.starterDays, starterPerPost: c.starterPerPost,
+    starterDays: c.starterDays, starterPerPost: c.starterPerPost, payPerOriginal: c.payPerOriginal,
   };
 }
 
@@ -96,11 +96,11 @@ export async function GET(request: Request) {
           include: {
             creator: {
               select: {
-                id: true, displayName: true, onboardedAt: true, tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true, facebookHandle: true,
+                id: true, displayName: true, onboardedAt: true, createdAt: true, tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true, facebookHandle: true,
                 posts: {
                   select: {
                     platform: true, url: true, caption: true, postedAt: true, views: true,
-                    payExclusions: true, isWarmUp: true, payOverride: true,
+                    payExclusions: true, isWarmUp: true, payOverride: true, groupKey: true,
                     snapshots: { select: { day: true, views: true } },
                   },
                 },
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
         };
         for (const a of c.assignments) {
           const rules = effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) });
-          const e = computeEarnings(rules, a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt });
+          const e = computeEarnings(rules, a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts, a.creator) });
           const inRange = a.creator.posts.filter((v) => v.postedAt.getTime() >= bounds.start.getTime() && v.postedAt.getTime() <= bounds.end.getTime());
           if (e.amount === 0 && inRange.length === 0) continue;
 
@@ -158,10 +158,24 @@ export async function GET(request: Request) {
             const over = e.breakdown.reduce((s, b) => s + b.amount, 0) - e.amount;
             if (hit) hit.amount -= over; else line.breakdown.push({ label: "Cap applied", amount: -over });
           }
+          // With cross-posts paid once, the copies still get listed — a client
+          // should see every placement — but they're marked so the video count
+          // and the line total visibly agree.
+          const original = new Map<string, string>();
+          if (rules.payPerOriginal) {
+            for (const v of inRange) {
+              if (!v.groupKey) continue;
+              const held = original.get(v.groupKey);
+              if (!held || v.postedAt.toISOString() < held) original.set(v.groupKey, v.postedAt.toISOString());
+            }
+          }
           for (const v of inRange) {
+            const isCopy = !!v.groupKey && original.get(v.groupKey) !== undefined && original.get(v.groupKey) !== v.postedAt.toISOString();
             line.videos.push({
               platform: v.platform, url: v.url, caption: v.caption, postedAt: v.postedAt.toISOString(), views: v.views,
-              pay: paySummary({ exclusions: parsePayExclusions(v.payExclusions), isWarmUp: v.isWarmUp, payOverride: v.payOverride }, currency).label,
+              pay: isCopy
+                ? "Cross-post"
+                : paySummary({ exclusions: parsePayExclusions(v.payExclusions), isWarmUp: v.isWarmUp, payOverride: v.payOverride }, currency).label,
             });
           }
           lines.set(cr.id, line);

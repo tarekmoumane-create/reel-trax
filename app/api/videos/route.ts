@@ -51,6 +51,16 @@ export async function GET(request: Request) {
           .slice(0, limit)
       : fetched;
 
+    // A cross-post group can straddle the platform filter and the page limit,
+    // so group size comes from a count, not from what happens to be on screen.
+    const keys = [...new Set(posts.map((p) => p.groupKey).filter((k): k is string => k != null))];
+    const sizes = new Map<string, number>();
+    if (keys.length) {
+      for (const g of await prisma.post.groupBy({ by: ["groupKey"], where: { groupKey: { in: keys } }, _count: { _all: true } })) {
+        if (g.groupKey) sizes.set(g.groupKey, g._count._all);
+      }
+    }
+
     return ok(
       posts.map((p) => ({
         id: p.id,
@@ -66,6 +76,9 @@ export async function GET(request: Request) {
         payExclusions: p.payExclusions,
         isWarmUp: p.isWarmUp,
         payOverride: p.payOverride,
+        groupKey: p.groupKey,
+        groupPinned: p.groupPinned,
+        groupSize: p.groupKey ? sizes.get(p.groupKey) ?? 1 : 1,
         creatorId: p.creator.id,
         creatorName: p.creator.displayName,
       }))

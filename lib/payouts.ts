@@ -43,6 +43,10 @@ export interface CampaignRules {
   // Null/0 days = no starter window.
   starterDays?: number | null;
   starterPerPost?: number | null;
+  // Treat a video cross-posted to several platforms as one original: it
+  // qualifies on its best platform's views and is paid once. Off (the default)
+  // = every platform copy qualifies and pays on its own.
+  payPerOriginal?: boolean;
 }
 
 // Per-creator overrides (null = inherit the campaign value).
@@ -81,6 +85,7 @@ export function effectiveRules(base: CampaignRules, o?: RuleOverride | null): Ca
     flatDeal: o.flatDeal == null ? base.flatDeal : o.flatDeal,
     starterDays: base.starterDays ?? null,
     starterPerPost: base.starterPerPost ?? null,
+    payPerOriginal: base.payPerOriginal ?? false,
   };
 }
 
@@ -116,6 +121,9 @@ export interface EarningPost {
   isWarmUp?: boolean | null;
   // A fixed price for this one video, replacing every rule-computed component.
   payOverride?: number | null;
+  // Cross-post group: every platform copy of the same original shares one key.
+  // Null = this row is its own original. Only read when payPerOriginal is on.
+  groupKey?: string | null;
 }
 
 /** Pay components a video is excluded from, with warm-up folded in. */
@@ -137,6 +145,9 @@ export interface PeriodBounds {
 }
 
 const DAY = 86_400_000;
+// How far outside a billing period to reach for copies of a video posted
+// inside it. Covers the 7-day window the "same video as…" picker offers.
+const GROUP_SLACK = 8 * DAY;
 
 export function periodBounds(period: string, now: Date = new Date()): PeriodBounds {
   const y = now.getUTCFullYear();
@@ -217,7 +228,84 @@ function windowedViews(p: EarningPost, windowDays: number | null | undefined, no
 export interface EarningContext {
   /** When this creator started, for the starter-window rule. */
   onboardedAt?: Date | string | null;
+  /**
+   * The creator's first post for this client — what the starter window counts
+   * from. Use `starterAnchor` to derive it; it needs the creator's whole post
+   * history, which computeEarnings (one period at a time) never sees.
+   */
+  firstPostAt?: Date | string | null;
 }
+
+/**
+ * Where a creator's starter window starts: their first post on or after the
+ * day the relationship began. The floor matters because a sync ingests a
+ * creator's entire back catalogue — without it, a creator signed today would
+ * anchor to a video from two years ago and the window would be long expired.
+ * No post since the floor = they haven't started yet, so no starter window.
+ */
+export function starterAnchor(
+  posts: { postedAt: Date | string }[],
+  creator: { onboardedAt?: Date | string | null; createdAt?: Date | string | null }
+): Date | null {
+  const floorSrc = creator.onboardedAt ?? creator.createdAt;
+  if (!floorSrc) return null;
+  const floor = new Date(floorSrc).getTime();
+  if (isNaN(floor)) return null;
+  let first = Infinity;
+  for (const p of posts) {
+    const t = new Date(p.postedAt).getTime();
+    if (!isNaN(t) && t >= floor && t < first) first = t;
+  }
+  return first === Infinity ? null : new Date(first);
+}
+
+/**
+ * One row per original video. A post that exists on three platforms is three
+ * rows in the DB but one thing the creator made, so it should qualify once and
+ * be paid once.
+ *
+ * `views` becomes the best single platform's count — that is what "500 views
+ * on at least one platform" means, and it is what the minimum and the bonus
+ * tiers are judged on. `cpmViews` stays the sum across every copy, because CPM
+ * is buying reach and all of it was delivered.
+ *
+ * Per-video pay settings are merged the forgiving way: an original is only
+ * excluded from a component when every copy is, and a hand-set price on any
+ * copy prices the whole original. Off, this is a no-op — each row is its own
+ * original, exactly as before.
+ */
+function collapseCrossPosts(posts: EarningPost[], on: boolean): Original[] {
+  const solo = (p: EarningPost): Original => ({ ...p, cpmViews: p.views, copies: 1 });
+  if (!on) return posts.map(solo);
+
+  const groups = new Map<string, EarningPost[]>();
+  posts.forEach((p, i) => {
+    const key = p.groupKey ?? `__solo:${i}`;
+    const g = groups.get(key);
+    if (g) g.push(p);
+    else groups.set(key, [p]);
+  });
+
+  return [...groups.values()].map((members) => {
+    if (members.length === 1) return solo(members[0]);
+    const at = (p: EarningPost) => (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
+    const byTime = [...members].sort((a, b) => at(a) - at(b));
+    const perCopy = members.map(exclusionsOf);
+    return {
+      // The original is the first one that went up; the rest are copies.
+      postedAt: byTime[0].postedAt,
+      views: members.reduce((m, p) => Math.max(m, p.views), 0),
+      cpmViews: members.reduce((s, p) => s + p.views, 0),
+      copies: members.length,
+      exclusions: PAY_COMPONENTS.filter((c) => perCopy.every((e) => e.includes(c))),
+      isWarmUp: members.every((p) => !!p.isWarmUp),
+      payOverride: byTime.find(hasOverride)?.payOverride ?? null,
+      groupKey: members[0].groupKey ?? null,
+    };
+  });
+}
+
+type Original = EarningPost & { cpmViews: number; copies: number };
 
 export function computeEarnings(
   rules: CampaignRules,
@@ -226,34 +314,43 @@ export function computeEarnings(
   now: Date = new Date(),
   ctx: EarningContext = {}
 ): Earnings {
-  const inPeriod = posts
+  const at = (p: EarningPost) => (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
+  const eligible = posts
+    // A cross-post can lag its original by days, so a video posted on the 31st
+    // and mirrored on the 2nd has to be assembled before the period is applied
+    // — otherwise it lands in two months and is paid twice. The slack matches
+    // the widest span the grouping UI will let a group cover.
     .filter((p) => {
-      const t = (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
-      return t >= bounds.start.getTime() && t <= bounds.end.getTime();
+      const t = at(p);
+      return t >= bounds.start.getTime() - GROUP_SLACK && t <= bounds.end.getTime() + GROUP_SLACK;
     })
     // Videos excluded from all pay simply don't exist for the payout math —
     // unless someone priced them by hand, in which case that price stands.
     .filter((p) => hasOverride(p) || !exclusionsOf(p).includes("all"))
     // From here on, "views" means countable views under the view window.
     .map((p) => ({ ...p, views: windowedViews(p, rules.viewWindowDays, now) }));
-  // Starter window: the first N days after a creator was onboarded. Videos
-  // posted inside it are paid a flat rate instead of by views.
-  const onboarded = ctx.onboardedAt ? new Date(ctx.onboardedAt) : null;
+  // Cross-posts fold into one original before anything is counted, so the
+  // rules below always see videos made rather than rows stored. An original
+  // belongs to the period it first went up in, wherever its copies landed.
+  const originals = collapseCrossPosts(eligible, rules.payPerOriginal === true)
+    .filter((p) => at(p) >= bounds.start.getTime() && at(p) <= bounds.end.getTime());
+  // Starter window: the first N days of a creator posting. Videos posted
+  // inside it are paid a flat rate instead of by views.
+  const anchorSrc = ctx.firstPostAt ?? ctx.onboardedAt;
+  const anchor = anchorSrc ? new Date(anchorSrc) : null;
   const starterDays = rules.starterDays ?? 0;
   const starterRate = rules.starterPerPost ?? 0;
   const starterEnd =
-    onboarded && !isNaN(onboarded.getTime()) && starterDays > 0
-      ? onboarded.getTime() + starterDays * DAY
-      : null;
+    anchor && !isNaN(anchor.getTime()) && starterDays > 0 ? anchor.getTime() + starterDays * DAY : null;
   const isStarter = (p: EarningPost) => {
     if (starterEnd == null || hasOverride(p)) return false;
     const t = (p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt)).getTime();
-    return t >= (onboarded as Date).getTime() && t <= starterEnd;
+    return t >= (anchor as Date).getTime() && t <= starterEnd;
   };
 
   // Hand-priced videos always qualify (someone decided what they're worth) and
   // so do starter-window videos; the rest have to clear the minimum views.
-  const qualifying = inPeriod.filter((p) => hasOverride(p) || isStarter(p) || p.views >= (rules.minViews || 0));
+  const qualifying = originals.filter((p) => hasOverride(p) || isStarter(p) || p.views >= (rules.minViews || 0));
   // Per-component opt-outs: a video can count for some pay rules but not
   // others. Hand-priced and starter videos sit outside every rule-computed
   // component — they are already priced.
@@ -262,7 +359,7 @@ export function computeEarnings(
   const custom = qualifying.filter(hasOverride);
   const starters = qualifying.filter(isStarter);
   const qCount = qualifying.length;
-  const qViews = qualifying.reduce((s, p) => s + p.views, 0);
+  const qViews = qualifying.reduce((s, p) => s + p.cpmViews, 0);
   const targetMet = rules.targetVideos != null && qCount >= rules.targetVideos;
 
   // Flat deal short-circuits all other rules.
@@ -293,12 +390,12 @@ export function computeEarnings(
       // this differ from aggregate CPM.
       const cap = rules.cpmCapPerVideo;
       const amt = cpmPosts.reduce((s, p) => {
-        const v = (rules.cpmRate * p.views) / 1000;
+        const v = (rules.cpmRate * p.cpmViews) / 1000;
         return s + (cap != null && cap > 0 ? Math.min(v, cap) : v);
       }, 0);
       if (cpmPosts.length) breakdown.push({ label: `CPM per video × ${cpmPosts.length}`, amount: amt });
     } else {
-      const cpmViews = cpmPosts.reduce((s, p) => s + p.views, 0);
+      const cpmViews = cpmPosts.reduce((s, p) => s + p.cpmViews, 0);
       if (cpmPosts.length) breakdown.push({ label: `CPM (${(cpmViews / 1000).toFixed(1)}k)`, amount: (rules.cpmRate * cpmViews) / 1000 });
     }
   }
@@ -352,6 +449,7 @@ export interface PayRulesJson {
   targetVideos?: number | null;
   starterDays?: number | null;
   starterPerPost?: number | null;
+  payPerOriginal?: boolean;
   currency?: string;
   note?: string;
 }
@@ -376,6 +474,10 @@ export function sanitizePayRules(raw: unknown): PayRulesJson | null {
   const payoutCap = num(r.payoutCap); if (payoutCap) out.payoutCap = payoutCap;
   const flatDeal = num(r.flatDeal); if (flatDeal) out.flatDeal = flatDeal;
   const targetVideos = num(r.targetVideos); if (targetVideos) out.targetVideos = targetVideos;
+  const starterDays = num(r.starterDays); const starterPerPost = num(r.starterPerPost);
+  // Both halves are needed for the window to mean anything.
+  if (starterDays && starterPerPost) { out.starterDays = Math.round(starterDays); out.starterPerPost = starterPerPost; }
+  if (r.payPerOriginal === true) out.payPerOriginal = true;
   if (typeof r.currency === "string" && r.currency.trim()) out.currency = r.currency.trim();
   if (typeof r.note === "string" && r.note.trim()) out.note = r.note.trim();
   return Object.keys(out).length ? out : null;

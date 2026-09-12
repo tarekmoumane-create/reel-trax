@@ -20,6 +20,7 @@ export interface PayForm {
   payoutCap: string; // max per period
   starterDays: string; // new-creator ramp-up length, in days
   starterPerPost: string; // flat pay per video during that ramp-up
+  payPerOriginal: boolean; // count a cross-posted video once, not once per platform
 }
 
 export function emptyPayForm(): PayForm {
@@ -38,6 +39,7 @@ export function emptyPayForm(): PayForm {
     payoutCap: "",
     starterDays: "",
     starterPerPost: "",
+    payPerOriginal: false,
   };
 }
 
@@ -59,6 +61,7 @@ export function payFormFromRules(r: PayRulesJson | null | undefined): PayForm {
   f.payoutCap = s(r.payoutCap);
   f.starterDays = s(r.starterDays);
   f.starterPerPost = s(r.starterPerPost);
+  f.payPerOriginal = r.payPerOriginal === true;
   return f;
 }
 
@@ -93,6 +96,7 @@ export function payFormToRules(f: PayForm): PayRulesJson {
     rules.starterDays = Math.round(num(f.starterDays)!);
     rules.starterPerPost = num(f.starterPerPost)!;
   }
+  if (f.payPerOriginal) rules.payPerOriginal = true;
   return rules;
 }
 
@@ -113,6 +117,7 @@ export function payFormSummary(f: PayForm): string {
   if (Number(f.viewWindowDays) > 0) extras.push(`${f.viewWindowDays}d window`);
   if (Number(f.starterDays) > 0 && Number(f.starterPerPost) > 0)
     extras.push(`$${f.starterPerPost}/video for first ${f.starterDays}d`);
+  if (f.payPerOriginal) extras.push("cross-posts count once");
   const main = parts.join(" + ") || "No pay set";
   return extras.length ? `${main} (${extras.join(", ")})` : main;
 }
@@ -279,7 +284,7 @@ export function PayStructureEditor({
           </div>
         </div>
         <p className="mt-2 text-[11px] text-[var(--faint)]">
-          For this many days after a creator&apos;s onboarding date, every video they post earns this flat amount.
+          For this many days after a creator&apos;s <span className="text-[var(--ink)]">first post</span>, every video they post earns this flat amount.
           Those videos count no matter how few views they get, and they don&apos;t earn per-post, CPM or view-bonus
           pay on top. Set both boxes to switch it on; leave either blank and it&apos;s off.
         </p>
@@ -310,6 +315,24 @@ export function PayStructureEditor({
           from posting to get there. The same window is the deadline for reaching view-bonus tiers and the cutoff
           for CPM views. Blank window = views count whenever they arrive.
         </p>
+
+        <label className="mt-3 flex cursor-pointer items-start gap-2.5 border-t border-[var(--line2)] pt-3">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--signal)]"
+            checked={value.payPerOriginal}
+            onChange={(e) => set("payPerOriginal", e.target.checked)}
+          />
+          <span>
+            <span className="block text-xs font-medium">Count cross-posts as one video</span>
+            <span className="mt-0.5 block text-[11px] leading-snug text-[var(--faint)]">
+              The same video on TikTok, Instagram and YouTube is one video, not three: it pays once, and it clears
+              the minimum views if <span className="text-[var(--ink)]">any one platform</span> gets there. Leave off
+              and every platform is paid separately. Cross-posts are matched automatically — fix a wrong match from
+              the Videos page.
+            </span>
+          </span>
+        </label>
       </details>
     </div>
   );

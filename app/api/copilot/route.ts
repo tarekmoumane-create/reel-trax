@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence } from "@/lib/cadence";
 import { getAnthropicKey, getTimeZone } from "@/lib/settings";
-import { periodBounds, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, computeEarnings, effectiveRules, parseViewTiers, starterAnchor, type CampaignRules } from "@/lib/payouts";
 
 export const maxDuration = 60;
 
@@ -16,7 +16,7 @@ async function buildSnapshot(clientId: string) {
 
   const creators = await prisma.creator.findMany({
     where: { clientId },
-    include: { posts: { select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true } } },
+    include: { posts: { select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true, groupKey: true } } },
   });
 
   const creatorRows = creators.map((c) => {
@@ -48,11 +48,11 @@ async function buildSnapshot(clientId: string) {
       period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
       cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
       bonus: c.bonus, minViews: c.minViews, viewWindowDays: c.viewWindowDays, payoutCap: c.payoutCap,
-      starterDays: c.starterDays, starterPerPost: c.starterPerPost,
+      starterDays: c.starterDays, starterPerPost: c.starterPerPost, payPerOriginal: c.payPerOriginal,
     };
     const creatorsPay = c.assignments.map((a) => ({
       name: a.creator.displayName,
-      earned: computeEarnings(effectiveRules(base, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt }).amount,
+      earned: computeEarnings(effectiveRules(base, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts, a.creator) }).amount,
     }));
     return {
       name: c.name, status: c.status, period: c.period, targetVideos: c.targetVideos,

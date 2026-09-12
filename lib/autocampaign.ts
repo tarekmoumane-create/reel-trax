@@ -24,6 +24,7 @@ function campaignDataFromRules(r: PayRulesJson) {
     payoutCap: r.payoutCap ?? null,
     starterDays: r.starterDays ?? null,
     starterPerPost: r.starterPerPost ?? null,
+    payPerOriginal: r.payPerOriginal === true,
     currency: r.currency || "USD",
   };
 }

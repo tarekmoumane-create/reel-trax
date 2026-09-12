@@ -1,19 +1,19 @@
 import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
-import { periodBounds, periodsSince, computeEarnings, effectiveRules, parseViewTiers, type CampaignRules } from "@/lib/payouts";
+import { periodBounds, periodsSince, computeEarnings, effectiveRules, parseViewTiers, starterAnchor, type CampaignRules } from "@/lib/payouts";
 import { syncAutoCampaign } from "@/lib/autocampaign";
 
 function rulesOf(c: {
   period: string; targetVideos: number | null; baseFee: number; perPost: number;
   cpmRate: number; cpmBasis: string; cpmCapPerVideo: number | null; viewTiers: string | null;
   bonus: number; minViews: number; viewWindowDays: number | null; payoutCap: number | null;
-  starterDays: number | null; starterPerPost: number | null;
+  starterDays: number | null; starterPerPost: number | null; payPerOriginal: boolean;
 }): CampaignRules {
   return {
     period: c.period, targetVideos: c.targetVideos, baseFee: c.baseFee, perPost: c.perPost,
     cpmRate: c.cpmRate, cpmBasis: c.cpmBasis, cpmCapPerVideo: c.cpmCapPerVideo, viewTiers: parseViewTiers(c.viewTiers),
     bonus: c.bonus, minViews: c.minViews, viewWindowDays: c.viewWindowDays, payoutCap: c.payoutCap,
-    starterDays: c.starterDays, starterPerPost: c.starterPerPost,
+    starterDays: c.starterDays, starterPerPost: c.starterPerPost, payPerOriginal: c.payPerOriginal,
   };
 }
 
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const campaigns = await prisma.campaign.findMany({
       where: { clientId },
       include: {
-        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true, snapshots: { select: { day: true, views: true } } } } } } } },
+        assignments: { include: { creator: { include: { posts: { select: { postedAt: true, views: true, payExclusions: true, isWarmUp: true, payOverride: true, groupKey: true, snapshots: { select: { day: true, views: true } } } } } } } },
         payouts: { include: { creator: { select: { displayName: true } } } },
       },
     });
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
         for (const a of c.assignments) {
           const key = `${c.id}|${a.creatorId}|${bounds.start.toISOString()}`;
           if (map.has(key)) continue; // stored wins
-          const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt });
+          const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts, a.creator) });
           // Skip empty past periods (nothing earned, nothing posted) — noise.
           if (!isCurrent && e.amount === 0 && e.qualifyingPosts === 0) continue;
           map.set(key, {

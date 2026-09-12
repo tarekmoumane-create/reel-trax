@@ -8,6 +8,7 @@ import { VideoThumb } from "@/components/VideoThumb";
 import { fmtNum } from "@/lib/ui";
 import { parsePayExclusions } from "@/lib/payouts";
 import { VideoPayMenu, type VideoPayPatch } from "@/components/VideoPayMenu";
+import { CrossPostMenu } from "@/components/CrossPostMenu";
 import { RangePicker, PRESETS, type Range } from "@/components/RangePicker";
 
 interface VideoRow {
@@ -24,6 +25,9 @@ interface VideoRow {
   payExclusions: string | null;
   isWarmUp: boolean;
   payOverride: number | null;
+  groupKey: string | null;
+  groupPinned: boolean;
+  groupSize: number;
   creatorId: string;
   creatorName: string;
 }
@@ -73,7 +77,7 @@ export default function VideosPage() {
   // sensible defaults for the custom From/To inputs
   const pickerRange: Range = range ?? { ...PRESETS[4].range(), label: "All time" };
 
-  const grid = "md:grid-cols-[48px_minmax(220px,2fr)_140px_100px_84px_84px_84px_112px]";
+  const grid = "md:grid-cols-[44px_minmax(180px,2fr)_128px_88px_74px_74px_74px_104px_108px]";
 
   return (
     <>
@@ -97,7 +101,7 @@ export default function VideosPage() {
         {/* no overflow clipping — the per-row pay menu needs to escape the card */}
         <div className="card">
           <div className={`hidden ${grid} items-center gap-3 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid`}>
-            <div>Video</div><div>Caption</div><div>Creator</div><div>Posted</div><div>Views</div><div>Likes</div><div>Comments</div><div>Pay</div>
+            <div>Video</div><div>Caption</div><div>Creator</div><div>Posted</div><div>Views</div><div>Likes</div><div>Comments</div><div>Cross-post</div><div>Pay</div>
           </div>
           {loading ? (
             <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
@@ -119,6 +123,13 @@ export default function VideosPage() {
                   <span className="mono text-[13px]">{fmtNum(p.views)}</span>
                   <span className="mono text-[13px] text-[var(--muted)]">{fmtNum(p.likes)}</span>
                   <span className="mono text-[13px] text-[var(--muted)]">{fmtNum(p.comments)}</span>
+                  <CrossPostMenu
+                    postId={p.id}
+                    platform={p.platform}
+                    groupSize={p.groupSize}
+                    groupPinned={p.groupPinned}
+                    onChanged={load}
+                  />
                   <VideoPayMenu
                     value={{ exclusions: parsePayExclusions(p.payExclusions), isWarmUp: p.isWarmUp, payOverride: p.payOverride }}
                     onChange={(patch) => savePay(p.id, patch)}
@@ -128,7 +139,7 @@ export default function VideosPage() {
             })
           )}
         </div>
-        {rows.length > 0 && <p className="mt-3 text-xs text-[var(--faint)]">Showing {rows.length} posts{range ? ` posted ${range.label.toLowerCase()}` : ""}. The Pay column sets what each video earns — mark warm-up posts so they skip view bonuses, or give a video a fixed price.</p>}
+        {rows.length > 0 && <p className="mt-3 text-xs text-[var(--faint)]">Showing {rows.length} posts{range ? ` posted ${range.label.toLowerCase()}` : ""}. The Pay column sets what each video earns — mark warm-up posts so they skip view bonuses, or give a video a fixed price. Cross-post shows which posts are the same original; on campaigns that count cross-posts once, those are paid as one video.</p>}
       </div>
     </>
   );

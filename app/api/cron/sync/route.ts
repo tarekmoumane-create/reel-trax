@@ -3,6 +3,7 @@ import { ok, bad, serverError } from "@/lib/api";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreators } from "@/lib/sync";
 import { dedupePosts } from "@/lib/dedupe";
+import { syncVideoGroups } from "@/lib/videogroups";
 
 export const maxDuration = 300; // allow long-running sync on Vercel
 
@@ -49,6 +50,8 @@ async function run(request: Request) {
 
   const started = Date.now();
   const results = await syncCreators(creators, apiKey, 3);
+  // New posts have landed — re-match cross-posts so payouts see originals.
+  const groups = await syncVideoGroups(clientId);
   const ms = Date.now() - started;
 
   const upserted = results
@@ -63,6 +66,7 @@ async function run(request: Request) {
     failedCreators: failed,
     durationMs: ms,
     deduped,
+    groups,
   });
 }
 

@@ -205,6 +205,10 @@ model Campaign {
   // pay, and qualifies regardless of views. Null/0 = no starter window.
   starterDays    Int?
   starterPerPost Float?
+  // Cross-posts count once: the same video on TikTok + IG + YouTube is one
+  // "original", judged on its best platform's views, and paid once. Off (the
+  // default) = every platform copy qualifies and pays on its own.
+  payPerOriginal Boolean @default(false)
   currency  String @default("USD")
 
   createdAt   DateTime          @default(now())
@@ -295,10 +299,18 @@ model Post {
   // compute for it. Null = priced by the campaign rules.
   payOverride Float?
 
+  // Cross-post grouping: every platform copy of the same original video shares
+  // one groupKey. Null = its own original. Maintained by lib/videogroups.ts.
+  groupKey String?
+  // A human put this post in (or out of) its group — the auto-grouper takes
+  // its groupKey as given and never moves it again.
+  groupPinned Boolean @default(false)
+
   snapshots PostStatSnapshot[]
 
   @@unique([platform, platformPostId])
   @@index([creatorId, postedAt])
+  @@index([groupKey])
 }
 
 // Daily view count per post, captured during sync for recent posts. This is
