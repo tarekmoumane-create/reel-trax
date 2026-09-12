@@ -71,6 +71,10 @@ export function Chart({
   const [viewState, setViewState] = useState<View | null>(null);
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ kind: "pan" | "y"; x: number; y: number; view: View } | null>(null);
+  // Sideways scroll arrives in pixels but the window moves in whole days, so
+  // leftover pixels carry over — otherwise a slow trackpad swipe never moves.
+  const wheelPx = useRef(0);
+  const thumbDrag = useRef<{ x: number; view: View } | null>(null);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -182,6 +186,17 @@ export function Chart({
     });
   }
 
+  /** Slide the window by whole points, from the latest state (see zoomAround). */
+  function panBy(delta: number) {
+    if (!delta) return;
+    setViewState((prev) => {
+      const from: View = prev && prev.n === n ? prev : { n, start: 0, end: last, yZoom: 1 };
+      const w0 = from.end - from.start;
+      const st = Math.max(0, Math.min(last - w0, from.start + delta));
+      return st === from.start ? from : { ...from, start: st, end: st + w0 };
+    });
+  }
+
   // Wheel needs a non-passive listener to stop the page scrolling, which
   // React's onWheel can't provide. Plain scrolling still scrolls the page —
   // only pinch (reported as ctrl+wheel) or ⌘/ctrl+scroll zooms.
@@ -189,11 +204,30 @@ export function Chart({
     const el = svgRef.current;
     if (!el) return;
     function onWheel(e: WheelEvent) {
-      if (!e.ctrlKey && !e.metaKey) return;
+      // Firefox can report in lines rather than pixels.
+      const unit = e.deltaMode === 1 ? 16 : 1;
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = el!.getBoundingClientRect();
+        const x = Math.max(0, Math.min(1, (e.clientX - rect.left - M.left) / plotW));
+        zoomAround(x, Math.max(0.67, Math.min(1.5, Math.exp(-e.deltaY * unit * 0.01))));
+        return;
+      }
+      // Sideways scrolling moves through time: a trackpad swipe, or shift +
+      // wheel on a mouse (some browsers already turn that into deltaX).
+      // Mostly-vertical scrolling is left alone so the page still scrolls.
+      const dx = e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX;
+      if (!zoomedX || Math.abs(dx) <= Math.abs(e.shiftKey ? 0 : e.deltaY)) return;
+      // Claiming it also stops a swipe from triggering browser back/forward.
       e.preventDefault();
-      const rect = el!.getBoundingClientRect();
-      const x = Math.max(0, Math.min(1, (e.clientX - rect.left - M.left) / plotW));
-      zoomAround(x, Math.max(0.67, Math.min(1.5, Math.exp(-e.deltaY * 0.01))));
+      const pxPerPoint = plotW / span;
+      wheelPx.current += dx * unit;
+      const steps = Math.trunc(wheelPx.current / pxPerPoint);
+      if (!steps) return;
+      wheelPx.current -= steps * pxPerPoint;
+      // Pinned against an edge: drop the backlog so reversing responds at once.
+      if ((steps < 0 && start === 0) || (steps > 0 && end === last)) wheelPx.current = 0;
+      panBy(steps);
     }
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -357,6 +391,49 @@ export function Chart({
         )}
       </svg>
 
+      {/* scrollbar — where the zoomed window sits in the whole range. Drag the
+          thumb, or click the track to jump there. The row is always reserved
+          so zooming in doesn't shove the legend down mid-pinch. */}
+      <div
+        className="relative h-2.5"
+        style={{ marginLeft: M.left, width: plotW }}
+        onPointerDown={(e) => {
+          if (!zoomedX || e.target !== e.currentTarget) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const center = ((e.clientX - rect.left) / rect.width) * last;
+          panBy(Math.round(center - (start + end) / 2));
+        }}
+      >
+        {zoomedX && (
+          <>
+            <div className="pointer-events-none absolute inset-x-0 top-1 h-1 rounded-full bg-[var(--line)]" />
+            <div
+              className="absolute top-0.5 h-1.5 cursor-grab rounded-full bg-[var(--faint)] hover:bg-[var(--muted)] active:cursor-grabbing"
+              style={{
+                left: `${(start / last) * 100}%`,
+                width: `max(24px, ${(span / last) * 100}%)`,
+                touchAction: "none",
+              }}
+              onPointerDown={(e) => {
+                thumbDrag.current = { x: e.clientX, view };
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }}
+              onPointerMove={(e) => {
+                const t = thumbDrag.current;
+                if (!t) return;
+                // The track is the whole range, so a pixel here is worth far
+                // more days than a pixel dragged on the chart itself.
+                const w0 = t.view.end - t.view.start;
+                const st = Math.max(0, Math.min(last - w0, t.view.start + Math.round(((e.clientX - t.x) / plotW) * last)));
+                setViewState({ ...t.view, n, start: st, end: st + w0 });
+              }}
+              onPointerUp={() => { thumbDrag.current = null; }}
+              onPointerCancel={() => { thumbDrag.current = null; }}
+            />
+          </>
+        )}
+      </div>
+
       {/* floating tooltip — date header + a row per series with its exact value */}
       {hover != null && (
         <div
@@ -386,7 +463,7 @@ export function Chart({
         ))}
         <div className="ml-auto flex items-center gap-1">
           <span className="mr-1 hidden text-[10px] text-[var(--faint)] md:inline">
-            {zoomed ? "Double-click to reset" : "Pinch or ⌘-scroll to zoom · drag the axis to stretch"}
+            {zoomedX ? "Scroll sideways or drag to move · double-click to reset" : zoomed ? "Double-click to reset" : "Pinch or ⌘-scroll to zoom · drag the axis to stretch"}
           </span>
           {zoomed && (
             <button onClick={() => setViewState(null)} className={`${btn} text-[var(--signal)]`}>Reset</button>
