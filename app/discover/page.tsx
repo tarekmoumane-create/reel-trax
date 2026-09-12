@@ -2,16 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TopBar, PageTitle } from "@/components/PageHeader";
+import { downloadCsv, openInSheets as openSheet, type SheetTable } from "@/lib/sheet";
 
 interface Msg {
   role: "user" | "assistant";
   text: string;
-}
-
-interface SheetTable {
-  title: string;
-  headers: string[];
-  rows: string[][];
 }
 
 type ExportState =
@@ -36,17 +31,6 @@ function isTextFile(f: File) {
   return f.type.startsWith("text/") || f.type === "application/json" || TEXT_EXTENSIONS.test(f.name);
 }
 
-const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-
-function tableToCsv(t: SheetTable) {
-  return [t.headers, ...t.rows].map((r) => r.map(csvCell).join(",")).join("\n");
-}
-
-// TSV pastes cleanly into a Google Sheet — one cell per column, no dialogs.
-function tableToTsv(t: SheetTable) {
-  const clean = (v: string) => v.replace(/[\t\n]/g, " ");
-  return [t.headers, ...t.rows].map((r) => r.map(clean).join("\t")).join("\n");
-}
 
 const SUGGESTIONS = [
   "What hooks are my competitors using in the supplement niche right now?",
@@ -156,20 +140,11 @@ export default function DiscoverPage() {
   // Copies the table (TSV) and opens a fresh Google Sheet to paste into —
   // both must happen inside the click so clipboard + popup are allowed.
   function openInSheets(i: number, table: SheetTable) {
-    navigator.clipboard.writeText(tableToTsv(table)).catch(() => {});
-    window.open("https://sheets.new", "_blank");
+    openSheet(table);
     setExports((e) => ({ ...e, [i]: { status: "ready", table, copied: true } }));
   }
 
-  function downloadCsv(table: SheetTable) {
-    const blob = new Blob([tableToCsv(table)], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${table.title.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "discover-export"}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -269,7 +244,7 @@ export default function DiscoverPage() {
                           <button onClick={() => openInSheets(i, ex.table)} className="rounded-lg bg-[var(--signal)] px-2.5 py-1 text-[11px] font-medium text-white hover:opacity-90">
                             Open in Google Sheets ↗
                           </button>
-                          <button onClick={() => downloadCsv(ex.table)} className="rounded-lg border border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] hover:border-[var(--signal)] hover:text-[var(--ink)]">
+                          <button onClick={() => downloadCsv(ex.table, "discover-export")} className="rounded-lg border border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] hover:border-[var(--signal)] hover:text-[var(--ink)]">
                             Download CSV
                           </button>
                           <span className="text-[11px] text-[var(--faint)]">

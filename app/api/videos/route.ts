@@ -7,6 +7,9 @@ const DAY = 86_400_000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // All posts for a client's creators, newest or top-performing first.
+// Filters: platform, posted-on date window, minimum views, one creator, or the
+// creators assigned to one campaign. `limit` goes up to 5000 so an export can
+// take every matching video, not just the page on screen.
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,7 +17,10 @@ export async function GET(request: Request) {
     if (!clientId) return bad("clientId is required");
     const sort = searchParams.get("sort") || "recent"; // recent | views
     const platform = searchParams.get("platform"); // tiktok | instagram | youtube | threads | facebook | null
-    const limit = Math.min(500, Number(searchParams.get("limit")) || 200);
+    const limit = Math.min(5000, Number(searchParams.get("limit")) || 200);
+    const minViews = Math.max(0, Math.floor(Number(searchParams.get("minViews")) || 0));
+    const creatorId = searchParams.get("creatorId");
+    const campaignId = searchParams.get("campaignId");
 
     // Optional posted-on date window (YYYY-MM-DD, inclusive). Absent = all time.
     const from = searchParams.get("from") ?? "";
@@ -24,8 +30,13 @@ export async function GET(request: Request) {
 
     const fetched = await prisma.post.findMany({
       where: {
-        creator: { clientId },
+        creator: {
+          clientId,
+          ...(campaignId ? { campaignLinks: { some: { campaignId } } } : {}),
+        },
+        ...(creatorId ? { creatorId } : {}),
         ...(platform ? { platform } : {}),
+        ...(minViews ? { views: { gte: minViews } } : {}),
         // ±1 day of slack: postedAt is UTC but the window is in app-local days,
         // so boundary posts straddle the query edges. dayKey trims below.
         ...(ranged
