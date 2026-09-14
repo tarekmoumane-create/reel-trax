@@ -260,6 +260,14 @@ textarea::placeholder {
   border-color: #d9dce4;
   color: #1a1d27;
 }
+/* Numbers on the invoice use the document font with even digit widths, not
+   the app's monospace — Plex Mono's zero has a dot through it, which reads
+   as a typo on a client-facing document. Columns still line up. */
+.invoice-root .mono {
+  font-family: var(--font-sans-app), ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
 .invoice-sheet {
   background: #fff;
   color: #1a1d27;

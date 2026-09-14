@@ -6,9 +6,10 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { money } from "@/lib/payouts";
 import { fmtNum } from "@/lib/ui";
 import { invoiceCsv, PLATFORM_SHORT, type InvoiceData } from "@/lib/invoice";
+import { downloadInvoicePdf } from "@/lib/invoicePdf";
 
-// Print-ready client invoice for a date range. Renders outside the app shell
-// (no sidebar) so the browser's "Save as PDF" produces a clean document.
+// Client invoice for a date range, downloadable as a PDF that matches what's on
+// screen. Renders outside the app shell (no sidebar) so the sheet is the page.
 // Invoice-specific fields (number, dates, fee, notes) live in localStorage
 // per client; the "bill from" block is a shared app setting.
 
@@ -91,6 +92,7 @@ function Invoice() {
   const [feeDirty, setFeeDirty] = useState(false);
   const [savingFee, setSavingFee] = useState(false);
   const [reload, setReload] = useState(0);
+  const [pdfState, setPdfState] = useState<"idle" | "working" | "error">("idle");
 
   const setM = (patch: Partial<Meta>) => {
     setMeta((m) => {
@@ -146,6 +148,20 @@ function Invoice() {
 
   const fromLines = useMemo(() => profile.fromDetails.split("\n").map((l) => l.trim()).filter(Boolean), [profile.fromDetails]);
 
+  async function downloadPdf() {
+    const sheet = document.querySelector<HTMLElement>(".invoice-sheet");
+    if (!sheet || !data) return;
+    setPdfState("working");
+    try {
+      const name = `${data.client.name} ${meta.number}`.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-");
+      await downloadInvoicePdf(sheet, `${name || "invoice"}.pdf`);
+      setPdfState("idle");
+    } catch (e) {
+      console.error("[invoice pdf]", e);
+      setPdfState("error");
+    }
+  }
+
   function downloadCsv() {
     if (!data) return;
     const blob = new Blob([invoiceCsv(data, meta.skipFees)], { type: "text/csv;charset=utf-8" });
@@ -171,7 +187,10 @@ function Invoice() {
           <span className="text-[13px] text-[#5c6270]">Invoice for <b className="text-[#1a1d27]">{data.client.name}</b> · {fmtShort(periodFrom)} – {fmtShort(periodTo)}</span>
           <div className="ml-auto flex items-center gap-1.5">
             <button onClick={downloadCsv} className="rounded-md border border-[#d9dce4] bg-white px-3 py-1.5 text-[12.5px] font-medium hover:bg-[#f0f1f6]">CSV</button>
-            <button onClick={() => window.print()} className="rounded-md bg-[#6553d6] px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:brightness-110">Print / Save as PDF</button>
+            {pdfState === "error" && <span className="text-[12px] text-[#d64545]">Couldn&apos;t build the PDF — try again.</span>}
+            <button onClick={downloadPdf} disabled={pdfState === "working"} className="rounded-md bg-[#6553d6] px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
+              {pdfState === "working" ? "Preparing PDF…" : "Download PDF"}
+            </button>
           </div>
         </div>
         <details className="mx-auto max-w-[900px] px-6 pb-3">
