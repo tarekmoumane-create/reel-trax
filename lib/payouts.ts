@@ -237,24 +237,17 @@ export interface EarningContext {
 }
 
 /**
- * Where a creator's starter window starts: their first post on or after the
- * day the relationship began. The floor matters because a sync ingests a
- * creator's entire back catalogue — without it, a creator signed today would
- * anchor to a video from two years ago and the window would be long expired.
- * No post since the floor = they haven't started yet, so no starter window.
+ * Where a creator's starter window starts: the first post they ever made that
+ * we track. Deliberately not tied to onboardedAt or when they were added to
+ * the app — those are often blank or set after the creator started posting,
+ * and the deal is "your first two weeks of posting", which only the posts
+ * themselves can tell. No posts yet = no window.
  */
-export function starterAnchor(
-  posts: { postedAt: Date | string }[],
-  creator: { onboardedAt?: Date | string | null; createdAt?: Date | string | null }
-): Date | null {
-  const floorSrc = creator.onboardedAt ?? creator.createdAt;
-  if (!floorSrc) return null;
-  const floor = new Date(floorSrc).getTime();
-  if (isNaN(floor)) return null;
+export function starterAnchor(posts: { postedAt: Date | string }[]): Date | null {
   let first = Infinity;
   for (const p of posts) {
     const t = new Date(p.postedAt).getTime();
-    if (!isNaN(t) && t >= floor && t < first) first = t;
+    if (!isNaN(t) && t < first) first = t;
   }
   return first === Infinity ? null : new Date(first);
 }

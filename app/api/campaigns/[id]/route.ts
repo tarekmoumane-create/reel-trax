@@ -55,7 +55,7 @@ export async function GET(_r: Request, { params }: { params: Promise<{ id: strin
     const creators = campaign.assignments.map((a) => {
       const overrideTiers = parseViewTiers(a.viewTiers);
       const rules = effectiveRules(baseRules, { ...a, viewTiers: overrideTiers });
-      const earnings = computeEarnings(rules, a.creator.posts, bounds, new Date(), { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts, a.creator) });
+      const earnings = computeEarnings(rules, a.creator.posts, bounds, new Date(), { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts) });
       const overridden =
         a.baseFee != null || a.perPost != null || a.cpmRate != null ||
         a.cpmBasis != null || a.cpmCapPerVideo != null || overrideTiers.length > 0 ||

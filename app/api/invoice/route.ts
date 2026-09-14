@@ -96,7 +96,7 @@ export async function GET(request: Request) {
           include: {
             creator: {
               select: {
-                id: true, displayName: true, onboardedAt: true, createdAt: true, tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true, facebookHandle: true,
+                id: true, displayName: true, onboardedAt: true, tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true, facebookHandle: true,
                 posts: {
                   select: {
                     platform: true, url: true, caption: true, postedAt: true, views: true,
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
         };
         for (const a of c.assignments) {
           const rules = effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) });
-          const e = computeEarnings(rules, a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts, a.creator) });
+          const e = computeEarnings(rules, a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts) });
           const inRange = a.creator.posts.filter((v) => v.postedAt.getTime() >= bounds.start.getTime() && v.postedAt.getTime() <= bounds.end.getTime());
           if (e.amount === 0 && inRange.length === 0) continue;
 

@@ -69,7 +69,7 @@ export async function GET(request: Request) {
         for (const a of c.assignments) {
           const key = `${c.id}|${a.creatorId}|${bounds.start.toISOString()}`;
           if (map.has(key)) continue; // stored wins
-          const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts, a.creator) });
+          const e = computeEarnings(effectiveRules(baseRules, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts) });
           // Skip empty past periods (nothing earned, nothing posted) — noise.
           if (!isCurrent && e.amount === 0 && e.qualifyingPosts === 0) continue;
           map.set(key, {

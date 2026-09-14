@@ -52,7 +52,7 @@ async function buildSnapshot(clientId: string) {
     };
     const creatorsPay = c.assignments.map((a) => ({
       name: a.creator.displayName,
-      earned: computeEarnings(effectiveRules(base, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts, a.creator) }).amount,
+      earned: computeEarnings(effectiveRules(base, { ...a, viewTiers: parseViewTiers(a.viewTiers) }), a.creator.posts, bounds, now, { onboardedAt: a.creator.onboardedAt, firstPostAt: starterAnchor(a.creator.posts) }).amount,
     }));
     return {
       name: c.name, status: c.status, period: c.period, targetVideos: c.targetVideos,
