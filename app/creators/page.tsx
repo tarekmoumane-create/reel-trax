@@ -6,6 +6,7 @@ import { useClients } from "../providers";
 import type { OverviewResponse, OverviewRow } from "@/lib/types";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { PostActivity } from "@/components/PostActivity";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
 import { Avatar } from "@/components/Avatar";
 import { Select } from "@/components/Select";
@@ -88,9 +89,10 @@ export default function CreatorsPage() {
         </div>
 
         <div className="card overflow-hidden">
-          <div className="hidden grid-cols-[minmax(200px,2fr)_100px_1fr_84px_110px_84px_80px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
+          <div className="hidden grid-cols-[minmax(180px,1.6fr)_100px_minmax(120px,340px)_minmax(120px,1fr)_84px_110px_84px_80px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
             <div>Name</div>
             <div>Status</div>
+            <div>Post activity · 30d</div>
             <div>Accounts</div>
             <div>Views · 30d</div>
             <div>Source</div>
@@ -104,13 +106,17 @@ export default function CreatorsPage() {
               <Link
                 key={r.id}
                 href={`/creators/${r.id}`}
-                className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 hover:bg-[var(--panel2)] md:grid-cols-[minmax(200px,2fr)_100px_1fr_84px_110px_84px_80px] md:gap-4"
+                className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 hover:bg-[var(--panel2)] md:grid-cols-[minmax(180px,1.6fr)_100px_minmax(120px,340px)_minmax(120px,1fr)_84px_110px_84px_80px] md:gap-4"
               >
                 <div className="flex items-center gap-3">
                   <Avatar name={r.displayName} creatorId={r.id} size={36} />
                   <span className="truncate text-sm font-medium">{r.displayName}</span>
                 </div>
                 <div><StatusBadge status={r.cadence.status} /></div>
+                {/* right-aligned so a narrow window clips the oldest days, never the latest */}
+                <div className="flex min-w-0 justify-end overflow-hidden">
+                  <PostActivity calendar={r.cadence.calendar} days={30} dot={9} gap={2} showWeekdays={false} />
+                </div>
                 <div className="mono flex flex-wrap gap-x-2 text-[11px] text-[var(--muted)]">
                   {r.tiktokHandle && <span>TT @{r.tiktokHandle}</span>}
                   {r.instagramHandle && <span>IG @{r.instagramHandle}</span>}
