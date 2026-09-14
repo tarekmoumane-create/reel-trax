@@ -113,8 +113,9 @@ export default function CreatorsPage() {
                   <span className="truncate text-sm font-medium">{r.displayName}</span>
                 </div>
                 <div><StatusBadge status={r.cadence.status} /></div>
-                {/* right-aligned so a narrow window clips the oldest days, never the latest */}
-                <div className="flex min-w-0 justify-end overflow-hidden">
+                {/* right-aligned so a narrow window clips the oldest days, never the latest;
+                    padded so today's outline ring (drawn outside its dot) isn't clipped */}
+                <div className="flex min-w-0 justify-end overflow-hidden p-1">
                   <PostActivity calendar={r.cadence.calendar} days={30} dot={9} gap={2} showWeekdays={false} />
                 </div>
                 <div className="mono flex flex-wrap gap-x-2 text-[11px] text-[var(--muted)]">
