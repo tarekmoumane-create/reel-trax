@@ -19,7 +19,8 @@ interface Meta {
   dueDate: string;
   feePct: string;
   notes: string;
-  showVideos: boolean;
+  /** The per-video appendix, on screen and in the PDF. Off unless ticked. */
+  includeAppendix: boolean;
   /** Management-fee months (YYYY-MM) left off this particular invoice. */
   skipFees: string[];
 }
@@ -45,7 +46,7 @@ function defaultMeta(clientId: string, to: string): Meta {
     dueDate: dstr(due),
     feePct: "",
     notes: "",
-    showVideos: true,
+    includeAppendix: false,
     skipFees: [],
   };
 }
@@ -78,7 +79,13 @@ function Invoice() {
     try {
       const saved = JSON.parse(localStorage.getItem(lsKey) ?? "null");
       if (saved && typeof saved === "object") {
-        return { ...base, ...saved, number: saved.number || base.number, skipFees: Array.isArray(saved.skipFees) ? saved.skipFees : [] };
+        return {
+          ...base, ...saved,
+          number: saved.number || base.number,
+          skipFees: Array.isArray(saved.skipFees) ? saved.skipFees : [],
+          // New key on purpose: older saves carried showVideos: true, the old default.
+          includeAppendix: saved.includeAppendix === true,
+        };
       }
     } catch {}
     return base;
@@ -202,7 +209,7 @@ function Invoice() {
             <div><label className={label}>Agency fee % <span className="text-[#979dab]">(optional)</span></label><input type="number" min={0} step="0.5" className={field} value={meta.feePct} onChange={(e) => setM({ feePct: e.target.value })} placeholder="0" /></div>
             <div className="col-span-2 sm:col-span-4"><label className={label}>Notes to client</label><input className={field} value={meta.notes} onChange={(e) => setM({ notes: e.target.value })} placeholder="Thanks for your business — reach out with any questions." /></div>
             <label className="col-span-2 flex items-center gap-2 text-[12px] text-[#5c6270] sm:col-span-4">
-              <input type="checkbox" checked={meta.showVideos} onChange={(e) => setM({ showVideos: e.target.checked })} />
+              <input type="checkbox" checked={meta.includeAppendix} onChange={(e) => setM({ includeAppendix: e.target.checked })} />
               Include the per-video appendix ({data.totals.videos} videos)
             </label>
           </div>
@@ -370,7 +377,7 @@ function Invoice() {
         )}
 
         {/* per-video appendix */}
-        {meta.showVideos && data.totals.videos > 0 && (
+        {meta.includeAppendix && data.totals.videos > 0 && (
           <div className="mt-12 border-t border-[#e4e6ee] pt-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#979dab]">Appendix · videos posted {fmtShort(periodFrom)} – {fmtShort(periodTo)}</div>
             {data.lines.filter((l) => l.videos.length).map((l) => (
