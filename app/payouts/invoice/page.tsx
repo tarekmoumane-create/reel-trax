@@ -266,8 +266,12 @@ function Invoice() {
           </div>
         </div>
 
-        {/* line items */}
-        <table className="mt-10 w-full border-collapse text-[12.5px]">
+        {/* 1 · creator pay */}
+        <div className="mt-12 flex items-baseline justify-between border-b border-[#e4e6ee] pb-2">
+          <div className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#1a1d27]">Creator pay</div>
+          <div className="text-[12px] text-[#979dab]">Videos posted {fmtShort(periodFrom)} – {fmtShort(periodTo)}</div>
+        </div>
+        <table className="mt-2 w-full border-collapse text-[12.5px]">
           <thead>
             <tr className="border-b-2 border-[#1a1d27] text-left text-[11px] font-semibold uppercase tracking-wide text-[#5c6270]">
               <th className="py-2 pr-3">Creator</th>
@@ -292,28 +296,52 @@ function Invoice() {
             ))}
           </tbody>
           <tfoot>
-            <tr><td colSpan={4} className="pt-4 text-right text-[#5c6270]">{fees.length ? "Creator payouts subtotal" : "Subtotal"}</td><td className="mono pt-4 text-right">{money(subtotal, cur)}</td></tr>
-            {feePct > 0 && <tr><td colSpan={4} className="pt-1 text-right text-[#5c6270]">Agency fee ({feePct}%)</td><td className="mono pt-1 text-right">{money(fee, cur)}</td></tr>}
-            {fees.length > 0 && (
-              <>
+            <tr className="font-semibold"><td colSpan={4} className="pt-3 text-right">Creator pay subtotal</td><td className="mono pt-3 text-right">{money(subtotal, cur)}</td></tr>
+          </tfoot>
+        </table>
+
+        {/* 2 · management fee — the agency's own fee, kept apart from creator costs */}
+        {fees.length > 0 && (
+          <div className="invoice-avoid-break">
+            <div className="mt-12 border-b border-[#e4e6ee] pb-2 text-[13px] font-semibold uppercase tracking-[0.16em] text-[#1a1d27]">Management fee</div>
+            <table className="mt-2 w-full border-collapse text-[12.5px]">
+              <thead>
                 <tr className="border-b-2 border-[#1a1d27] text-left text-[11px] font-semibold uppercase tracking-wide text-[#5c6270]">
-                  <td colSpan={4} className="pb-2 pt-8">Management fee</td>
-                  <td className="pb-2 pt-8 text-right">Amount</td>
+                  <th className="py-2 pr-3">Description</th>
+                  <th className="py-2 pr-3">Period</th>
+                  <th className="py-2 text-right">Amount</th>
                 </tr>
+              </thead>
+              <tbody>
                 {fees.map((f) => (
                   <tr key={f.month} className="border-b border-[#e4e6ee]">
-                    <td colSpan={4} className="py-2.5 pr-3">
-                      <div className="font-medium">{data.client.name} management fee</div>
-                      <div className="text-[11px] text-[#979dab]">{f.label}</div>
-                    </td>
+                    <td className="py-2.5 pr-3 font-medium">{data.client.name} management fee</td>
+                    <td className="py-2.5 pr-3 text-[#5c6270]">{f.label}</td>
                     <td className="mono py-2.5 text-right font-semibold">{money(f.amount, cur)}</td>
                   </tr>
                 ))}
-              </>
-            )}
-            <tr className="text-[15px] font-bold"><td colSpan={4} className="pt-4 text-right">Total due</td><td className="mono pt-4 text-right text-[#6553d6]">{money(total, cur)}</td></tr>
-          </tfoot>
-        </table>
+              </tbody>
+              <tfoot>
+                <tr className="font-semibold"><td colSpan={2} className="pt-3 text-right">Management fee subtotal</td><td className="mono pt-3 text-right">{money(feesTotal, cur)}</td></tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        {/* 3 · total */}
+        <div className="invoice-avoid-break mt-12 flex justify-end">
+          <table className="w-full max-w-[340px] border-collapse rounded-md text-[13px]">
+            <tbody>
+              <tr><td className="py-1.5 pr-6 text-[#5c6270]">Creator pay</td><td className="mono py-1.5 text-right">{money(subtotal, cur)}</td></tr>
+              {feePct > 0 && <tr><td className="py-1.5 pr-6 text-[#5c6270]">Agency fee ({feePct}%)</td><td className="mono py-1.5 text-right">{money(fee, cur)}</td></tr>}
+              {fees.length > 0 && <tr><td className="py-1.5 pr-6 text-[#5c6270]">Management fee</td><td className="mono py-1.5 text-right">{money(feesTotal, cur)}</td></tr>}
+              <tr className="border-t-2 border-[#1a1d27] text-[16px] font-bold">
+                <td className="pr-6 pt-3">Total due</td>
+                <td className="mono pt-3 text-right text-[#6553d6]">{money(total, cur)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         {(meta.notes || profile.paymentInstructions) && (
           <div className="mt-10 grid grid-cols-2 gap-8 text-[12.5px]">
