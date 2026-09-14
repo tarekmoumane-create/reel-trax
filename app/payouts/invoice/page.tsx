@@ -19,6 +19,8 @@ interface Meta {
   feePct: string;
   notes: string;
   showVideos: boolean;
+  /** Management-fee months (YYYY-MM) left off this particular invoice. */
+  skipFees: string[];
 }
 
 const dstr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -43,6 +45,7 @@ function defaultMeta(clientId: string, to: string): Meta {
     feePct: "",
     notes: "",
     showVideos: true,
+    skipFees: [],
   };
 }
 
@@ -73,13 +76,21 @@ function Invoice() {
     if (typeof window === "undefined") return base;
     try {
       const saved = JSON.parse(localStorage.getItem(lsKey) ?? "null");
-      if (saved && typeof saved === "object") return { ...base, ...saved, number: saved.number || base.number };
+      if (saved && typeof saved === "object") {
+        return { ...base, ...saved, number: saved.number || base.number, skipFees: Array.isArray(saved.skipFees) ? saved.skipFees : [] };
+      }
     } catch {}
     return base;
   });
   const [profile, setProfile] = useState({ fromName: "", fromDetails: "", paymentInstructions: "" });
   const [profileDirty, setProfileDirty] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  // The monthly fee is saved on the client (same on every device); which months
+  // this particular invoice bills is per invoice, in meta.skipFees.
+  const [feeForm, setFeeForm] = useState({ amount: "", start: "" });
+  const [feeDirty, setFeeDirty] = useState(false);
+  const [savingFee, setSavingFee] = useState(false);
+  const [reload, setReload] = useState(0);
 
   const setM = (patch: Partial<Meta>) => {
     setMeta((m) => {
@@ -98,9 +109,22 @@ function Invoice() {
         if (!r.ok) throw new Error(d?.error || "Failed to load");
         setData(d);
         setProfile(d.profile);
+        setFeeForm({ amount: d.client.managementFee != null ? String(d.client.managementFee) : "", start: d.client.managementFeeStart ?? "" });
+        setFeeDirty(false);
       })
       .catch((e) => setError(e.message));
-  }, [clientId, from, to, all]);
+  }, [clientId, from, to, all, reload]);
+
+  async function saveFee() {
+    setSavingFee(true);
+    await fetch(`/api/clients/${clientId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ managementFee: feeForm.amount, managementFeeStart: feeForm.start }),
+    });
+    setSavingFee(false);
+    setReload((n) => n + 1);
+  }
 
   async function saveProfile() {
     setSavingProfile(true);
@@ -116,13 +140,15 @@ function Invoice() {
   const feePct = Number(meta.feePct) || 0;
   const subtotal = data?.totals.amount ?? 0;
   const fee = Math.round(subtotal * feePct) / 100;
-  const total = Math.round((subtotal + fee) * 100) / 100;
+  const fees = (data?.fees ?? []).filter((f) => !meta.skipFees.includes(f.month));
+  const feesTotal = fees.reduce((s, f) => s + f.amount, 0);
+  const total = Math.round((subtotal + fee + feesTotal) * 100) / 100;
 
   const fromLines = useMemo(() => profile.fromDetails.split("\n").map((l) => l.trim()).filter(Boolean), [profile.fromDetails]);
 
   function downloadCsv() {
     if (!data) return;
-    const blob = new Blob([invoiceCsv(data)], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([invoiceCsv(data, meta.skipFees)], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `${meta.number}.csv`;
@@ -149,7 +175,7 @@ function Invoice() {
           </div>
         </div>
         <details className="mx-auto max-w-[900px] px-6 pb-3">
-          <summary className="cursor-pointer text-[12px] font-medium text-[#5c6270] hover:text-[#1a1d27]">Invoice details, agency fee &amp; “bill from”</summary>
+          <summary className="cursor-pointer text-[12px] font-medium text-[#5c6270] hover:text-[#1a1d27]">Invoice details, fees &amp; “bill from”</summary>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div><label className={label}>Invoice #</label><input className={field} value={meta.number} onChange={(e) => setM({ number: e.target.value })} /></div>
             <div><label className={label}>Issue date</label><input type="date" className={field} value={meta.issueDate} onChange={(e) => setM({ issueDate: e.target.value })} /></div>
@@ -160,6 +186,37 @@ function Invoice() {
               <input type="checkbox" checked={meta.showVideos} onChange={(e) => setM({ showVideos: e.target.checked })} />
               Include the per-video appendix ({data.totals.videos} videos)
             </label>
+          </div>
+          <div className="mt-3 rounded-md border border-[#d9dce4] bg-white p-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div><label className={label}>Monthly management fee</label><input type="number" min={0} step="1" className={field} value={feeForm.amount} onChange={(e) => { setFeeForm({ ...feeForm, amount: e.target.value }); setFeeDirty(true); }} placeholder="none" /></div>
+              <div><label className={label}>Billed from <span className="text-[#979dab]">(first month)</span></label><input type="date" className={field} value={feeForm.start} onChange={(e) => { setFeeForm({ ...feeForm, start: e.target.value }); setFeeDirty(true); }} /></div>
+              <div className="col-span-2 flex items-end">
+                {feeDirty && <button onClick={saveFee} disabled={savingFee} className="rounded-md bg-[#6553d6] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50">{savingFee ? "Saving…" : `Save fee for ${data.client.name}`}</button>}
+              </div>
+            </div>
+            {data.fees.length > 0 ? (
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[#5c6270]">
+                <span>Bill on this invoice:</span>
+                {data.fees.map((f) => (
+                  <label key={f.month} className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={!meta.skipFees.includes(f.month)}
+                      onChange={(e) => setM({ skipFees: e.target.checked ? meta.skipFees.filter((m) => m !== f.month) : [...meta.skipFees, f.month] })}
+                    />
+                    {f.label} · {money(f.amount, cur)}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-[11.5px] text-[#979dab]">
+                {data.client.managementFee ? "No month's fee falls inside this invoice's dates." : "Set a monthly fee to bill it on this client's invoices."}
+              </p>
+            )}
+            <p className="mt-1.5 text-[11px] text-[#979dab]">
+              Each month&apos;s fee goes on the invoice that includes the 1st of that month (or the billed-from date, for the first month), so no month is billed twice or skipped. Blank billed-from = the start of the engagement.
+            </p>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div><label className={label}>Bill from — name</label><input className={field} value={profile.fromName} onChange={(e) => { setProfile({ ...profile, fromName: e.target.value }); setProfileDirty(true); }} placeholder="Your agency" /></div>
@@ -217,7 +274,6 @@ function Invoice() {
               <th className="py-2 pr-3">Campaign</th>
               <th className="py-2 pr-3 text-right">Posts</th>
               <th className="py-2 pr-3 text-right">Views</th>
-              <th className="py-2 pr-3">Detail</th>
               <th className="py-2 text-right">Amount</th>
             </tr>
           </thead>
@@ -231,17 +287,31 @@ function Invoice() {
                 <td className="py-2.5 pr-3 text-[#5c6270]">{l.campaigns.join(", ")}</td>
                 <td className="mono py-2.5 pr-3 text-right">{l.posts}</td>
                 <td className="mono py-2.5 pr-3 text-right">{fmtNum(l.views)}</td>
-                <td className="py-2.5 pr-3 text-[11.5px] text-[#5c6270]">
-                  {l.breakdown.map((b) => <div key={b.label}>{b.label} <span className="mono">{money(b.amount, cur)}</span></div>)}
-                </td>
                 <td className="mono py-2.5 text-right font-semibold">{money(l.amount, cur)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr><td colSpan={5} className="pt-4 text-right text-[#5c6270]">Subtotal</td><td className="mono pt-4 text-right">{money(subtotal, cur)}</td></tr>
-            {feePct > 0 && <tr><td colSpan={5} className="pt-1 text-right text-[#5c6270]">Agency fee ({feePct}%)</td><td className="mono pt-1 text-right">{money(fee, cur)}</td></tr>}
-            <tr className="text-[15px] font-bold"><td colSpan={5} className="pt-2 text-right">Total due</td><td className="mono pt-2 text-right text-[#6553d6]">{money(total, cur)}</td></tr>
+            <tr><td colSpan={4} className="pt-4 text-right text-[#5c6270]">{fees.length ? "Creator payouts subtotal" : "Subtotal"}</td><td className="mono pt-4 text-right">{money(subtotal, cur)}</td></tr>
+            {feePct > 0 && <tr><td colSpan={4} className="pt-1 text-right text-[#5c6270]">Agency fee ({feePct}%)</td><td className="mono pt-1 text-right">{money(fee, cur)}</td></tr>}
+            {fees.length > 0 && (
+              <>
+                <tr className="border-b-2 border-[#1a1d27] text-left text-[11px] font-semibold uppercase tracking-wide text-[#5c6270]">
+                  <td colSpan={4} className="pb-2 pt-8">Management fee</td>
+                  <td className="pb-2 pt-8 text-right">Amount</td>
+                </tr>
+                {fees.map((f) => (
+                  <tr key={f.month} className="border-b border-[#e4e6ee]">
+                    <td colSpan={4} className="py-2.5 pr-3">
+                      <div className="font-medium">{data.client.name} management fee</div>
+                      <div className="text-[11px] text-[#979dab]">{f.label}</div>
+                    </td>
+                    <td className="mono py-2.5 text-right font-semibold">{money(f.amount, cur)}</td>
+                  </tr>
+                ))}
+              </>
+            )}
+            <tr className="text-[15px] font-bold"><td colSpan={4} className="pt-4 text-right">Total due</td><td className="mono pt-4 text-right text-[#6553d6]">{money(total, cur)}</td></tr>
           </tfoot>
         </table>
 

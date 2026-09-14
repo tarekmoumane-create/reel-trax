@@ -26,14 +26,26 @@ export interface InvoiceLine {
   pay: { sideshiftUrl: string | null; paymentMethod: string | null; paymentHandle: string | null };
   videos: InvoiceVideo[];
 }
+export interface InvoiceFee {
+  /** YYYY-MM */
+  month: string;
+  label: string;
+  amount: number;
+}
 export interface InvoiceData {
-  client: { id: string; name: string; website: string | null; logoUrl: string | null };
+  client: {
+    id: string; name: string; website: string | null; logoUrl: string | null;
+    managementFee: number | null; managementFeeStart: string | null;
+  };
   from: string; to: string; days: number; currency: string;
   /** How the period was chosen: "last" = since last payment, "all" = whole history. */
   since: "last" | "all" | null;
   historyFrom: string;
   lines: InvoiceLine[];
-  totals: { amount: number; owed: number; paid: number; creators: number; posts: number; views: number; videos: number };
+  /** Monthly management fees this period bills (the agency's, not creators'). */
+  fees: InvoiceFee[];
+  /** amount = creator earnings only; fees = management fees. */
+  totals: { amount: number; owed: number; paid: number; fees: number; creators: number; posts: number; views: number; videos: number };
   /** Still owed for videos before this period, if the period doesn't start at the beginning. */
   earlier: { amount: number; creators: number; from: string; to: string } | null;
   profile: { fromName: string; fromDetails: string; paymentInstructions: string };
@@ -44,8 +56,10 @@ const csvCell = (v: unknown) => {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-/** Two sections: creator totals, then every video in the range. */
-export function invoiceCsv(d: InvoiceData): string {
+/** Creator totals, management fees, then every video in the range. `skipFees` = months left off this invoice. */
+export function invoiceCsv(d: InvoiceData, skipFees: string[] = []): string {
+  const fees = (d.fees ?? []).filter((f) => !skipFees.includes(f.month));
+  const feeTotal = fees.reduce((s, f) => s + f.amount, 0);
   const rows: unknown[][] = [
     ["Client", d.client.name], ["From", d.from], ["To", d.to], ["Currency", d.currency], [],
     ["Creator", "Accounts", "Campaigns", "Qualifying posts", "Views", "Breakdown", "Amount"],
@@ -54,6 +68,9 @@ export function invoiceCsv(d: InvoiceData): string {
       l.breakdown.map((b) => `${b.label}: ${b.amount.toFixed(2)}`).join(" + "), l.amount.toFixed(2),
     ]),
     ["Total", "", "", d.totals.posts, d.totals.views, "", d.totals.amount.toFixed(2)],
+    ...(fees.length
+      ? [[], ["Management fee"], ...fees.map((f) => [f.label, "", "", "", "", "", f.amount.toFixed(2)]), ["Total due", "", "", "", "", "", (d.totals.amount + feeTotal).toFixed(2)]]
+      : []),
     [],
     ["Creator", "Platform", "Posted", "Title", "Views", "Pay status", "URL"],
     ...d.lines.flatMap((l) => l.videos.map((v) => [l.creatorName, v.platform, v.postedAt.slice(0, 10), v.caption ?? "", v.views, v.pay, v.url ?? ""])),

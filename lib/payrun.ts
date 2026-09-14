@@ -234,6 +234,42 @@ export function oldestOwed(campaigns: LoadedCampaign[], start: Date, end: Date, 
   return best === Infinity ? null : new Date(best);
 }
 
+export interface FeeMonth {
+  /** YYYY-MM */
+  month: string;
+  label: string;
+  amount: number;
+}
+
+/**
+ * The monthly management fees an invoice for [from, to] bills. Invoice dates
+ * are arbitrary, so each month's fee belongs to exactly one invoice: the one
+ * holding the month's first billable day — the 1st, or `startDay` for the first
+ * month. Aug 6 – Sep 14 bills August (started Aug 6) and September; the next
+ * invoice from Sep 15 bills October. Nothing twice, nothing skipped.
+ */
+export function managementFeeMonths(amount: number | null | undefined, startDay: string, from: string, to: string): FeeMonth[] {
+  if (!amount || amount <= 0 || !DATE_RE.test(startDay)) return [];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const out: FeeMonth[] = [];
+  let [y, m] = startDay.split("-").map(Number);
+  for (let i = 0; i < 600; i++) {
+    const first = `${y}-${pad(m)}-01`;
+    const anchor = first < startDay ? startDay : first;
+    if (anchor > to) break;
+    if (anchor >= from) {
+      out.push({
+        month: `${y}-${pad(m)}`,
+        label: new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en", { month: "long", year: "numeric", timeZone: "UTC" }),
+        amount,
+      });
+    }
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  return out;
+}
+
 /** Every campaign of a client with what the pay math needs — optionally for one creator. */
 export function loadCampaigns(clientId: string, creatorId?: string) {
   return prisma.campaign.findMany({

@@ -8,6 +8,8 @@ export interface ClientDTO {
   logoUrl: string | null;
   payMode: string; // uniform | individual
   defaultPayRules: string | null; // JSON PayRulesJson
+  managementFee: number | null; // monthly, billed on invoices
+  managementFeeStart: string | null;
   archived: boolean;
   createdAt: string;
   _count?: { creators: number };

@@ -5,7 +5,7 @@ import { syncAutoCampaign } from "@/lib/autocampaign";
 import { getInvoiceProfile } from "@/lib/settings";
 import {
   DATE_RE, DAY, dayStr, dayStart, dayEnd, cents,
-  settle, loadCampaigns, historyStart, lastSettledThrough, oldestOwed,
+  settle, loadCampaigns, historyStart, lastSettledThrough, oldestOwed, managementFeeMonths,
 } from "@/lib/payrun";
 import type { InvoiceLine } from "@/lib/invoice";
 
@@ -145,18 +145,31 @@ export async function GET(request: Request) {
       .sort((a, b) => b.owed - a.owed || b.amount - a.amount || a.creatorName.localeCompare(b.creatorName));
 
     const sum = (k: "amount" | "owed" | "paid") => cents(out.reduce((s, l) => s + l[k], 0));
+    // The agency's own monthly fee — billed to the client, never owed to creators.
+    const fees = managementFeeMonths(
+      client.managementFee,
+      client.managementFeeStart ? dayStr(client.managementFeeStart) : history,
+      from,
+      to
+    );
     const days = Math.round((rangeEnd.getTime() - rangeStart.getTime()) / DAY);
 
     return ok({
-      client: { id: client.id, name: client.name, website: client.website, logoUrl: client.logoUrl },
+      client: {
+        id: client.id, name: client.name, website: client.website, logoUrl: client.logoUrl,
+        managementFee: client.managementFee,
+        managementFeeStart: client.managementFeeStart ? dayStr(client.managementFeeStart) : null,
+      },
       from, to, days, currency,
       since: all ? "all" : sinceLast ? "last" : null,
       historyFrom: history,
       lines: out,
+      fees,
       totals: {
         amount: sum("amount"),
         owed: sum("owed"),
         paid: sum("paid"),
+        fees: cents(fees.reduce((s, f) => s + f.amount, 0)),
         creators: out.length,
         posts: out.reduce((s, l) => s + l.posts, 0),
         views: out.reduce((s, l) => s + l.views, 0),

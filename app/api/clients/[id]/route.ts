@@ -27,6 +27,15 @@ export async function PATCH(
       const rules = sanitizePayRules(body.defaultPayRules);
       data.defaultPayRules = rules ? JSON.stringify(rules) : null;
     }
+    if ("managementFee" in body) {
+      const n = Number(body.managementFee);
+      data.managementFee =
+        body.managementFee === "" || body.managementFee == null || !Number.isFinite(n) || n <= 0 ? null : Math.round(n * 100) / 100;
+    }
+    if ("managementFeeStart" in body) {
+      const s = String(body.managementFeeStart ?? "");
+      data.managementFeeStart = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00.000Z`) : null;
+    }
     const client = await prisma.client.update({ where: { id }, data });
     if ("defaultPayRules" in data) await syncAutoCampaign(id);
     return ok(client);

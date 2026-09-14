@@ -27,6 +27,12 @@ model Client {
   payMode         String  @default("uniform") // uniform | individual
   defaultPayRules String? // JSON PayRulesJson — the client's default structure
 
+  // Your monthly management fee, billed on this client's invoices (null = none).
+  // Each month's fee lands on the invoice that includes that month's 1st — or
+  // managementFeeStart for the first month; null start = start of the engagement.
+  managementFee      Float?
+  managementFeeStart DateTime?
+
   archived  Boolean    @default(false)
   createdAt DateTime   @default(now())
   creators  Creator[]
