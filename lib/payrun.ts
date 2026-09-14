@@ -188,6 +188,52 @@ export function settle(c: CampaignRow, a: AssignmentRow, records: PayoutRecordRo
   return { earned, unpaid: cents(unpaid), late: cents(late), owed: cents(unpaid + late), paid: cents(paid), records: withLive, gaps };
 }
 
+type LoadedCampaign = CampaignRow & {
+  assignments: (AssignmentRow & { creator: { id: string } })[];
+  payouts: PayoutRecordRow[];
+};
+
+/**
+ * The earliest day any creator still has money owed, searched over [start,
+ * end] — where "Since last payment" should begin. Taking the latest payment
+ * across the whole client instead lets one creator's payment (or skip) hide
+ * everyone else's older unpaid videos. Null when nobody is owed anything.
+ */
+export function oldestOwed(campaigns: LoadedCampaign[], start: Date, end: Date, now: Date): Date | null {
+  let best = Infinity;
+  for (const c of campaigns) {
+    if (c.status === "paused") continue;
+    for (const a of c.assignments) {
+      const records = c.payouts.filter((p) => p.creatorId === a.creator.id);
+      const st = settle(c, a, records, start, end, now);
+      // A paid record that has earned more since is owed from its own start.
+      for (const r of st.records) {
+        if (r.status === "paid" && r.periodEnd.getTime() <= end.getTime() && r.live - r.amount >= 0.01) {
+          best = Math.min(best, Math.max(r.periodStart.getTime(), start.getTime()));
+        }
+      }
+      for (const g of st.gaps) {
+        if (g.start.getTime() >= best) break;
+        if (earningsForRange(c, a, g.start, g.end, now).amount <= 0) continue;
+        // A gap can span weeks with the first earning near its end, so find the
+        // first day by which something is owed. Earnings only grow as the
+        // window widens, so a binary search over days finds it.
+        let lo = 0;
+        let hi = Math.floor((g.end.getTime() - g.start.getTime()) / DAY);
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          const midEnd = new Date(Math.min(g.start.getTime() + (mid + 1) * DAY - 1, g.end.getTime()));
+          if (earningsForRange(c, a, g.start, midEnd, now).amount > 0) hi = mid;
+          else lo = mid + 1;
+        }
+        best = Math.min(best, g.start.getTime() + lo * DAY);
+        break;
+      }
+    }
+  }
+  return best === Infinity ? null : new Date(best);
+}
+
 /** Every campaign of a client with what the pay math needs — optionally for one creator. */
 export function loadCampaigns(clientId: string, creatorId?: string) {
   return prisma.campaign.findMany({

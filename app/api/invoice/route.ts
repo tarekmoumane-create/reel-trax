@@ -5,7 +5,7 @@ import { syncAutoCampaign } from "@/lib/autocampaign";
 import { getInvoiceProfile } from "@/lib/settings";
 import {
   DATE_RE, DAY, dayStr, dayStart, dayEnd, cents,
-  settle, loadCampaigns, historyStart, lastSettledThrough,
+  settle, loadCampaigns, historyStart, lastSettledThrough, oldestOwed,
 } from "@/lib/payrun";
 import type { InvoiceLine } from "@/lib/invoice";
 
@@ -14,8 +14,9 @@ import type { InvoiceLine } from "@/lib/invoice";
 // printable invoice.
 //
 // The period is either explicit (`from` + `to`), `all=1` for the client's whole
-// history, or `since=last` — from the day after the latest recorded payment
+// history, or `since=last` — from the oldest day any creator is still owed
 // through today, which is how a pay run picks up where the last one stopped.
+// (When nobody is owed anything, the day after the latest recorded payment.)
 // The math lives in lib/payrun so "Mark paid" records the same numbers.
 
 export async function GET(request: Request) {
@@ -28,24 +29,31 @@ export async function GET(request: Request) {
     if (!client) return bad("Client not found", 404);
 
     const now = new Date();
-    const history = await historyStart(clientId);
     const all = searchParams.get("all") === "1";
     const sinceLast = searchParams.get("since") === "last";
     let from = searchParams.get("from") ?? "";
     let to = searchParams.get("to") ?? "";
+    if (!all && !sinceLast && (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to)) {
+      return bad("from/to must be YYYY-MM-DD with from <= to");
+    }
+
+    await syncAutoCampaign(clientId);
+    const [history, campaigns] = await Promise.all([historyStart(clientId), loadCampaigns(clientId)]);
+
     if (all) {
       from = history;
       to = dayStr(now);
     } else if (sinceLast) {
-      const through = await lastSettledThrough(clientId);
-      from = through ? dayStr(new Date(through.getTime() + 1)) : history;
       to = dayStr(now);
+      const oldest = oldestOwed(campaigns, dayStart(history), dayEnd(to), now);
+      if (oldest) from = dayStr(oldest);
+      else {
+        const through = await lastSettledThrough(clientId);
+        from = through ? dayStr(new Date(through.getTime() + 1)) : history;
+      }
       // Paid right up to today: show today, which will read as settled.
       if (from > to) from = to;
     }
-    if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) return bad("from/to must be YYYY-MM-DD with from <= to");
-
-    await syncAutoCampaign(clientId);
 
     const rangeStart = dayStart(from);
     const rangeEnd = dayEnd(to);
@@ -53,7 +61,6 @@ export async function GET(request: Request) {
     // can never quietly hide a creator who was skipped in an earlier run.
     const earlierEnd = from > history ? new Date(rangeStart.getTime() - 1) : null;
 
-    const campaigns = await loadCampaigns(clientId);
     const lines = new Map<string, InvoiceLine>();
     let currency = "USD";
     let earlierOwed = 0;

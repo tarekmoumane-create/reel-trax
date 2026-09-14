@@ -133,8 +133,8 @@ export default function PayoutsPage() {
           </div>
         </div>
 
-        {mode.kind === "last" && d && !d.lines.some((l) => l.records.length) && d.from === d.historyFrom && (
-          <p className="mb-3 text-xs text-[var(--faint)]">No payments recorded yet, so this starts at the beginning of {d.client.name}&apos;s history.</p>
+        {mode.kind === "last" && d && d.totals.owed > 0 && (
+          <p className="mb-3 text-xs text-[var(--faint)]">Starts at the oldest video anyone is still owed for, so nobody&apos;s unpaid work is left out.</p>
         )}
         {d?.earlier && d.earlier.amount > 0 && (
           <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-[color:rgba(240,176,72,0.35)] bg-[color:rgba(240,176,72,0.08)] px-3 py-2 text-xs">
@@ -241,7 +241,7 @@ export default function PayoutsPage() {
           )}
         </div>
         <p className="mt-3 text-xs text-[var(--faint)]">
-          Amounts are for videos posted in the payment period. Mark paid records exactly this period, so &ldquo;Since last payment&rdquo; picks up the day after.
+          Amounts are for videos posted in the payment period. Mark paid records exactly this period; &ldquo;Since last payment&rdquo; always starts at the oldest video still owed.
           A video can still earn after you pay — say it crosses the minimum views — and that shows up as owed again. Monthly retainers count once, in the period that includes the start of the month.
         </p>
       </div>
