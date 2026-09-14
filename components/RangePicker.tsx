@@ -46,11 +46,13 @@ export const fmtRangeDate = (d: string) => {
  * covers depends on the data being shown, so the caller resolves it rather
  * than the picker computing a date.
  */
-export function RangePicker({ range, onChange, onAllTime, allTimeActive }: {
+export function RangePicker({ range, onChange, onAllTime, allTimeActive, leading }: {
   range: Range;
   onChange: (r: Range, presetKey?: string) => void;
   onAllTime?: () => void;
   allTimeActive?: boolean;
+  /** Caller-resolved entries listed first, e.g. "Since last payment". */
+  leading?: { label: string; active: boolean; onPick: () => void }[];
 }) {
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(range.from);
@@ -73,6 +75,13 @@ export function RangePicker({ range, onChange, onAllTime, allTimeActive }: {
         <div className="absolute right-0 z-40 mt-1.5 flex w-[290px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] shadow-2xl">
           {/* presets */}
           <div className="max-h-72 w-1/2 overflow-y-auto border-r border-[var(--line2)] py-1">
+            {leading?.map((l) => (
+              <button
+                key={l.label}
+                onClick={() => { l.onPick(); setOpen(false); }}
+                className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--panel2)] ${l.active ? "bg-[var(--panel2)] font-semibold" : ""}`}
+              >{l.label}</button>
+            ))}
             {onAllTime && (
               <button
                 onClick={() => { onAllTime(); setOpen(false); }}
