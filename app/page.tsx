@@ -16,6 +16,25 @@ import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
 
 type Filter = "all" | CadenceStatus;
 
+/**
+ * Runs a sync endpoint and turns whatever comes back into something readable.
+ * A sync can fail for reasons only the server knows (missing or dead API key,
+ * no credits left, the platform refusing us) — those have to reach the screen,
+ * otherwise a failed sync is indistinguishable from a quiet week.
+ */
+async function runSync(url: string, describe: (d: Record<string, unknown>) => string): Promise<{ ok: boolean; text: string }> {
+  try {
+    const res = await fetch(url, { method: "POST" });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { ok: false, text: String(body?.error || `the server returned ${res.status}`) };
+    }
+    return { ok: true, text: describe((body ?? {}) as Record<string, unknown>) };
+  } catch {
+    return { ok: false, text: "couldn't reach the server. Check your connection and try again." };
+  }
+}
+
 export default function Overview() {
   const { currentClientId, currentClient, loading: clientsLoading, reloadClients } = useClients();
   const [data, setData] = useState<OverviewResponse | null>(null);
@@ -25,6 +44,9 @@ export default function Overview() {
   const [showAdd, setShowAdd] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [busyRow, setBusyRow] = useState<string | null>(null);
+  // What the last sync actually did. Without this a failed sync just stops
+  // spinning and says nothing, which looks identical to "nothing has posted".
+  const [syncNote, setSyncNote] = useState<{ ok: boolean; text: string } | null>(null);
   // total views for the analytics chart's current timeline, reported up by AnalyticsPanel
   const [viewsTotal, setViewsTotal] = useState<{ views: number; rangeLabel: string } | null>(null);
 
@@ -46,14 +68,24 @@ export default function Overview() {
   async function syncAll() {
     if (!currentClientId) return;
     setSyncing(true);
-    await fetch(`/api/sync?clientId=${currentClientId}`, { method: "POST" });
+    setSyncNote(null);
+    setSyncNote(await runSync(`/api/sync?clientId=${currentClientId}`, (d) => {
+      const posts = Number(d.postsUpserted ?? 0);
+      const failed = Number(d.failed ?? 0);
+      const checked = Number(d.creators ?? 0);
+      if (!checked) return "No creators to check. Add a profile URL to a creator first.";
+      const head = posts > 0 ? `Pulled ${posts} new post${posts === 1 ? "" : "s"}` : "No new posts";
+      const tail = failed > 0 ? ` · ${failed} creator${failed === 1 ? "" : "s"} failed — open them to see why` : "";
+      return `${head} from ${checked} creator${checked === 1 ? "" : "s"}.${tail}`;
+    }));
     await load();
     setSyncing(false);
   }
 
   async function resync(id: string) {
     setBusyRow(id);
-    await fetch(`/api/creators/${id}/sync`, { method: "POST" });
+    setSyncNote(null);
+    setSyncNote(await runSync(`/api/creators/${id}/sync`, () => "Creator refreshed."));
     await load();
     setBusyRow(null);
   }
@@ -112,6 +144,19 @@ export default function Overview() {
 
       <div className="px-6 py-6">
         <PageTitle title={currentClient?.name ?? "Overview"} sub={s ? `${s.total} creators tracked · times in ${data?.timeZone}` : "Loading…"} />
+
+        {syncNote && (
+          <div
+            className={`mb-4 flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-sm ${
+              syncNote.ok
+                ? "border-[color:rgba(60,190,130,0.35)] bg-[color:rgba(60,190,130,0.08)]"
+                : "border-[color:rgba(242,104,95,0.4)] bg-[color:rgba(242,104,95,0.08)] text-[var(--bad)]"
+            }`}
+          >
+            <span className="min-w-0 flex-1">{syncNote.ok ? syncNote.text : `Sync failed: ${syncNote.text}`}</span>
+            <button onClick={() => setSyncNote(null)} className="shrink-0 text-[var(--faint)] hover:text-[var(--ink)]" aria-label="Dismiss">×</button>
+          </div>
+        )}
 
         {/* KPI strip — one fused card, hairline-divided */}
         {s && (
