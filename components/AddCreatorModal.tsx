@@ -319,7 +319,7 @@ export function AddCreatorModal({
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <div className="text-xs font-semibold text-[var(--muted)]">Pay structure</div>
-                  <p className="mt-0.5 text-[11px] text-[var(--faint)]">
+                  <p className="mt-0.5 text-[12.5px] text-[var(--faint)]">
                     {clientName} pays creators individually.{" "}
                     {customPay
                       ? "This creator gets the custom deal below."

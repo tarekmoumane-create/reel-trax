@@ -11,13 +11,15 @@ import { AddCreatorModal } from "@/components/AddCreatorModal";
 import { Avatar } from "@/components/Avatar";
 import { Select } from "@/components/Select";
 import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
+import { fmtPct } from "@/lib/engagement";
 
-type SortKey = "status" | "views30d" | "viewsTotal" | "lastPost" | "cadence7d" | "newest" | "name";
+type SortKey = "status" | "views30d" | "viewsTotal" | "engagement30d" | "lastPost" | "cadence7d" | "newest" | "name";
 
 const SORT_OPTIONS: [SortKey, string][] = [
   ["status", "Status"],
   ["views30d", "Views · 30d"],
   ["viewsTotal", "Views · all time"],
+  ["engagement30d", "Engagement · 30d"],
   ["lastPost", "Last post"],
   ["cadence7d", "Posts · 7d"],
   ["newest", "Recently added"],
@@ -31,6 +33,8 @@ const SORTS: Record<SortKey, (a: OverviewRow, b: OverviewRow) => number> = {
   status: () => 0, // API order: active first, severity, most-overdue
   views30d: (a, b) => b.views30d - a.views30d,
   viewsTotal: (a, b) => b.viewsTotal - a.viewsTotal,
+  // no views in the window = no rate; those sort to the bottom
+  engagement30d: (a, b) => (b.engagement30d ?? -1) - (a.engagement30d ?? -1),
   lastPost: (a, b) => days(a) - days(b),
   cadence7d: (a, b) => b.cadence.postsLast7d - a.cadence.postsLast7d,
   newest: (a, b) => (a.createdAt < b.createdAt ? 1 : -1),
@@ -38,6 +42,8 @@ const SORTS: Record<SortKey, (a: OverviewRow, b: OverviewRow) => number> = {
 };
 
 const SORT_LS_KEY = "rt.creatorsSort";
+
+const GRID = "md:grid-cols-[minmax(170px,1.6fr)_100px_minmax(120px,340px)_minmax(110px,1fr)_84px_124px_100px_88px_80px]";
 
 export default function CreatorsPage() {
   const { currentClientId, currentClient, reloadClients } = useClients();
@@ -89,12 +95,13 @@ export default function CreatorsPage() {
         </div>
 
         <div className="card overflow-hidden">
-          <div className="hidden grid-cols-[minmax(180px,1.6fr)_100px_minmax(120px,340px)_minmax(120px,1fr)_84px_110px_84px_80px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
+          <div className={`hidden ${GRID} items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--muted)] md:grid`}>
             <div>Name</div>
             <div>Status</div>
             <div>Post activity · 30d</div>
             <div>Accounts</div>
             <div>Views · 30d</div>
+            <div title="Likes + comments + shares, divided by views, across their videos from the last 30 days">Eng. rate · 30d</div>
             <div>Source</div>
             <div>Last post</div>
             <div>Synced</div>
@@ -106,7 +113,7 @@ export default function CreatorsPage() {
               <Link
                 key={r.id}
                 href={`/creators/${r.id}`}
-                className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 hover:bg-[var(--panel2)] md:grid-cols-[minmax(180px,1.6fr)_100px_minmax(120px,340px)_minmax(120px,1fr)_84px_110px_84px_80px] md:gap-4"
+                className={`grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 hover:bg-[var(--panel2)] ${GRID} md:gap-4`}
               >
                 <div className="flex items-center gap-3">
                   <Avatar name={r.displayName} creatorId={r.id} size={36} />
@@ -118,7 +125,7 @@ export default function CreatorsPage() {
                 <div className="flex min-w-0 justify-end overflow-hidden p-1">
                   <PostActivity calendar={r.cadence.calendar} days={30} dot={9} gap={2} showWeekdays={false} />
                 </div>
-                <div className="mono flex flex-wrap gap-x-2 text-[11px] text-[var(--muted)]">
+                <div className="mono flex flex-wrap gap-x-2 text-[12.5px]">
                   {r.tiktokHandle && <span>TT @{r.tiktokHandle}</span>}
                   {r.instagramHandle && <span>IG @{r.instagramHandle}</span>}
                   {r.youtubeHandle && <span>YT @{r.youtubeHandle}</span>}
@@ -126,10 +133,11 @@ export default function CreatorsPage() {
                   {r.facebookHandle && <span>FB {r.facebookHandle}</span>}
                   {!r.tiktokHandle && !r.instagramHandle && !r.youtubeHandle && !r.threadsHandle && !r.facebookHandle && <span className="text-[var(--faint)]">—</span>}
                 </div>
-                <div className="mono text-[13px]">{r.views30d > 0 ? fmtNum(r.views30d) : <span className="text-[var(--faint)]">—</span>}</div>
-                <div className="text-[13px] text-[var(--muted)]">{SOURCE_LABEL[r.source] ?? r.source}</div>
-                <div className="mono text-[13px]">{daysLabel(r.cadence.daysSinceLastPost)}</div>
-                <div className="text-[12px] text-[var(--faint)]">{timeAgo(r.lastSyncedAt)}</div>
+                <div className="mono text-[14px] font-medium">{r.views30d > 0 ? fmtNum(r.views30d) : <span className="text-[var(--faint)]">—</span>}</div>
+                <div className="mono text-[14px] font-medium">{r.engagement30d != null ? fmtPct(r.engagement30d) : <span className="text-[var(--faint)]">—</span>}</div>
+                <div className="text-[14px]">{SOURCE_LABEL[r.source] ?? r.source}</div>
+                <div className="mono text-[14px]">{daysLabel(r.cadence.daysSinceLastPost)}</div>
+                <div className="text-[13px] text-[var(--muted)]">{timeAgo(r.lastSyncedAt)}</div>
               </Link>
             ))
           )}

@@ -6,6 +6,7 @@ import { useClients } from "../providers";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { VideoThumb } from "@/components/VideoThumb";
 import { fmtNum } from "@/lib/ui";
+import { engagementRate, fmtPct } from "@/lib/engagement";
 import { parsePayExclusions } from "@/lib/payouts";
 import { VideoPayMenu, type VideoPayPatch } from "@/components/VideoPayMenu";
 import { CrossPostMenu } from "@/components/CrossPostMenu";
@@ -23,6 +24,7 @@ interface VideoRow {
   views: number;
   likes: number;
   comments: number;
+  shares: number;
   source: string;
   payExclusions: string | null;
   isWarmUp: boolean;
@@ -57,7 +59,7 @@ export default function VideosPage() {
   const { currentClientId, currentClient } = useClients();
   const [rows, setRows] = useState<VideoRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sort, setSort] = useState<"recent" | "views">("recent");
+  const [sort, setSort] = useState<"recent" | "views" | "engagement">("recent");
   const [platform, setPlatform] = useState<"" | "tiktok" | "instagram" | "youtube" | "threads" | "facebook">("");
   // null = all time (the default); otherwise videos posted inside the window
   const [range, setRange] = useState<Range | null>(null);
@@ -191,7 +193,7 @@ export default function VideosPage() {
       }
       const table: SheetTable = {
         title: sheetTitle(list.length),
-        headers: ["Creator", "Platform", "Posted", "Views", "Likes", "Comments", "Caption", "Link"],
+        headers: ["Creator", "Platform", "Posted", "Views", "Likes", "Comments", "Shares", "Engagement rate", "Caption", "Link"],
         rows: list.map((v) => [
           v.creatorName,
           PLATFORM_LABEL[v.platform] ?? v.platform,
@@ -199,6 +201,8 @@ export default function VideosPage() {
           String(v.views),
           String(v.likes),
           String(v.comments),
+          String(v.shares),
+          engagementRate(v) != null ? fmtPct(engagementRate(v)) : "",
           v.caption ?? "",
           v.url ?? "",
         ]),
@@ -213,7 +217,7 @@ export default function VideosPage() {
   // sensible defaults for the custom From/To inputs
   const pickerRange: Range = range ?? { ...PRESETS[4].range(), label: "All time" };
 
-  const grid = "md:grid-cols-[18px_44px_minmax(180px,2fr)_128px_88px_74px_74px_74px_104px_108px]";
+  const grid = "md:grid-cols-[18px_44px_minmax(160px,2fr)_128px_92px_70px_66px_66px_66px_80px_104px_108px]";
   const checkbox = "h-3.5 w-3.5 cursor-pointer accent-[var(--signal)]";
   const exportLabel = selected.size ? `Export ${selected.size} selected` : filtered ? "Export all matching" : "Export all videos";
 
@@ -232,7 +236,7 @@ export default function VideosPage() {
               onAllTime={() => setRange(null)}
               allTimeActive={!range}
             />
-            <Seg value={sort} onChange={setSort} options={[["recent", "Newest"], ["views", "Top views"]]} />
+            <Seg value={sort} onChange={setSort} options={[["recent", "Newest"], ["views", "Top views"], ["engagement", "Top engagement"]]} />
           </div>
         </div>
 
@@ -280,7 +284,7 @@ export default function VideosPage() {
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {exp.status === "ready" ? (
               <>
-                <span className="text-[11px] text-[var(--faint)]">
+                <span className="text-[12.5px] text-[var(--faint)]">
                   {exp.copied ? "Copied — paste into the new sheet with ⌘V." : `${exp.table.rows.length} videos ready.`}
                 </span>
                 <button
@@ -294,7 +298,7 @@ export default function VideosPage() {
               </>
             ) : (
               <>
-                {exp.status === "error" && <span className="text-[11px] text-[var(--bad)]">{exp.message}</span>}
+                {exp.status === "error" && <span className="text-[12.5px] text-[var(--bad)]">{exp.message}</span>}
                 <button
                   onClick={prepareExport}
                   disabled={exp.status === "loading" || rows.length === 0}
@@ -310,9 +314,9 @@ export default function VideosPage() {
 
         {/* no overflow clipping — the per-row pay menu needs to escape the card */}
         <div className="card">
-          <div className={`hidden ${grid} items-center gap-3 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid`}>
+          <div className={`hidden ${grid} items-center gap-3 border-b border-[var(--line)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--muted)] md:grid`}>
             <input type="checkbox" className={checkbox} checked={allVisibleSelected} onChange={toggleAll} title="Select all shown" />
-            <div>Video</div><div>Caption</div><div>Creator</div><div>Posted</div><div>Views</div><div>Likes</div><div>Comments</div><div>Cross-post</div><div>Pay</div>
+            <div>Video</div><div>Caption</div><div>Creator</div><div>Posted</div><div>Views</div><div>Likes</div><div>Comm.</div><div>Shares</div><div title="Likes + comments + shares, divided by views">Eng. rate</div><div>Cross-post</div><div>Pay</div>
           </div>
           {loading ? (
             <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
@@ -330,11 +334,13 @@ export default function VideosPage() {
                   <a href={p.url ?? "#"} target="_blank" rel="noreferrer" className="min-w-0 truncate text-sm hover:text-[var(--signal)]">
                     {p.caption || <span className="text-[var(--faint)]">(no caption)</span>}
                   </a>
-                  <Link href={`/creators/${p.creatorId}`} className="truncate text-[13px] text-[var(--muted)] hover:text-[var(--signal)]">{p.creatorName}</Link>
-                  <span className="mono text-[12px] text-[var(--muted)]">{dt.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" })}</span>
-                  <span className="mono text-[13px]">{fmtNum(p.views)}</span>
-                  <span className="mono text-[13px] text-[var(--muted)]">{fmtNum(p.likes)}</span>
-                  <span className="mono text-[13px] text-[var(--muted)]">{fmtNum(p.comments)}</span>
+                  <Link href={`/creators/${p.creatorId}`} className="truncate text-[14px] hover:text-[var(--signal)]">{p.creatorName}</Link>
+                  <span className="mono text-[13px]">{dt.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" })}</span>
+                  <span className="mono text-[14px] font-medium">{fmtNum(p.views)}</span>
+                  <span className="mono text-[14px]">{fmtNum(p.likes)}</span>
+                  <span className="mono text-[14px]">{fmtNum(p.comments)}</span>
+                  <span className="mono text-[14px]">{fmtNum(p.shares)}</span>
+                  <span className="mono text-[14px] font-medium" title="Likes + comments + shares, divided by views">{fmtPct(engagementRate(p))}</span>
                   <CrossPostMenu
                     postId={p.id}
                     platform={p.platform}

@@ -74,7 +74,7 @@ export function PostActivity({
             <span
               key={i}
               className="mono text-center text-[var(--faint)]"
-              style={{ width: dot, fontSize: 9, lineHeight: "11px" }}
+              style={{ width: dot, fontSize: dot >= 14 ? 10.5 : 9, lineHeight: "12px" }}
             >
               {WD[weekday(c.date)]}
             </span>

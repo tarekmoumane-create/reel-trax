@@ -10,7 +10,7 @@ export function TopBar({
 }) {
   return (
     <div className="sticky top-0 z-20 flex h-[52px] items-center gap-2 border-b border-[var(--line)] bg-[var(--bg)]/85 px-6 backdrop-blur">
-      <nav className="flex items-center gap-2 text-[13px]">
+      <nav className="flex items-center gap-2 text-[14px]">
         {crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-2">
             {i > 0 && (
@@ -33,7 +33,7 @@ export function PageTitle({ title, sub }: { title: string; sub?: string }) {
   return (
     <div className="mb-5">
       <h1 className="font-display text-[26px] font-bold leading-none">{title}</h1>
-      {sub && <p className="mt-2 text-[13px] text-[var(--muted)]">{sub}</p>}
+      {sub && <p className="mt-2 text-[14px] text-[var(--muted)]">{sub}</p>}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence, type CadenceStatus } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
+import { avgEngagement } from "@/lib/engagement";
 
 // Ordering so the people you need to chase surface first.
 const STATUS_RANK: Record<CadenceStatus, number> = {
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     const tz = await getTimeZone();
     const creators = await prisma.creator.findMany({
       where: { clientId },
-      include: { posts: { select: { postedAt: true, views: true }, orderBy: { postedAt: "desc" } } },
+      include: { posts: { select: { postedAt: true, views: true, likes: true, comments: true, shares: true }, orderBy: { postedAt: "desc" } } },
     });
 
     const now = new Date();
@@ -37,6 +38,8 @@ export async function GET(request: Request) {
         (s, p) => (p.postedAt.getTime() >= cutoff30 ? s + p.views : s),
         0
       );
+      const engagementTotal = avgEngagement(c.posts);
+      const engagement30d = avgEngagement(c.posts.filter((p) => p.postedAt.getTime() >= cutoff30));
       return {
         id: c.id,
         displayName: c.displayName,
@@ -63,6 +66,8 @@ export async function GET(request: Request) {
         createdAt: c.createdAt,
         viewsTotal,
         views30d,
+        engagementTotal,
+        engagement30d,
         cadence,
       };
     });

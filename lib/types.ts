@@ -40,6 +40,9 @@ export interface OverviewRow {
   createdAt: string;
   viewsTotal: number;
   views30d: number;
+  // reactions per view across their videos; null = no views to judge by
+  engagementTotal: number | null;
+  engagement30d: number | null;
   cadence: CadenceResult;
 }
 
@@ -120,4 +123,5 @@ export interface PostDTO {
 export interface CreatorDetailResponse {
   creator: CreatorDTO;
   cadence: CadenceResult;
+  engagement30d: number | null;
 }

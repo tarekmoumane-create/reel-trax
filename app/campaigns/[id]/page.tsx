@@ -89,12 +89,12 @@ export default function CampaignDetail() {
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="font-display text-2xl font-bold">{c.name}</h1>
-              {c.isAuto && <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-2 py-0.5 text-[10px] font-medium text-[var(--signal)]">auto</span>}
-              <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${c.status === "active" ? "bg-[color:rgba(87,201,138,0.12)] text-[var(--ok)]" : "bg-[var(--panel2)] text-[var(--muted)]"}`}>{c.status}</span>
+              {c.isAuto && <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--signal)]">auto</span>}
+              <span className={`rounded-full px-2 py-1 text-[12.5px] font-medium ${c.status === "active" ? "bg-[color:rgba(87,201,138,0.12)] text-[var(--ok)]" : "bg-[var(--panel2)] text-[var(--muted)]"}`}>{c.status}</span>
             </div>
-            <p className="mono mt-1 text-[12px] text-[var(--muted)]">{c.period} · target {c.targetVideos ?? "—"} posts · {rules}</p>
+            <p className="mono mt-1 text-[13px] text-[var(--muted)]">{c.period} · target {c.targetVideos ?? "—"} posts · {rules}</p>
             {c.isAuto && (
-              <p className="mt-1 text-[12px] text-[var(--muted)]">
+              <p className="mt-1 text-[13px] text-[var(--muted)]">
                 Mirrors the client&apos;s payment structure (edit it in Settings → Clients → Pay). Creators join automatically
                 unless they&apos;re in a manual campaign. Per-creator rates can still be customized below.
               </p>
@@ -114,7 +114,7 @@ export default function CampaignDetail() {
             <h2 className="text-sm font-semibold">Assigned creators <span className="text-[var(--muted)]">· {d.period.label}</span></h2>
             <Link href="/payouts" className="text-xs text-[var(--signal)]">View payouts →</Link>
           </div>
-          <div className="hidden grid-cols-[minmax(200px,2fr)_100px_110px_1fr_110px_80px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
+          <div className="hidden grid-cols-[minmax(200px,2fr)_100px_110px_1fr_110px_80px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
             <div>Creator</div><div>Posts</div><div>Views</div><div>Breakdown</div><div>Earned</div><div className="text-right">Pay</div>
           </div>
           {d.creators.length === 0 ? (
@@ -124,11 +124,11 @@ export default function CampaignDetail() {
               <div key={cr.creatorId} className="grid grid-cols-1 items-center gap-2 border-b border-[var(--line2)] px-4 py-3 last:border-0 md:grid-cols-[minmax(200px,2fr)_100px_110px_1fr_110px_80px] md:gap-4">
                 <div className="flex items-center gap-2">
                   <Link href={`/creators/${cr.creatorId}`} className="font-medium hover:text-[var(--signal)]">{cr.displayName}</Link>
-                  {cr.overridden && <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--signal)]">custom</span>}
+                  {cr.overridden && <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--signal)]">custom</span>}
                 </div>
-                <div className="mono text-[13px]">{cr.earnings.qualifyingPosts}{c.targetVideos ? `/${c.targetVideos}` : ""}{cr.earnings.targetMet ? " ✓" : ""}</div>
-                <div className="mono text-[13px]">{fmtNum(cr.earnings.qualifyingViews)}</div>
-                <div className="mono truncate text-[11px] text-[var(--muted)]">{cr.earnings.breakdown.map((b) => `${b.label} ${money(b.amount, cur)}`).join(" + ") || "—"}{cr.earnings.capped ? " (capped)" : ""}</div>
+                <div className="mono text-[14px]">{cr.earnings.qualifyingPosts}{c.targetVideos ? `/${c.targetVideos}` : ""}{cr.earnings.targetMet ? " ✓" : ""}</div>
+                <div className="mono text-[14px]">{fmtNum(cr.earnings.qualifyingViews)}</div>
+                <div className="mono truncate text-[12.5px] text-[var(--muted)]">{cr.earnings.breakdown.map((b) => `${b.label} ${money(b.amount, cur)}`).join(" + ") || "—"}{cr.earnings.capped ? " (capped)" : ""}</div>
                 <div className="mono text-[15px] font-bold text-[var(--signal)]">{money(cr.earnings.amount, cur)}</div>
                 <div className="text-right">
                   <button onClick={() => setEditRates(cr.creatorId)} className="btn px-2.5 py-1.5 text-xs">Rates</button>
@@ -159,7 +159,7 @@ export default function CampaignDetail() {
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="card px-4 py-3">
-      <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">{label}</div>
+      <div className="text-[12.5px] uppercase tracking-wide text-[var(--muted)]">{label}</div>
       <div className="mono mt-1.5 text-[15px] font-bold" style={{ color: tone }}>{value}</div>
     </div>
   );

@@ -13,6 +13,7 @@ import { Avatar } from "@/components/Avatar";
 import { ContactButton } from "@/components/ContactButton";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
+import { fmtPct } from "@/lib/engagement";
 
 type Filter = "all" | CadenceStatus;
 
@@ -47,8 +48,8 @@ export default function Overview() {
   // What the last sync actually did. Without this a failed sync just stops
   // spinning and says nothing, which looks identical to "nothing has posted".
   const [syncNote, setSyncNote] = useState<{ ok: boolean; text: string } | null>(null);
-  // total views for the analytics chart's current timeline, reported up by AnalyticsPanel
-  const [viewsTotal, setViewsTotal] = useState<{ views: number; rangeLabel: string } | null>(null);
+  // views and engagement for the analytics chart's current timeline, reported up by AnalyticsPanel
+  const [viewsTotal, setViewsTotal] = useState<{ views: number; engagement: number | null; rangeLabel: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!currentClientId) {
@@ -160,7 +161,7 @@ export default function Overview() {
 
         {/* KPI strip — one fused card, hairline-divided */}
         {s && (
-          <div className="card mb-5 grid grid-cols-2 gap-px overflow-hidden bg-[var(--line)] sm:grid-cols-3 lg:grid-cols-5">
+          <div className="card mb-5 grid grid-cols-2 gap-px overflow-hidden bg-[var(--line)] sm:grid-cols-3 lg:grid-cols-6">
             <Kpi label="Creators" value={s.total} active={filter === "all"} onClick={() => setFilter("all")} />
             <Kpi label="On track" value={s.onTrack} tone="var(--ok)" active={filter === "on_track"} onClick={() => setFilter("on_track")} />
             <Kpi label="Behind" value={s.behind} tone="var(--warn)" active={filter === "behind"} onClick={() => setFilter("behind")} />
@@ -169,6 +170,11 @@ export default function Overview() {
               label={viewsTotal ? `Views · ${viewsTotal.rangeLabel}` : "Views"}
               value={viewsTotal ? fmtNum(viewsTotal.views) : "—"}
               tone="var(--signal)"
+            />
+            <Kpi
+              label="Engagement rate"
+              value={viewsTotal ? fmtPct(viewsTotal.engagement) : "—"}
+              title={`Likes + comments + shares, divided by views, across every video posted in ${viewsTotal ? viewsTotal.rangeLabel.toLowerCase() : "this range"}`}
             />
           </div>
         )}
@@ -191,7 +197,7 @@ export default function Overview() {
 
         {/* roster — no overflow clipping, so a row's Contact menu can escape it */}
         <div className="card">
-          <div className="hidden grid-cols-[minmax(190px,1.6fr)_auto_78px_64px_56px_100px_140px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
+          <div className="hidden grid-cols-[minmax(190px,1.6fr)_auto_80px_84px_56px_100px_140px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
             <div>Creator</div>
             <div>Post activity · 30d</div>
             <div>Last post</div>
@@ -230,16 +236,17 @@ export default function Overview() {
   );
 }
 
-function Kpi({ label, value, tone, active, onClick }: { label: string; value: number | string; tone?: string; active?: boolean; onClick?: () => void }) {
+function Kpi({ label, value, tone, active, onClick, title }: { label: string; value: number | string; tone?: string; active?: boolean; onClick?: () => void; title?: string }) {
   return (
     <button
       onClick={onClick}
+      title={title}
       className={`px-4 py-3.5 text-left transition ${
         active ? "bg-[var(--panel2)] shadow-[inset_0_2px_0_var(--signal)]" : onClick ? "bg-[var(--panel)] hover:bg-[var(--panel2)]" : "cursor-default bg-[var(--panel)]"
       }`}
     >
       <div className="mono text-[22px] font-semibold leading-none tracking-tight" style={{ color: tone }}>{value}</div>
-      <div className="mt-2 text-[10.5px] uppercase tracking-[0.08em] text-[var(--faint)]">{label}</div>
+      <div className="mt-2 text-[11.5px] uppercase tracking-[0.08em] text-[var(--muted)]">{label}</div>
     </button>
   );
 }
@@ -247,22 +254,22 @@ function Kpi({ label, value, tone, active, onClick }: { label: string; value: nu
 function CreatorRow({ row, busy, onResync }: { row: OverviewRow; busy: boolean; onResync: () => void }) {
   const c = row.cadence;
   return (
-    <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(190px,1.6fr)_auto_78px_64px_56px_100px_140px] lg:gap-4">
+    <div className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[minmax(190px,1.6fr)_auto_80px_84px_56px_100px_140px] lg:gap-4">
       {/* identity */}
       <div className="flex min-w-0 items-center gap-3">
         <Avatar name={row.displayName} creatorId={row.id} size={36} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Link href={`/creators/${row.id}`} className="truncate text-sm font-medium hover:text-[var(--signal)]">{row.displayName}</Link>
-            {row.status !== "active" && <span className="rounded-full bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">{row.status}</span>}
+            {row.status !== "active" && <span className="rounded-full bg-[var(--panel2)] px-1.5 py-0.5 text-[11px] text-[var(--muted)]">{row.status}</span>}
           </div>
-          <div className="mono flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--faint)]">
+          <div className="mono flex flex-wrap items-center gap-x-2 text-[12.5px] text-[var(--muted)]">
             {row.tiktokHandle && <span>TT @{row.tiktokHandle}</span>}
             {row.instagramHandle && <span>IG @{row.instagramHandle}</span>}
             {row.youtubeHandle && <span>YT @{row.youtubeHandle}</span>}
             {row.threadsHandle && <span>TH @{row.threadsHandle}</span>}
             {row.facebookHandle && <span>FB {row.facebookHandle}</span>}
-            <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">{SOURCE_LABEL[row.source] ?? row.source}</span>
+            <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[11px] text-[var(--muted)]">{SOURCE_LABEL[row.source] ?? row.source}</span>
           </div>
         </div>
       </div>
@@ -271,9 +278,9 @@ function CreatorRow({ row, busy, onResync }: { row: OverviewRow; busy: boolean; 
       <div className="overflow-x-auto"><PostActivity calendar={c.calendar} days={30} dot={10} gap={3} /></div>
 
       {/* metrics */}
-      <div className="mono text-[13px]">{daysLabel(c.daysSinceLastPost)}</div>
-      <div className="mono text-[13px]">{c.postsLast7d}/{c.expectedPerWeek}</div>
-      <div className="mono text-[13px]">{c.currentStreakDays > 0 ? `🔥${c.currentStreakDays}` : "—"}</div>
+      <div className="mono text-[14px]">{daysLabel(c.daysSinceLastPost)}</div>
+      <div className="mono text-[14px]">{c.postsLast7d}/{c.expectedPerWeek}</div>
+      <div className="mono text-[14px]">{c.currentStreakDays > 0 ? `🔥${c.currentStreakDays}` : "—"}</div>
       <div><StatusBadge status={c.status} /></div>
 
       {/* actions */}

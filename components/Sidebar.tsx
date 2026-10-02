@@ -117,10 +117,10 @@ export function Sidebar() {
           {!collapsed && (
             <>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-semibold">
+                <span className="block truncate text-[14px] font-semibold">
                   {currentClient?.name ?? "Select client"}
                 </span>
-                <span className="block text-[11px] text-[var(--muted)]">
+                <span className="block text-[12.5px] text-[var(--muted)]">
                   {currentClient ? `${currentClient._count?.creators ?? 0} creators` : "Reel Trax"}
                 </span>
               </span>
@@ -145,20 +145,20 @@ export function Sidebar() {
                     setCurrentClientId(c.id);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-[var(--panel2)] ${
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-[14px] hover:bg-[var(--panel2)] ${
                     c.id === currentClient?.id ? "bg-[var(--panel2)]" : ""
                   }`}
                 >
                   <ClientLogo name={c.name} logoUrl={c.logoUrl} color={c.color} size={24} radius={7} />
                   <span className="flex-1 truncate">{c.name}</span>
-                  <span className="mono text-[11px] text-[var(--faint)]">{c._count?.creators ?? 0}</span>
+                  <span className="mono text-[12.5px] text-[var(--faint)]">{c._count?.creators ?? 0}</span>
                 </button>
               ))}
             </div>
             <div className="border-t border-[var(--line)] p-1">
               <button
                 onClick={() => { setOpen(false); setShowAddClient(true); }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--ink)]"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[14px] text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--ink)]"
               >
                 <span className="grid h-6 w-6 place-items-center rounded-md border border-[var(--line)] text-[var(--muted)]">+</span>
                 New client
@@ -175,7 +175,7 @@ export function Sidebar() {
             {collapsed ? (
               gi > 0 && <div className="mx-2 mb-2 border-t border-[var(--line2)]" />
             ) : (
-              <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]">
+              <div className="mb-1.5 px-2 text-[11.5px] font-semibold uppercase tracking-[0.12em] text-[var(--faint)]">
                 {g.title}
               </div>
             )}
@@ -186,7 +186,7 @@ export function Sidebar() {
                   key={it.href}
                   href={it.href}
                   title={collapsed ? it.label : undefined}
-                  className={`group mb-0.5 flex items-center rounded-lg text-[13px] ${
+                  className={`group mb-0.5 flex items-center rounded-lg text-[14px] ${
                     collapsed ? "justify-center py-[9px]" : "gap-2.5 px-2 py-[7px]"
                   } ${
                     active
@@ -201,7 +201,7 @@ export function Sidebar() {
                     <>
                       <span className="flex-1">{it.label}</span>
                       {it.soon && (
-                        <span className="rounded bg-[var(--panel)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--faint)]">
+                        <span className="rounded bg-[var(--panel)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--faint)]">
                           soon
                         </span>
                       )}
@@ -222,10 +222,10 @@ export function Sidebar() {
       >
         {!collapsed && (
           <>
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--panel2)] text-[11px] font-semibold text-[var(--muted)]">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--panel2)] text-[12.5px] font-semibold text-[var(--muted)]">
               TM
             </span>
-            <div className="min-w-0 flex-1 text-[12px]">
+            <div className="min-w-0 flex-1 text-[13px]">
               <div className="truncate font-medium">Reel Trax</div>
               <div className="truncate text-[var(--faint)]">The Reel Work</div>
             </div>

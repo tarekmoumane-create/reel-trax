@@ -94,7 +94,7 @@ export function Copilot() {
                 </span>
                 <div>
                   <div className="font-display text-sm font-bold">Copilot</div>
-                  <div className="text-[11px] text-[var(--muted)]">{currentClient?.name ?? "No client"}</div>
+                  <div className="text-[12.5px] text-[var(--muted)]">{currentClient?.name ?? "No client"}</div>
                 </div>
               </div>
               <button onClick={() => setOpen(false)} className="rounded-lg px-2 py-1 text-[var(--muted)] hover:bg-[var(--panel2)]">✕</button>
@@ -107,7 +107,7 @@ export function Copilot() {
                   <p className="text-sm text-[var(--muted)]">Ask me anything about <span className="text-[var(--ink)]">{currentClient?.name}</span>&apos;s creators, cadence, campaigns or payouts.</p>
                   <div className="mt-4 space-y-2">
                     {SUGGESTIONS.map((s) => (
-                      <button key={s} onClick={() => ask(s)} className="block w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-left text-[13px] hover:border-[var(--signal)]">
+                      <button key={s} onClick={() => ask(s)} className="block w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-left text-[14px] hover:border-[var(--signal)]">
                         {s}
                       </button>
                     ))}
@@ -116,12 +116,12 @@ export function Copilot() {
               )}
               {msgs.map((m, i) => (
                 <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
-                  <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${m.role === "user" ? "bg-[var(--signal)] text-white" : "bg-[var(--panel)] text-[var(--muted)]"}`}>
+                  <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed ${m.role === "user" ? "bg-[var(--signal)] text-white" : "bg-[var(--panel)] text-[var(--muted)]"}`}>
                     {m.role === "assistant" ? <div className="space-y-1">{render(m.text)}</div> : m.text}
                   </div>
                 </div>
               ))}
-              {loading && <div className="text-[13px] text-[var(--faint)]">Thinking…</div>}
+              {loading && <div className="text-[14px] text-[var(--faint)]">Thinking…</div>}
             </div>
 
             {/* input */}

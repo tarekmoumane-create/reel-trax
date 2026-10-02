@@ -162,7 +162,7 @@ export default function PayoutsPage() {
         </div>
 
         <div className="card overflow-hidden">
-          <div className={`hidden items-center gap-3 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid ${grid}`}>
+          <div className={`hidden items-center gap-3 border-b border-[var(--line)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid ${grid}`}>
             <div>Creator</div><div>Campaign</div><div>Posts</div><div>Views</div><div>Breakdown</div><div className="text-right">Amount</div><div className="text-right">Action</div>
           </div>
           {loading && !d ? (
@@ -183,12 +183,12 @@ export default function PayoutsPage() {
                   <div className={`grid grid-cols-1 items-center gap-2 lg:gap-3 ${grid}`}>
                     <div className="min-w-0">
                       <Link href={`/creators/${l.creatorId}`} className="block truncate font-medium hover:text-[var(--signal)]">{l.creatorName}</Link>
-                      <div className="mono truncate text-[11px] text-[var(--faint)]">{l.handles.join(" · ") || "—"}</div>
+                      <div className="mono truncate text-[12.5px] text-[var(--faint)]">{l.handles.join(" · ") || "—"}</div>
                     </div>
-                    <div className="truncate text-[13px] text-[var(--muted)]">{l.campaigns.join(", ")}</div>
-                    <div className="mono text-[13px]">{l.posts}</div>
-                    <div className="mono text-[13px]">{fmtNum(l.views)}</div>
-                    <div className="mono truncate text-[11px] text-[var(--muted)]" title={l.breakdown.map((b) => `${b.label} ${money(b.amount, cur)}`).join(" + ")}>
+                    <div className="truncate text-[14px] text-[var(--muted)]">{l.campaigns.join(", ")}</div>
+                    <div className="mono text-[14px]">{l.posts}</div>
+                    <div className="mono text-[14px]">{fmtNum(l.views)}</div>
+                    <div className="mono truncate text-[12.5px] text-[var(--muted)]" title={l.breakdown.map((b) => `${b.label} ${money(b.amount, cur)}`).join(" + ")}>
                       {l.breakdown.map((b) => `${b.label} ${money(b.amount, cur)}`).join(" + ") || "—"}
                     </div>
                     <div className="text-right">
@@ -196,7 +196,7 @@ export default function PayoutsPage() {
                         <>
                           <div className="mono text-[15px] font-bold">{money(l.owed, cur)}</div>
                           {(l.paid > 0 || l.late > 0) && (
-                            <div className="text-[10px] text-[var(--faint)]">
+                            <div className="text-[11.5px] text-[var(--faint)]">
                               {l.late > 0 ? `incl. ${money(l.late, cur)} earned after payment` : `of ${money(l.amount, cur)} · ${money(l.paid, cur)} paid`}
                             </div>
                           )}
@@ -204,7 +204,7 @@ export default function PayoutsPage() {
                       ) : (
                         <>
                           <div className="mono text-[15px] font-bold text-[var(--ok)]">{money(l.paid, cur)}</div>
-                          <div className="text-[10px] text-[var(--faint)]">{l.records.length ? "paid" : "nothing owed"}</div>
+                          <div className="text-[11.5px] text-[var(--faint)]">{l.records.length ? "paid" : "nothing owed"}</div>
                         </>
                       )}
                     </div>
@@ -225,7 +225,7 @@ export default function PayoutsPage() {
                   {l.records.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5 lg:pl-1">
                       {l.records.map((r) => (
-                        <span key={r.id} className="inline-flex items-center gap-1.5 rounded-md bg-[var(--panel2)] px-2 py-1 text-[11px] text-[var(--muted)]">
+                        <span key={r.id} className="inline-flex items-center gap-1.5 rounded-md bg-[var(--panel2)] px-2 py-1 text-[12.5px] text-[var(--muted)]">
                           <span className={r.status === "paid" ? "text-[var(--ok)]" : "text-[var(--faint)]"}>{r.status === "paid" ? "Paid" : "Skipped"}</span>
                           <span className="mono">{fmtRangeDate(r.from)} – {fmtRangeDate(r.to)}</span>
                           {r.status === "paid" && <span className="mono">{money(r.amount, cur)}</span>}
@@ -253,7 +253,7 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: stri
   return (
     <div className="card px-4 py-3.5">
       <div className="mono text-[22px] font-bold leading-none" style={{ color: tone }}>{value}</div>
-      <div className="mt-2 text-[11px] uppercase tracking-wide text-[var(--muted)]">{label}</div>
+      <div className="mt-2 text-[12.5px] uppercase tracking-wide text-[var(--muted)]">{label}</div>
     </div>
   );
 }

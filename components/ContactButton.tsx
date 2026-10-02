@@ -83,7 +83,7 @@ export function ContactButton({ creator, compact = false }: { creator: ContactCr
                 </span>
                 <span className="min-w-0">
                   <span className="block font-medium">{l.label}</span>
-                  {l.hint && <span className="mono block truncate text-[11px] text-[var(--faint)]">{l.hint}</span>}
+                  {l.hint && <span className="mono block truncate text-[12.5px] text-[var(--faint)]">{l.hint}</span>}
                 </span>
               </a>
             ))

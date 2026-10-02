@@ -89,7 +89,7 @@ export function AddClientModal({
           </div>
           <div className="rounded-xl border border-[var(--line)] p-3">
             <div className="mb-1 text-xs font-semibold text-[var(--muted)]">Payment structure</div>
-            <p className="mb-2.5 text-[11px] text-[var(--faint)]">
+            <p className="mb-2.5 text-[12.5px] text-[var(--faint)]">
               This is how payouts get calculated for this client&apos;s creators. An automatic campaign is created from
               it, so payouts start tracking as soon as you add creators — no extra setup.
             </p>
@@ -108,11 +108,11 @@ export function AddClientModal({
                   }`}
                 >
                   <div className="text-xs font-semibold">{l}</div>
-                  <div className="mt-0.5 text-[11px] leading-snug text-[var(--faint)]">{d}</div>
+                  <div className="mt-0.5 text-[12.5px] leading-snug text-[var(--faint)]">{d}</div>
                 </button>
               ))}
             </div>
-            <div className="mb-1.5 text-[11px] font-medium text-[var(--muted)]">
+            <div className="mb-1.5 text-[12.5px] font-medium text-[var(--muted)]">
               {payMode === "individual" ? "Default structure (starting point for each creator)" : "Structure for every creator"}
             </div>
             <PayStructureEditor value={payForm} onChange={setPayForm} />

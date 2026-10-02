@@ -189,7 +189,7 @@ export default function DiscoverPage() {
     <>
       <TopBar
         crumbs={["Analytics", "Discover"]}
-        right={<span className="mono text-[11px] text-[var(--faint)]">powered by LightReel</span>}
+        right={<span className="mono text-[12.5px] text-[var(--faint)]">powered by LightReel</span>}
       />
       <div
         className={`mx-auto flex h-[calc(100vh-52px)] max-w-3xl flex-col px-6 py-6 ${dragging ? "rounded-2xl outline-dashed outline-2 outline-[var(--signal)]" : ""}`}
@@ -214,7 +214,7 @@ export default function DiscoverPage() {
               <p className="text-sm text-[var(--muted)]">Ask about competitor hooks, trending formats, or find creators to reach out to.</p>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => ask(s)} className="card px-3.5 py-3 text-left text-[13px] hover:border-[var(--signal)]">
+                  <button key={s} onClick={() => ask(s)} className="card px-3.5 py-3 text-left text-[14px] hover:border-[var(--signal)]">
                     {s}
                   </button>
                 ))}
@@ -225,29 +225,29 @@ export default function DiscoverPage() {
             const ex = exports[i];
             return (
               <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${m.role === "user" ? "bg-[var(--signal)] text-white" : "bg-[var(--panel)] text-[var(--muted)]"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed ${m.role === "user" ? "bg-[var(--signal)] text-white" : "bg-[var(--panel)] text-[var(--muted)]"}`}>
                   {m.role === "assistant" ? <div className="space-y-1">{render(m.text)}</div> : m.text}
                   {m.role === "assistant" && !m.text.startsWith("⚠") && (
                     <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-[var(--line2)] pt-2.5">
                       {!ex || ex.status === "error" ? (
                         <>
-                          <button onClick={() => prepareExport(i, m.text)} className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] hover:border-[var(--signal)] hover:text-[var(--ink)]">
+                          <button onClick={() => prepareExport(i, m.text)} className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] px-2.5 py-1 text-[12.5px] font-medium text-[var(--muted)] hover:border-[var(--signal)] hover:text-[var(--ink)]">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3zM3 9h18M9 9v12M15 9v12" /></svg>
                             Export to Google Sheets
                           </button>
-                          {ex?.status === "error" && <span className="text-[11px] text-[var(--bad)]">{ex.message}</span>}
+                          {ex?.status === "error" && <span className="text-[12.5px] text-[var(--bad)]">{ex.message}</span>}
                         </>
                       ) : ex.status === "loading" ? (
-                        <span className="text-[11px] text-[var(--faint)]">Building your sheet…</span>
+                        <span className="text-[12.5px] text-[var(--faint)]">Building your sheet…</span>
                       ) : (
                         <>
-                          <button onClick={() => openInSheets(i, ex.table)} className="rounded-lg bg-[var(--signal)] px-2.5 py-1 text-[11px] font-medium text-white hover:opacity-90">
+                          <button onClick={() => openInSheets(i, ex.table)} className="rounded-lg bg-[var(--signal)] px-2.5 py-1 text-[12.5px] font-medium text-white hover:opacity-90">
                             Open in Google Sheets ↗
                           </button>
-                          <button onClick={() => downloadCsv(ex.table, "discover-export")} className="rounded-lg border border-[var(--line)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] hover:border-[var(--signal)] hover:text-[var(--ink)]">
+                          <button onClick={() => downloadCsv(ex.table, "discover-export")} className="rounded-lg border border-[var(--line)] px-2.5 py-1 text-[12.5px] font-medium text-[var(--muted)] hover:border-[var(--signal)] hover:text-[var(--ink)]">
                             Download CSV
                           </button>
-                          <span className="text-[11px] text-[var(--faint)]">
+                          <span className="text-[12.5px] text-[var(--faint)]">
                             {ex.copied
                               ? "Copied! Paste into the new sheet with ⌘V."
                               : `${ex.table.rows.length} rows ready — opening copies the data to paste.`}
@@ -260,7 +260,7 @@ export default function DiscoverPage() {
               </div>
             );
           })}
-          {loading && <div className="text-[13px] text-[var(--faint)]">Researching… this can take a minute.</div>}
+          {loading && <div className="text-[14px] text-[var(--faint)]">Researching… this can take a minute.</div>}
         </div>
 
         <div className="mt-3">
@@ -269,7 +269,7 @@ export default function DiscoverPage() {
               {attachments.map((a) => (
                 <span
                   key={a.id}
-                  className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] ${
+                  className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[12.5px] ${
                     a.status === "error"
                       ? "border-[color:rgba(242,104,95,0.4)] text-[var(--bad)]"
                       : "border-[var(--line)] bg-[var(--panel)] text-[var(--muted)]"

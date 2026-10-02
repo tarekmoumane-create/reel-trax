@@ -97,7 +97,7 @@ export function CrossPostMenu({
       <button
         onClick={toggle}
         title={linked ? `Cross-posted to ${groupSize} platforms — paid as one video` : "Not linked to any other post"}
-        className={`inline-flex w-full items-center justify-between gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium hover:border-[var(--signal)] ${open ? "border-[var(--signal)]" : "border-[var(--line)]"} ${tone}`}
+        className={`inline-flex w-full items-center justify-between gap-1 rounded-lg border px-2 py-1 text-[12.5px] font-medium hover:border-[var(--signal)] ${open ? "border-[var(--signal)]" : "border-[var(--line)]"} ${tone}`}
       >
         <span className="inline-flex min-w-0 items-center gap-1">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="shrink-0">
@@ -105,12 +105,12 @@ export function CrossPostMenu({
           </svg>
           <span className="truncate">{label}</span>
         </span>
-        {groupPinned && <span className="shrink-0 text-[9px] text-[var(--faint)]" title="Set by hand — the auto-matcher leaves this alone">📌</span>}
+        {groupPinned && <span className="shrink-0 text-[11px] text-[var(--faint)]" title="Set by hand — the auto-matcher leaves this alone">📌</span>}
       </button>
 
       {open && (
         <div className={`absolute right-0 z-40 w-72 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--panel)] py-1 shadow-2xl ${dropUp ? "bottom-full mb-1.5" : "top-full mt-1.5"}`}>
-          <div className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)]">
+          <div className="px-3 pb-1 pt-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)]">
             Same video, other platforms
           </div>
 
@@ -127,11 +127,11 @@ export function CrossPostMenu({
                           {PLATFORM_LABEL[m.platform] ?? m.platform}
                           {m.id === postId && <span className="text-[var(--faint)]"> (this one)</span>}
                         </span>
-                        <span className="mono shrink-0 text-[10px] text-[var(--faint)]">{fmtNum(m.views)} · {shortDate(m.postedAt)}</span>
+                        <span className="mono shrink-0 text-[11.5px] text-[var(--faint)]">{fmtNum(m.views)} · {shortDate(m.postedAt)}</span>
                       </li>
                     ))}
                   </ul>
-                  <p className="px-3 pb-1.5 text-[10px] leading-snug text-[var(--faint)]">
+                  <p className="px-3 pb-1.5 text-[11.5px] leading-snug text-[var(--faint)]">
                     Paid as one video, qualifying on the best platform&apos;s views.
                   </p>
                   <div className="border-t border-[var(--line2)] p-1">
@@ -145,16 +145,16 @@ export function CrossPostMenu({
                   </div>
                 </>
               ) : (
-                <p className="px-3 pb-1.5 text-[11px] leading-snug text-[var(--muted)]">
+                <p className="px-3 pb-1.5 text-[12.5px] leading-snug text-[var(--muted)]">
                   Counted as its own original. Link it below if it&apos;s a copy of one of these.
                 </p>
               )}
 
-              <div className="border-t border-[var(--line2)] px-3 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)]">
+              <div className="border-t border-[var(--line2)] px-3 pb-0.5 pt-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)]">
                 Link to another post
               </div>
               {info.candidates.length === 0 ? (
-                <p className="px-3 py-2 text-[11px] text-[var(--faint)]">Nothing else from this creator within a week.</p>
+                <p className="px-3 py-2 text-[12.5px] text-[var(--faint)]">Nothing else from this creator within a week.</p>
               ) : (
                 <ul className="max-h-48 overflow-y-auto py-0.5">
                   {info.candidates.map((c) => (
@@ -167,7 +167,7 @@ export function CrossPostMenu({
                       >
                         <span className="min-w-0">
                           <span className="block truncate">{c.caption || <span className="text-[var(--faint)]">(no caption)</span>}</span>
-                          <span className="block text-[10px] text-[var(--faint)]">
+                          <span className="block text-[11.5px] text-[var(--faint)]">
                             {PLATFORM_LABEL[c.platform] ?? c.platform} · {shortDate(c.postedAt)} · {fmtNum(c.views)} views
                             {c.grouped && " · already grouped"}
                           </span>
@@ -180,7 +180,7 @@ export function CrossPostMenu({
             </>
           )}
 
-          {error && <p className="px-3 py-1.5 text-[11px] text-[var(--bad)]">{error}</p>}
+          {error && <p className="px-3 py-1.5 text-[12.5px] text-[var(--bad)]">{error}</p>}
         </div>
       )}
     </div>

@@ -12,6 +12,7 @@ import { VideoThumb } from "@/components/VideoThumb";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
+import { avgEngagement, engagementRate, fmtPct } from "@/lib/engagement";
 import { PAYMENT_METHODS, PAYMENT_LABEL, payLink } from "@/lib/pay";
 import { Select } from "@/components/Select";
 import { RangePicker, PRESETS, dstr, fmtRangeDate, type Range } from "@/components/RangePicker";
@@ -26,6 +27,9 @@ export default function CreatorDetail() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  // One date range for the whole page: the chart and the posts list read it,
+  // and either one's picker sets it. null = all time.
+  const [range, setRange] = useState<Range | null>(() => PRESETS[4].range()); // last 30 days
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/creators/${id}`);
@@ -106,21 +110,21 @@ export default function CreatorDetail() {
                 <h1 className="font-display text-2xl font-bold">{creator.displayName}</h1>
                 <StatusBadge status={cadence.status} />
               </div>
-              <div className="mono mt-1 flex flex-wrap items-center gap-x-3 text-[12px] text-[var(--muted)]">
+              <div className="mono mt-1 flex flex-wrap items-center gap-x-3 text-[13px] text-[var(--muted)]">
                 {creator.tiktokUrl && <a href={creator.tiktokUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">TT @{creator.tiktokHandle}</a>}
                 {creator.instagramUrl && <a href={creator.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">IG @{creator.instagramHandle}</a>}
                 {creator.youtubeUrl && <a href={creator.youtubeUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">YT {creator.youtubeHandle ? `@${creator.youtubeHandle}` : "channel"}</a>}
                 {creator.threadsHandle && <a href={creator.threadsUrl ?? `https://www.threads.com/@${creator.threadsHandle}`} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">TH @{creator.threadsHandle}</a>}
                 {creator.facebookUrl && <a href={creator.facebookUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">FB {creator.facebookHandle ?? "page"}</a>}
-                <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[10px]">from {SOURCE_LABEL[creator.source] ?? creator.source}{creator.sourceDetail ? ` · ${creator.sourceDetail}` : ""}</span>
-                <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[10px] text-[var(--signal)]">pay via {PAYMENT_LABEL[creator.paymentMethod] ?? creator.paymentMethod}</span>
+                <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[11.5px]">from {SOURCE_LABEL[creator.source] ?? creator.source}{creator.sourceDetail ? ` · ${creator.sourceDetail}` : ""}</span>
+                <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[11.5px] text-[var(--signal)]">pay via {PAYMENT_LABEL[creator.paymentMethod] ?? creator.paymentMethod}</span>
                 {creator.onboardedAt && (
-                  <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[10px]">
+                  <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[11.5px]">
                     onboarded {new Date(creator.onboardedAt).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                 )}
                 {posts.length > 0 && (
-                  <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[10px]">
+                  <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[11.5px]">
                     first post {new Date(posts[posts.length - 1].postedAt).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                 )}
@@ -132,11 +136,12 @@ export default function CreatorDetail() {
         {editing && <EditPanel creator={creator} onSave={patch} onDelete={remove} busy={busy} />}
 
         {/* KPI cards */}
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
           <Kpi icon="clock" label="Last post" value={daysLabel(cadence.daysSinceLastPost)} />
           <Kpi icon="fire" label="Streak" value={cadence.currentStreakDays > 0 ? `${cadence.currentStreakDays}d` : "—"} />
           <Kpi icon="grid" label="Posts · 7d" value={`${cadence.postsLast7d}`} />
           <Kpi icon="grid" label="Posts · 30d" value={`${cadence.postsLast30d}`} />
+          <Kpi icon="bolt" label="Eng. rate · 30d" value={fmtPct(data.engagement30d)} title="Likes + comments + shares, divided by views, across their videos from the last 30 days" />
           <Kpi icon="target" label="Target / wk" value={`${cadence.expectedPerWeek}`} />
           <Kpi icon="gauge" label="Pace" value={`${Math.round(cadence.pace7d * 100)}%`} tone={cadence.pace7d >= 1 ? "var(--ok)" : "var(--warn)"} />
         </div>
@@ -145,7 +150,7 @@ export default function CreatorDetail() {
         <div className="card mb-4 p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold">Post activity <span className="text-[var(--muted)]">· last 30 days</span></h2>
-            <span className="mono text-[11px] text-[var(--faint)]">
+            <span className="mono text-[12.5px] text-[var(--faint)]">
               synced {timeAgo(creator.lastSyncedAt)}{creator.lastSyncStatus && creator.lastSyncStatus !== "ok" ? ` · ${creator.lastSyncStatus}` : ""}
             </span>
           </div>
@@ -156,12 +161,12 @@ export default function CreatorDetail() {
         </div>
 
         {/* trend */}
-        {posts.length > 0 && <CreatorTrendCard posts={posts} />}
+        {posts.length > 0 && <CreatorTrendCard posts={posts} range={range} onRange={setRange} />}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="card p-5 lg:col-span-1"><ContactPanel creator={creator} onSave={patch} busy={busy} /></div>
           <div className="card p-5 lg:col-span-2">
-            <PostsPanel posts={posts} onPay={savePostPay} onGrouped={load} />
+            <PostsPanel posts={posts} range={range} onRange={setRange} onPay={savePostPay} onGrouped={load} />
           </div>
         </div>
       </div>
@@ -175,12 +180,13 @@ const KPI_ICONS: Record<string, React.ReactNode> = {
   grid: <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />,
   target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /></>,
   gauge: <><path d="M12 13l4-4" /><path d="M4 18a8 8 0 1 1 16 0" /></>,
+  bolt: <path d="M13 3L5 14h6l-1 7 8-11h-6z" />,
 };
 
-function Kpi({ icon, label, value, tone }: { icon: string; label: string; value: string; tone?: string }) {
+function Kpi({ icon, label, value, tone, title }: { icon: string; label: string; value: string; tone?: string; title?: string }) {
   return (
-    <div className="card p-3.5">
-      <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--muted)]">
+    <div className="card p-3.5" title={title}>
+      <div className="mb-2 flex items-center gap-2 whitespace-nowrap text-[12.5px] text-[var(--muted)]">
         <span className="tile-ico h-6 w-6">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{KPI_ICONS[icon]}</svg>
         </span>
@@ -211,9 +217,6 @@ const PLATFORM_LABEL: Record<string, string> = {
   facebook: "Facebook",
 };
 
-// engagement rate: reactions per view, so a small post that punched above its
-// weight can outrank a big one. No views yet, no rate.
-const engagementRate = (p: PostDTO) => (p.views > 0 ? (p.likes + p.comments + p.shares) / p.views : 0);
 const postedMs = (p: PostDTO) => new Date(p.postedAt).getTime();
 
 const POST_SORTS: Record<PostSortKey, (a: PostDTO, b: PostDTO) => number> = {
@@ -223,13 +226,21 @@ const POST_SORTS: Record<PostSortKey, (a: PostDTO, b: PostDTO) => number> = {
   likes: (a, b) => b.likes - a.likes,
   comments: (a, b) => b.comments - a.comments,
   shares: (a, b) => b.shares - a.shares,
-  engagement: (a, b) => engagementRate(b) - engagementRate(a),
+  // reactions per view, so a small post that punched above its weight can
+  // outrank a big one. No views yet, no rate — those go last.
+  engagement: (a, b) => (engagementRate(b) ?? -1) - (engagementRate(a) ?? -1),
 };
 
 const POST_SORT_LS_KEY = "rt.creatorPostsSort";
 const PAGE = 60;
 
-function PostsPanel({ posts, onPay, onGrouped }: { posts: PostDTO[]; onPay: (postId: string, patch: VideoPayPatch) => void; onGrouped: () => void }) {
+function PostsPanel({ posts, range, onRange, onPay, onGrouped }: {
+  posts: PostDTO[];
+  range: Range | null;
+  onRange: (r: Range | null) => void;
+  onPay: (postId: string, patch: VideoPayPatch) => void;
+  onGrouped: () => void;
+}) {
   const [sort, setSort] = useState<PostSortKey>("newest");
   const [platform, setPlatform] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -251,9 +262,14 @@ function PostsPanel({ posts, onPay, onGrouped }: { posts: PostDTO[]; onPay: (pos
   }, [posts]);
 
   const rows = useMemo(() => {
-    const filtered = platform ? posts.filter((p) => p.platform === platform) : posts;
+    const filtered = posts.filter((p) => {
+      if (platform && p.platform !== platform) return false;
+      if (!range) return true;
+      const day = dstr(new Date(p.postedAt));
+      return day >= range.from && day <= range.to;
+    });
     return [...filtered].sort(POST_SORTS[sort]);
-  }, [posts, platform, sort]);
+  }, [posts, platform, sort, range]);
 
   const visible = showAll ? rows : rows.slice(0, PAGE);
 
@@ -261,9 +277,16 @@ function PostsPanel({ posts, onPay, onGrouped }: { posts: PostDTO[]; onPay: (pos
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">
-          Posts <span className="text-[var(--muted)]">({rows.length}{platform ? ` of ${posts.length}` : ""})</span>
+          Posts <span className="text-[var(--muted)]">({rows.length}{rows.length !== posts.length ? ` of ${posts.length}` : ""})</span>
+          <span className="ml-1.5 text-[12.5px] font-normal text-[var(--faint)]">{range ? range.label : "All time"}</span>
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <RangePicker
+            range={range ?? { ...PRESETS[4].range(), label: "All time" }}
+            onChange={(r) => onRange(r)}
+            onAllTime={() => onRange(null)}
+            allTimeActive={!range}
+          />
           {platforms.length > 1 && (
             <Select
               size="sm"
@@ -288,7 +311,9 @@ function PostsPanel({ posts, onPay, onGrouped }: { posts: PostDTO[]; onPay: (pos
 
       {rows.length === 0 ? (
         <p className="py-8 text-center text-sm text-[var(--muted)]">
-          {posts.length === 0 ? "No posts tracked yet. They’ll appear after the next sync." : "No posts on this platform."}
+          {posts.length === 0
+            ? "No posts tracked yet. They’ll appear after the next sync."
+            : `No posts ${platform ? "on this platform " : ""}in ${range ? range.label.toLowerCase() : "this range"}.`}
         </p>
       ) : (
         <>
@@ -297,7 +322,7 @@ function PostsPanel({ posts, onPay, onGrouped }: { posts: PostDTO[]; onPay: (pos
               <PostRow key={p.id} post={p} sort={sort} groupSize={groupSizes.get(p.groupKey ?? "") ?? 1} onPay={(patch) => onPay(p.id, patch)} onGrouped={onGrouped} />
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-[var(--faint)]">
+          <div className="mt-3 flex items-center justify-between gap-3 text-[12.5px] text-[var(--faint)]">
             <span>
               {showAll || rows.length <= PAGE ? `Showing all ${rows.length}` : `Showing top ${PAGE} of ${rows.length}`}
               {" · "}Pay column: mark warm-ups or set a fixed price per video
@@ -316,28 +341,32 @@ function PostsPanel({ posts, onPay, onGrouped }: { posts: PostDTO[]; onPay: (pos
 
 function PostRow({ post, sort, groupSize, onPay, onGrouped }: { post: PostDTO; sort: PostSortKey; groupSize: number; onPay: (patch: VideoPayPatch) => void; onGrouped: () => void }) {
   const dt = new Date(post.postedAt);
-  // views and likes always show; the third stat follows whatever you sorted by
-  const extra: { key: PostSortKey; glyph: string; value: string } =
-    sort === "shares"
-      ? { key: "shares", glyph: "↻", value: fmtNum(post.shares) }
-      : sort === "engagement"
-        ? { key: "engagement", glyph: "⚡", value: `${(engagementRate(post) * 100).toFixed(1)}%` }
-        : { key: "comments", glyph: "≡", value: fmtNum(post.comments) };
-  const hot = (k: PostSortKey) => (sort === k ? "text-[var(--signal)]" : "text-[var(--muted)]");
+  const hot = (k: PostSortKey) => (sort === k ? "font-semibold text-[var(--signal)]" : "");
+  const stat = "mono w-[64px] shrink-0 whitespace-nowrap text-[13px]";
 
   return (
     <div className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-[var(--panel2)]">
       <VideoThumb url={post.url} thumbnailUrl={post.thumbnailUrl} platform={post.platform} w={32} h={44} />
-      <span className={`mono w-24 shrink-0 text-[11px] ${sort === "newest" || sort === "oldest" ? "text-[var(--signal)]" : "text-[var(--muted)]"}`}>
-        {dt.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" })}
-      </span>
-      <a href={post.url ?? "#"} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm hover:text-[var(--signal)]">
-        {post.caption || <span className="text-[var(--faint)]">(no caption)</span>}
-      </a>
-      <span className={`mono w-[52px] shrink-0 text-right text-[11px] ${hot("views")}`} title="Views">▶ {fmtNum(post.views)}</span>
-      <span className={`mono w-[52px] shrink-0 text-right text-[11px] ${hot("likes")}`} title="Likes">♥ {fmtNum(post.likes)}</span>
-      <span className={`mono w-[52px] shrink-0 text-right text-[11px] ${hot(extra.key)}`} title={extra.key === "engagement" ? "Engagement rate" : extra.key === "shares" ? "Shares" : "Comments"}>{extra.glyph} {extra.value}</span>
-      {post.source === "manual" && <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[9px] text-[var(--faint)]">manual</span>}
+      {/* caption on top, every stat underneath — fixed widths so the numbers
+          still line up down the list; they wrap rather than clip when narrow */}
+      <div className="min-w-0 flex-1">
+        <a href={post.url ?? "#"} target="_blank" rel="noreferrer" className="block truncate text-sm hover:text-[var(--signal)]">
+          {post.caption || <span className="text-[var(--faint)]">(no caption)</span>}
+        </a>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className={`mono w-[76px] shrink-0 whitespace-nowrap text-[13px] ${hot(sort === "oldest" ? "oldest" : "newest")}`}>
+            {dt.toLocaleDateString("en", { month: "short", day: "numeric", year: "2-digit" })}
+          </span>
+          <span className={`${stat} ${hot("views")}`} title="Views">▶ {fmtNum(post.views)}</span>
+          <span className={`${stat} ${hot("likes")}`} title="Likes">♥ {fmtNum(post.likes)}</span>
+          <span className={`${stat} ${hot("comments")}`} title="Comments">≡ {fmtNum(post.comments)}</span>
+          <span className={`${stat} ${hot("shares")}`} title="Shares">↻ {fmtNum(post.shares)}</span>
+          <span className={`mono shrink-0 whitespace-nowrap text-[13px] ${hot("engagement") || "font-medium"}`} title="Engagement rate: likes + comments + shares, divided by views">
+            {fmtPct(engagementRate(post))} <span className="font-normal text-[var(--muted)]">eng.</span>
+          </span>
+        </div>
+      </div>
+      {post.source === "manual" && <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[11px] text-[var(--faint)]">manual</span>}
       <div className="w-[104px] shrink-0">
         <CrossPostMenu
           postId={post.id}
@@ -442,14 +471,19 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
   );
 }
 
-function CreatorTrendCard({ posts }: { posts: PostDTO[] }) {
-  const [range, setRange] = useState<Range>(() => PRESETS[4].range()); // last 30 days
+function CreatorTrendCard({ posts, range, onRange }: { posts: PostDTO[]; range: Range | null; onRange: (r: Range | null) => void }) {
+  // All time runs from their first tracked post to today.
+  const span: Range = useMemo(() => {
+    if (range) return range;
+    const first = posts.reduce((min, p) => (p.postedAt < min ? p.postedAt : min), posts[0]?.postedAt ?? new Date().toISOString());
+    return { from: dstr(new Date(first)), to: dstr(new Date()), label: "All time" };
+  }, [range, posts]);
 
-  const { labels, views, total } = useMemo(() => {
+  const { labels, views, total, engagement } = useMemo(() => {
     const labels: string[] = [];
     const map = new Map<string, number>();
-    const d = new Date(`${range.from}T12:00:00`);
-    const end = new Date(`${range.to}T12:00:00`);
+    const d = new Date(`${span.from}T12:00:00`);
+    const end = new Date(`${span.to}T12:00:00`);
     while (d <= end && labels.length <= 366) {
       const k = dstr(d);
       labels.push(k);
@@ -457,24 +491,31 @@ function CreatorTrendCard({ posts }: { posts: PostDTO[] }) {
       d.setDate(d.getDate() + 1);
     }
     let total = 0;
+    const inRange: PostDTO[] = [];
     for (const p of posts) {
       const k = dstr(new Date(p.postedAt));
       if (map.has(k)) {
         map.set(k, map.get(k)! + p.views);
         total += p.views;
+        inRange.push(p);
       }
     }
-    return { labels, views: labels.map((k) => map.get(k)!), total };
-  }, [posts, range.from, range.to]);
+    return { labels, views: labels.map((k) => map.get(k)!), total, engagement: avgEngagement(inRange) };
+  }, [posts, span.from, span.to]);
 
   return (
     <div className="card mb-4 p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">
-          Views <span className="text-[var(--muted)]">· {range.label}</span>
+          Views <span className="text-[var(--muted)]">· {span.label}</span>
           <span className="mono ml-2.5 text-base font-bold text-[var(--signal)]">{fmtNum(total)}</span>
+          {engagement != null && (
+            <span className="ml-3 font-normal" title="Likes + comments + shares, divided by views, across the videos posted in this range">
+              <span className="mono text-base font-bold">{fmtPct(engagement)}</span> engagement
+            </span>
+          )}
         </h2>
-        <RangePicker range={range} onChange={setRange} />
+        <RangePicker range={span} onChange={(r) => onRange(r)} onAllTime={() => onRange(null)} allTimeActive={!range} />
       </div>
       <Chart labels={labels} series={[{ name: "Views", color: "var(--signal)", values: views, area: true }]} format={fmtNum} formatX={fmtRangeDate} height={170} />
     </div>

@@ -12,9 +12,9 @@
   --panel2: #f0f1f6;      /* insets, hovers */
   --line: #e4e6ee;        /* borders */
   --line2: #edeff4;       /* subtle dividers */
-  --ink: #1a1d27;         /* graphite text */
-  --muted: #5c6270;       /* secondary text */
-  --faint: #979dab;       /* tertiary text */
+  --ink: #0b0c10;         /* text — black, so numbers read at a glance */
+  --muted: #3d424e;       /* secondary text */
+  --faint: #6b7180;       /* tertiary text — still passes contrast on paper */
   --signal: #6553d6;      /* violet signal — deeper for light-ground contrast */
   --signal-2: #7e6ce4;
   --accent: #5661c9;      /* second accent (charts, links) */
@@ -48,9 +48,9 @@
   --panel2: #1b1d24;
   --line: rgba(255, 255, 255, 0.07);
   --line2: rgba(255, 255, 255, 0.04);
-  --ink: #e8eaf0;
-  --muted: #8b90a0;
-  --faint: #5b6070;
+  --ink: #f4f5f8;
+  --muted: #b3b8c4;
+  --faint: #868c9c;
   --signal: #8571e8;      /* the one violet — used sparingly */
   --signal-2: #9d8bf0;
   --accent: #6e79d6;      /* desaturated indigo for charts/links */
@@ -82,9 +82,9 @@
     --panel2: #1b1d24;
     --line: rgba(255, 255, 255, 0.07);
     --line2: rgba(255, 255, 255, 0.04);
-    --ink: #e8eaf0;
-    --muted: #8b90a0;
-    --faint: #5b6070;
+    --ink: #f4f5f8;
+    --muted: #b3b8c4;
+    --faint: #868c9c;
     --signal: #8571e8;
     --signal-2: #9d8bf0;
     --accent: #6e79d6;
@@ -122,19 +122,37 @@
   --font-sans: var(--font-sans-app);
 }
 
+/* Type scale. The root is 13.5px (it sets the spacing rhythm), which left
+   rem-based text-xs at ~10px — too small to read stats without zooming. These
+   pin the scale to comfortable sizes without touching the spacing. */
+@theme {
+  --text-xs: 12px;
+  --text-sm: 13.5px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 19px;
+  --text-2xl: 22px;
+}
+
 * {
   border-color: var(--line);
   min-width: 0;
 }
 
+html {
+  font-size: 13.5px;
+}
 html,
 body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans-app), ui-sans-serif, system-ui, sans-serif;
-  font-size: 13.5px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+body {
+  font-size: 14px;
 }
 
 /* One faint violet wash from the top — the only atmosphere the dark theme
@@ -152,11 +170,11 @@ body {
   letter-spacing: -0.025em;
 }
 
-/* "mono" is the data treatment: true monospace, tabular by nature */
+/* "mono" is the data treatment: the same typeface as everything else, with
+   even digit widths so columns of numbers still line up. (It used to be a
+   true monospace — harder to read at small sizes, and its zero had a dot.) */
 .mono {
-  font-family: var(--font-mono-app), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
 }
 
 ::selection {
@@ -222,7 +240,7 @@ textarea::placeholder {
   color: var(--ink);
   border-radius: 8px;
   padding: 7px 12px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s, filter 0.12s, transform 0.04s;
@@ -253,20 +271,20 @@ textarea::placeholder {
   background: #e9ebf0;
   color: #1a1d27;
   min-height: 100vh;
+  /* a document laid out to fit a page — it keeps the original type scale */
+  font-size: 13.5px;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
 }
 .invoice-root input,
 .invoice-root textarea {
   background: #fff;
   border-color: #d9dce4;
   color: #1a1d27;
-}
-/* Numbers on the invoice use the document font with even digit widths, not
-   the app's monospace — Plex Mono's zero has a dot through it, which reads
-   as a typo on a client-facing document. Columns still line up. */
-.invoice-root .mono {
-  font-family: var(--font-sans-app), ui-sans-serif, system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
 }
 .invoice-sheet {
   background: #fff;

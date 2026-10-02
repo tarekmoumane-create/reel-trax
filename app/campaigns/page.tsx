@@ -62,7 +62,7 @@ export default function CampaignsPage() {
         <PageTitle title="Campaigns" sub="Group creators, set targets and payout rules per client." />
 
         <div className="card overflow-hidden">
-          <div className="hidden grid-cols-[minmax(220px,2fr)_90px_90px_1fr_110px_90px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
+          <div className="hidden grid-cols-[minmax(220px,2fr)_90px_90px_1fr_110px_90px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)] md:grid">
             <div>Campaign</div><div>Period</div><div>Target</div><div>Payout rules</div><div>Creators</div><div>Status</div>
           </div>
           {loading ? (
@@ -75,17 +75,17 @@ export default function CampaignsPage() {
                 <div className="flex items-center gap-2 font-medium">
                   {c.name}
                   {c.isAuto && (
-                    <span title="Mirrors the client's payment structure; creators without a manual campaign are assigned automatically." className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--signal)]">
+                    <span title="Mirrors the client's payment structure; creators without a manual campaign are assigned automatically." className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--signal)]">
                       auto
                     </span>
                   )}
                 </div>
-                <div className="text-[13px] capitalize text-[var(--muted)]">{c.period}</div>
-                <div className="mono text-[13px]">{c.targetVideos ? `${c.targetVideos}` : "—"}</div>
-                <div className="mono truncate text-[12px] text-[var(--muted)]">{ruleSummary(c)}</div>
-                <div className="mono text-[13px]">{c._count?.assignments ?? 0} assigned</div>
+                <div className="text-[14px] capitalize text-[var(--muted)]">{c.period}</div>
+                <div className="mono text-[14px]">{c.targetVideos ? `${c.targetVideos}` : "—"}</div>
+                <div className="mono truncate text-[13px] text-[var(--muted)]">{ruleSummary(c)}</div>
+                <div className="mono text-[14px]">{c._count?.assignments ?? 0} assigned</div>
                 <div>
-                  <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${c.status === "active" ? "bg-[color:rgba(87,201,138,0.12)] text-[var(--ok)]" : "bg-[var(--panel2)] text-[var(--muted)]"}`}>
+                  <span className={`rounded-full px-2 py-1 text-[12.5px] font-medium ${c.status === "active" ? "bg-[color:rgba(87,201,138,0.12)] text-[var(--ok)]" : "bg-[var(--panel2)] text-[var(--muted)]"}`}>
                     {c.status}
                   </span>
                 </div>

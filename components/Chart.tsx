@@ -277,7 +277,7 @@ export function Chart({
   const tipLeft =
     hover == null ? 0 : xAt(hover) + 14 + TIP_W > w ? xAt(hover) - 14 - TIP_W : xAt(hover) + 14;
 
-  const btn = "grid h-6 min-w-6 place-items-center rounded-md px-1.5 text-[11px] font-medium text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--ink)] disabled:opacity-30 disabled:hover:bg-transparent";
+  const btn = "grid h-6 min-w-6 place-items-center rounded-md px-1.5 text-[12.5px] font-medium text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--ink)] disabled:opacity-30 disabled:hover:bg-transparent";
 
   return (
     <div ref={ref} className="relative w-full select-none">
@@ -303,7 +303,7 @@ export function Chart({
         {grid.map((g, i) => (
           <g key={i}>
             <line x1={M.left} x2={w - M.right} y1={g.y} y2={g.y} stroke="var(--line)" strokeWidth={1} />
-            <text x={M.left - 8} y={g.y + 3} textAnchor="end" fontSize={10} fill="var(--faint)" className="mono">
+            <text x={M.left - 8} y={g.y + 3} textAnchor="end" fontSize={11.5} fill="var(--muted)" className="mono">
               {g.label}
             </text>
           </g>
@@ -314,7 +314,7 @@ export function Chart({
         </rect>
         {/* x labels */}
         {xTickIdx.map((i) => (
-          <text key={i} x={xAt(i)} y={height - 6} textAnchor="middle" fontSize={10} fill="var(--faint)" className="mono">{formatX(labels[i])}</text>
+          <text key={i} x={xAt(i)} y={height - 6} textAnchor="middle" fontSize={11.5} fill="var(--muted)" className="mono">{formatX(labels[i])}</text>
         ))}
 
         <g clipPath={`url(#${clipId})`}>
@@ -454,7 +454,7 @@ export function Chart({
       )}
 
       {/* legend + view controls */}
-      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11px]">
+      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[12.5px]">
         {series.map((s) => (
           <span key={s.name} className="flex items-center gap-1.5 text-[var(--muted)]">
             <span className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
@@ -462,7 +462,7 @@ export function Chart({
           </span>
         ))}
         <div className="ml-auto flex items-center gap-1">
-          <span className="mr-1 hidden text-[10px] text-[var(--faint)] md:inline">
+          <span className="mr-1 hidden text-[11.5px] text-[var(--faint)] md:inline">
             {zoomedX ? "Scroll sideways or drag to move · double-click to reset" : zoomed ? "Double-click to reset" : "Pinch or ⌘-scroll to zoom · drag the axis to stretch"}
           </span>
           {zoomed && (
@@ -476,7 +476,7 @@ export function Chart({
                 key={sc}
                 onClick={() => setScale(sc)}
                 title={sc === "log" ? "Log scale: small and huge days both readable" : "Linear scale"}
-                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${scale === sc ? "bg-[var(--panel2)] text-[var(--ink)]" : "text-[var(--faint)] hover:text-[var(--ink)]"}`}
+                className={`rounded px-1.5 py-0.5 text-[11.5px] font-medium ${scale === sc ? "bg-[var(--panel2)] text-[var(--ink)]" : "text-[var(--faint)] hover:text-[var(--ink)]"}`}
               >
                 {sc === "log" ? "Log" : "Linear"}
               </button>

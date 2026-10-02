@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { dayKey } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
+import { avgEngagement } from "@/lib/engagement";
 
 const DAY = 86_400_000;
 const MAX_SPAN_DAYS = 366;
@@ -138,18 +139,18 @@ export async function GET(request: Request) {
       .slice(0, 300)
       .map((p) => ({
         platform: p.platform, url: p.url, caption: p.caption, thumbnailUrl: p.thumbnailUrl,
-        views: p.views, likes: p.likes, comments: p.comments, creatorId: p.creatorId, creatorName: nameById.get(p.creatorId) ?? "—",
+        views: p.views, likes: p.likes, comments: p.comments, shares: p.shares, creatorId: p.creatorId, creatorName: nameById.get(p.creatorId) ?? "—",
         postedAt: p.postedAt,
       }));
 
-    const perCreator = new Map<string, { views: number; posts: number }>();
+    const perCreator = new Map<string, { views: number; posts: typeof posts }>();
     for (const p of posts) {
-      const c = perCreator.get(p.creatorId) ?? { views: 0, posts: 0 };
-      c.views += p.views; c.posts += 1;
+      const c = perCreator.get(p.creatorId) ?? { views: 0, posts: [] };
+      c.views += p.views; c.posts.push(p);
       perCreator.set(p.creatorId, c);
     }
     const topCreators = [...perCreator.entries()]
-      .map(([id, v]) => ({ creatorId: id, name: nameById.get(id) ?? "—", views: v.views, posts: v.posts }))
+      .map(([id, v]) => ({ creatorId: id, name: nameById.get(id) ?? "—", views: v.views, posts: v.posts.length, engagement: avgEngagement(v.posts) }))
       .sort((a, b) => b.views - a.views);
 
     const totals = {
@@ -158,6 +159,7 @@ export async function GET(request: Request) {
       likes: posts.reduce((s, p) => s + p.likes, 0),
       comments: posts.reduce((s, p) => s + p.comments, 0),
       shares: posts.reduce((s, p) => s + p.shares, 0),
+      engagement: avgEngagement(posts),
       viewsGained: hasGained ? viewsGained.reduce((s, g) => s + (g.viewsGained ?? 0), 0) : null,
       followers: hasFollowers ? followers[followers.length - 1].followers : null,
       creators: creators.length,

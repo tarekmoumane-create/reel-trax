@@ -137,7 +137,7 @@ export function TierEditor({
       {tiers.map((t, i) => (
         // No `field` here — its w-full beats flex sizing and blows up the row.
         <div key={i} className="flex items-center gap-2">
-          <span className="shrink-0 text-[11px] text-[var(--faint)]">at</span>
+          <span className="shrink-0 text-[12.5px] text-[var(--faint)]">at</span>
           <input
             type="number"
             className="min-w-0 flex-1 px-3 py-2 text-sm"
@@ -145,7 +145,7 @@ export function TierEditor({
             onChange={(e) => onChange(tiers.map((x, j) => (j === i ? { ...x, views: e.target.value } : x)))}
             placeholder="100000"
           />
-          <span className="shrink-0 whitespace-nowrap text-[11px] text-[var(--faint)]">views →</span>
+          <span className="shrink-0 whitespace-nowrap text-[12.5px] text-[var(--faint)]">views →</span>
           <input
             type="number"
             className="w-24 shrink-0 px-3 py-2 text-sm"
@@ -168,7 +168,7 @@ export function TierEditor({
       >
         + Add tier
       </button>
-      <p className="text-[11px] text-[var(--faint)]">A video pays the highest tier it reaches.</p>
+      <p className="text-[12.5px] text-[var(--faint)]">A video pays the highest tier it reaches.</p>
     </div>
   );
 }
@@ -212,7 +212,7 @@ export function PayStructureEditor({
 
       <div>
         <label className={label}>View bonuses</label>
-        <p className="mb-1.5 text-[11px] text-[var(--faint)]">
+        <p className="mb-1.5 text-[12.5px] text-[var(--faint)]">
           Paid <span className="text-[var(--ink)]">on top of</span> the retainer and per-video pay above — not instead of them.
         </p>
         <div className="flex gap-1.5">
@@ -283,7 +283,7 @@ export function PayStructureEditor({
             <input type="number" className={field} value={value.starterPerPost} onChange={(e) => set("starterPerPost", e.target.value)} placeholder="0" />
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-[var(--faint)]">
+        <p className="mt-2 text-[12.5px] text-[var(--faint)]">
           For this many days after a creator&apos;s <span className="text-[var(--ink)]">first post</span>, every video they post earns this flat amount.
           Those videos count no matter how few views they get, and they don&apos;t earn per-post, CPM or view-bonus
           pay on top. Set both boxes to switch it on; leave either blank and it&apos;s off.
@@ -310,7 +310,7 @@ export function PayStructureEditor({
             <input type="number" className={field} value={value.payoutCap} onChange={(e) => set("payoutCap", e.target.value)} placeholder="none" />
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-[var(--faint)]">
+        <p className="mt-2 text-[12.5px] text-[var(--faint)]">
           A video only counts once it hits the minimum views — and with a view window set, it has that many days
           from posting to get there. The same window is the deadline for reaching view-bonus tiers and the cutoff
           for CPM views. Blank window = views count whenever they arrive.
@@ -325,7 +325,7 @@ export function PayStructureEditor({
           />
           <span>
             <span className="block text-xs font-medium">Count cross-posts as one video</span>
-            <span className="mt-0.5 block text-[11px] leading-snug text-[var(--faint)]">
+            <span className="mt-0.5 block text-[12.5px] leading-snug text-[var(--faint)]">
               The same video on TikTok, Instagram and YouTube is one video, not three: it pays once, and it clears
               the minimum views if <span className="text-[var(--ink)]">any one platform</span> gets there. Leave off
               and every platform is paid separately. Cross-posts are matched automatically — fix a wrong match from

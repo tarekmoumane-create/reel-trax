@@ -354,7 +354,7 @@ function ClientRow({
       {payOpen && (
         <div className="mt-2.5 rounded-xl border border-[var(--line)] p-3">
           <div className="mb-1 text-xs font-semibold text-[var(--muted)]">Payment structure</div>
-          <p className="mb-2.5 text-[11px] text-[var(--faint)]">
+          <p className="mb-2.5 text-[12.5px] text-[var(--faint)]">
             Currently: <span className="text-[var(--ink)]">{payFormSummary(payFormFromRules(parsePayRules(client.defaultPayRules)))}</span> ·{" "}
             {(client.payMode ?? "uniform") === "individual" ? "individualized per creator" : "same for all creators"}.
             The client&apos;s automatic campaign mirrors this structure, so saving here updates payout tracking directly;
@@ -373,7 +373,7 @@ function ClientRow({
                 }`}
               >
                 <div className="text-xs font-semibold">{l}</div>
-                <div className="mt-0.5 text-[11px] leading-snug text-[var(--faint)]">{d}</div>
+                <div className="mt-0.5 text-[12.5px] leading-snug text-[var(--faint)]">{d}</div>
               </button>
             ))}
           </div>

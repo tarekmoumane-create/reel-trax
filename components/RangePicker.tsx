@@ -98,11 +98,11 @@ export function RangePicker({ range, onChange, onAllTime, allTimeActive, leading
           </div>
           {/* custom */}
           <div className="w-1/2 space-y-2 p-2.5">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)]">Custom</div>
-            <label className="block text-[10px] text-[var(--muted)]">From
+            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)]">Custom</div>
+            <label className="block text-[11.5px] text-[var(--muted)]">From
               <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="mt-0.5 w-full px-2 py-1 text-xs" />
             </label>
-            <label className="block text-[10px] text-[var(--muted)]">To
+            <label className="block text-[11.5px] text-[var(--muted)]">To
               <input type="date" value={to} min={from} max={dstr(new Date())} onChange={(e) => setTo(e.target.value)} className="mt-0.5 w-full px-2 py-1 text-xs" />
             </label>
             <button

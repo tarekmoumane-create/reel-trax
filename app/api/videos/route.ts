@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { dayKey } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
+import { engagementRate } from "@/lib/engagement";
 
 const DAY = 86_400_000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
     if (!clientId) return bad("clientId is required");
-    const sort = searchParams.get("sort") || "recent"; // recent | views
+    const sort = searchParams.get("sort") || "recent"; // recent | views | engagement
     const platform = searchParams.get("platform"); // tiktok | instagram | youtube | threads | facebook | null
     const limit = Math.min(5000, Number(searchParams.get("limit")) || 200);
     const minViews = Math.max(0, Math.floor(Number(searchParams.get("minViews")) || 0));
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
     const ranged = DATE_RE.test(from) && DATE_RE.test(to) && from <= to;
     const tz = ranged ? await getTimeZone() : "";
 
+    const byEngagement = sort === "engagement";
     const fetched = await prisma.post.findMany({
       where: {
         creator: {
@@ -49,18 +51,21 @@ export async function GET(request: Request) {
           : {}),
       },
       orderBy: sort === "views" ? { views: "desc" } : { postedAt: "desc" },
-      ...(ranged ? {} : { take: limit }),
+      // A rate can't be ordered by in the query, so engagement sorts in memory
+      // over every match — like a date window, it takes the limit afterwards.
+      ...(ranged || byEngagement ? {} : { take: limit }),
       include: { creator: { select: { id: true, displayName: true } } },
     });
 
-    const posts = ranged
-      ? fetched
-          .filter((p) => {
-            const k = dayKey(p.postedAt, tz);
-            return k >= from && k <= to;
-          })
-          .slice(0, limit)
+    const inWindow = ranged
+      ? fetched.filter((p) => {
+          const k = dayKey(p.postedAt, tz);
+          return k >= from && k <= to;
+        })
       : fetched;
+    // videos with no view count have no rate — they sort last
+    if (byEngagement) inWindow.sort((a, b) => (engagementRate(b) ?? -1) - (engagementRate(a) ?? -1));
+    const posts = inWindow.slice(0, limit);
 
     // A cross-post group can straddle the platform filter and the page limit,
     // so group size comes from a count, not from what happens to be on screen.
@@ -83,6 +88,7 @@ export async function GET(request: Request) {
         views: p.views,
         likes: p.likes,
         comments: p.comments,
+        shares: p.shares,
         source: p.source,
         payExclusions: p.payExclusions,
         isWarmUp: p.isWarmUp,

@@ -28,7 +28,7 @@ export function ComingSoon({
           <p className="mx-auto mt-1.5 max-w-sm text-sm text-[var(--muted)]">
             This section is on the build list. Here&apos;s what it will do:
           </p>
-          <ul className="mx-auto mt-4 max-w-sm space-y-2 text-left text-[13px] text-[var(--muted)]">
+          <ul className="mx-auto mt-4 max-w-sm space-y-2 text-left text-[14px] text-[var(--muted)]">
             {bullets.map((b, i) => (
               <li key={i} className="flex gap-2.5">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--signal)]" />

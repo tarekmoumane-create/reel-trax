@@ -54,7 +54,7 @@ export default function AccountsPage() {
         <PageTitle title="Accounts" sub={`Every tracked social account across ${currentClient?.name ?? "this client"}'s creators.`} />
 
         <div className="card overflow-hidden">
-          <div className="hidden grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
+          <div className="hidden grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] items-center gap-4 border-b border-[var(--line)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)] lg:grid">
             <div>Type</div><div>Account</div><div>Post activity · 30d</div><div>Posts</div><div>Views</div><div>Last post</div><div>Status</div>
           </div>
           {loading ? (
@@ -64,17 +64,17 @@ export default function AccountsPage() {
           ) : (
             rows.map((a) => (
               <div key={`${a.creatorId}-${a.platform}`} className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] lg:gap-4">
-                <span className="mono w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: PLATFORM_CHIP[a.platform].bg, color: PLATFORM_CHIP[a.platform].color }}>
+                <span className="mono w-fit rounded px-1.5 py-0.5 text-[11.5px] font-semibold" style={{ background: PLATFORM_CHIP[a.platform].bg, color: PLATFORM_CHIP[a.platform].color }}>
                   {PLATFORM_CHIP[a.platform].label}
                 </span>
                 <div className="min-w-0">
                   <a href={a.url ?? "#"} target="_blank" rel="noreferrer" className="mono block truncate text-sm hover:text-[var(--signal)]">@{a.handle}</a>
-                  <Link href={`/creators/${a.creatorId}`} className="truncate text-[11px] text-[var(--faint)] hover:text-[var(--signal)]">{a.creatorName}</Link>
+                  <Link href={`/creators/${a.creatorId}`} className="truncate text-[12.5px] text-[var(--faint)] hover:text-[var(--signal)]">{a.creatorName}</Link>
                 </div>
                 <div className="overflow-x-auto"><PostActivity calendar={a.calendar} days={30} dot={12} gap={4} showWeekdays={false} /></div>
-                <div className="mono text-[13px]">{a.postsCount}</div>
-                <div className="mono text-[13px]">{fmtNum(a.viewsSum)}</div>
-                <div className="mono text-[13px]">{daysLabel(a.daysSinceLastPost)}</div>
+                <div className="mono text-[14px]">{a.postsCount}</div>
+                <div className="mono text-[14px]">{fmtNum(a.viewsSum)}</div>
+                <div className="mono text-[14px]">{daysLabel(a.daysSinceLastPost)}</div>
                 <div><StatusBadge status={a.status} /></div>
               </div>
             ))

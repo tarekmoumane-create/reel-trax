@@ -87,7 +87,7 @@ export function VideoPayMenu({
       <button
         onClick={toggle}
         title="What this video earns"
-        className={`inline-flex w-full items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-medium hover:border-[var(--signal)] ${open ? "border-[var(--signal)]" : "border-[var(--line)]"} ${tone}`}
+        className={`inline-flex w-full items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-[12.5px] font-medium hover:border-[var(--signal)] ${open ? "border-[var(--signal)]" : "border-[var(--line)]"} ${tone}`}
       >
         <span className="truncate">{label}</span>
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="shrink-0 text-[var(--faint)]">
@@ -105,12 +105,12 @@ export function VideoPayMenu({
           >
             <span>
               <span className="block font-medium">Warm-up post</span>
-              <span className="block text-[10px] text-[var(--faint)]">No CPM or view bonuses</span>
+              <span className="block text-[11.5px] text-[var(--faint)]">No CPM or view bonuses</span>
             </span>
             {check(value.isWarmUp && !all && !fixed)}
           </button>
 
-          <div className="mt-1 border-t border-[var(--line2)] px-3 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)]">Counts toward</div>
+          <div className="mt-1 border-t border-[var(--line2)] px-3 pb-0.5 pt-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)]">Counts toward</div>
           {PAY_COMPONENTS.map((c) => {
             const lockedByWarmUp = value.isWarmUp && (c === "cpm" || c === "tiers");
             return (
@@ -123,7 +123,7 @@ export function VideoPayMenu({
 
           {/* fixed price */}
           <div className="mt-1 border-t border-[var(--line2)] px-3 pb-1 pt-1.5">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--faint)]">Custom price</div>
+            <div className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--faint)]">Custom price</div>
             <div className="mt-1 flex items-center gap-1.5">
               <span className="mono text-xs text-[var(--faint)]">$</span>
               <input
@@ -136,13 +136,13 @@ export function VideoPayMenu({
                 placeholder="e.g. 25"
                 className="mono min-w-0 flex-1 px-2 py-1 text-xs"
               />
-              <button onClick={setFixed} className="btn px-2 py-1 text-[11px]">Set</button>
+              <button onClick={setFixed} className="btn px-2 py-1 text-[12.5px]">Set</button>
             </div>
-            <p className="mt-1 text-[10px] leading-snug text-[var(--faint)]">
+            <p className="mt-1 text-[11.5px] leading-snug text-[var(--faint)]">
               {fixed ? "Pays exactly this — the rules above are ignored." : "Pay a fixed amount for this video instead of the rules."}
             </p>
             {fixed && (
-              <button onClick={() => onChange({ payOverride: null })} className="mt-1 text-[11px] text-[var(--muted)] hover:text-[var(--ink)]">Remove custom price</button>
+              <button onClick={() => onChange({ payOverride: null })} className="mt-1 text-[12.5px] text-[var(--muted)] hover:text-[var(--ink)]">Remove custom price</button>
             )}
           </div>
 

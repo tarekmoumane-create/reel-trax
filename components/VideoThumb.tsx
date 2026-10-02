@@ -49,11 +49,11 @@ export function VideoThumb({
         />
       ) : (
         <div className="grid h-full w-full place-items-center" style={{ background: tint }}>
-          <span className="mono text-[10px] font-bold" style={{ color: tintInk }}>{badge}</span>
+          <span className="mono text-[11.5px] font-bold" style={{ color: tintInk }}>{badge}</span>
         </div>
       )}
       {/* platform badge + play hint */}
-      <span className="mono absolute left-1 top-1 rounded bg-black/55 px-1 text-[8px] font-bold text-white">{badge}</span>
+      <span className="mono absolute left-1 top-1 rounded bg-black/55 px-1 text-[10px] font-bold text-white">{badge}</span>
       {url && (
         <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/35 group-hover:opacity-100">
           <svg width={Math.round(w * 0.4)} height={Math.round(w * 0.4)} viewBox="0 0 24 24" fill="white">

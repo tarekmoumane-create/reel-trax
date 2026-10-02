@@ -8,6 +8,7 @@ import { Avatar } from "./Avatar";
 import { Select, CountPicker } from "./Select";
 import { RangePicker, PRESETS, fmtRangeDate, type Range } from "./RangePicker";
 import { fmtNum } from "@/lib/ui";
+import { engagementRate, fmtPct } from "@/lib/engagement";
 
 // ---------- metrics ----------
 
@@ -57,14 +58,14 @@ interface Analytics {
   series: { date: string; posts: number; views: number; likes: number; comments: number; shares: number }[];
   viewsGained: { date: string; viewsGained: number | null }[];
   followers: { date: string; followers: number | null }[];
-  topVideos: { platform: string; url: string | null; caption: string | null; thumbnailUrl: string | null; views: number; likes: number; comments: number; creatorId: string; creatorName: string }[];
-  topCreators: { creatorId: string; name: string; views: number; posts: number }[];
-  totals: { posts: number; views: number; likes: number; comments: number; shares: number; viewsGained: number | null; followers: number | null; creators: number };
+  topVideos: { platform: string; url: string | null; caption: string | null; thumbnailUrl: string | null; views: number; likes: number; comments: number; shares: number; creatorId: string; creatorName: string }[];
+  topCreators: { creatorId: string; name: string; views: number; posts: number; engagement: number | null }[];
+  totals: { posts: number; views: number; likes: number; comments: number; shares: number; engagement: number | null; viewsGained: number | null; followers: number | null; creators: number };
 }
 
 const LS_KEY = "rt-analytics-prefs";
 
-export function AnalyticsPanel({ clientId, onTotals }: { clientId: string; onTotals?: (t: { views: number; rangeLabel: string } | null) => void }) {
+export function AnalyticsPanel({ clientId, onTotals }: { clientId: string; onTotals?: (t: { views: number; engagement: number | null; rangeLabel: string } | null) => void }) {
   const [data, setData] = useState<Analytics | null>(null);
   const [range, setRange] = useState<Range>(() => PRESETS[4].range()); // last 30 days
   const [metrics, setMetrics] = useState<MetricKey[]>(["views", "posts"]);
@@ -97,7 +98,7 @@ export function AnalyticsPanel({ clientId, onTotals }: { clientId: string; onTot
 
   // surface the range's view total so the page can show it as a KPI
   useEffect(() => {
-    onTotals?.(data ? { views: data.totals.views, rangeLabel: range.label } : null);
+    onTotals?.(data ? { views: data.totals.views, engagement: data.totals.engagement, rangeLabel: range.label } : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, range.label]);
 
@@ -185,7 +186,7 @@ export function AnalyticsPanel({ clientId, onTotals }: { clientId: string; onTot
               <span key={m} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel2)] py-1 pl-2.5 pr-1 text-xs font-medium">
                 <span className="h-2 w-2 rounded-[3px]" style={{ background: METRICS[m].color }} />
                 {METRICS[m].label}
-                <span className="mono text-[var(--muted)]">{totalFor(m)}</span>
+                <span className="mono font-semibold">{totalFor(m)}</span>
                 <button
                   onClick={() => { const next = metrics.filter((x) => x !== m); if (next.length) { setMetrics(next); persist({ metrics: next }); } }}
                   disabled={metrics.length === 1}
@@ -245,8 +246,13 @@ export function AnalyticsPanel({ clientId, onTotals }: { clientId: string; onTot
 const PLATFORM_LABEL: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", threads: "Threads", facebook: "Facebook" };
 const PLATFORM_ORDER = ["tiktok", "instagram", "youtube", "threads", "facebook"];
 
+type VideoSort = "views" | "likes" | "comments" | "engagement";
+type TopVideo = Analytics["topVideos"][number];
+// what a video is ranked by; a video with no view count has no engagement rate
+const videoRank = (v: TopVideo, by: VideoSort) => (by === "engagement" ? engagementRate(v) ?? -1 : v[by]);
+
 function TopVideosCard({ videos, rangeLabel }: { videos: Analytics["topVideos"]; rangeLabel: string }) {
-  const [sortBy, setSortBy] = useState<"views" | "likes" | "comments">("views");
+  const [sortBy, setSortBy] = useState<VideoSort>("views");
   const [platform, setPlatform] = useState("");
   const [count, setCount] = useState(5);
   // Only offer platforms that actually have posts in this range.
@@ -256,7 +262,7 @@ function TopVideosCard({ videos, rangeLabel }: { videos: Analytics["topVideos"];
   }, [videos]);
   const pool = useMemo(() => (platform ? videos.filter((v) => v.platform === platform) : videos), [videos, platform]);
   const rows = useMemo(
-    () => [...pool].sort((a, b) => b[sortBy] - a[sortBy]).slice(0, count),
+    () => [...pool].sort((a, b) => videoRank(b, sortBy) - videoRank(a, sortBy)).slice(0, count),
     [pool, sortBy, count]
   );
   const threadsByViews = platform === "threads" && sortBy === "views";
@@ -274,12 +280,12 @@ function TopVideosCard({ videos, rangeLabel }: { videos: Analytics["topVideos"];
               options={[["", "All platforms"], ...platforms.map((p) => [p, PLATFORM_LABEL[p] ?? p] as [string, string])]}
             />
           )}
-          <Select size="sm" align="right" value={sortBy} onChange={(v) => setSortBy(v as "views" | "likes" | "comments")} options={[["views", "Views"], ["likes", "Likes"], ["comments", "Comments"]]} />
+          <Select size="sm" align="right" value={sortBy} onChange={(v) => setSortBy(v as VideoSort)} options={[["views", "Views"], ["likes", "Likes"], ["comments", "Comments"], ["engagement", "Engagement"]]} />
           <CountPicker value={count} onChange={setCount} max={pool.length || 1} />
         </div>
       </div>
       {rows.length === 0 && <p className="py-6 text-center text-xs text-[var(--muted)]">No posts in this range.</p>}
-      {threadsByViews && <p className="mb-1.5 text-[11px] text-[var(--faint)]">Threads doesn&apos;t report view counts — sort by likes or comments.</p>}
+      {threadsByViews && <p className="mb-1.5 text-[12.5px] text-[var(--faint)]">Threads doesn&apos;t report view counts — sort by likes or comments.</p>}
       <div className="space-y-0.5">
         {rows.map((v, i) => (
           <a key={v.url ?? `${v.creatorId}-${i}`} href={v.url ?? "#"} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg px-1.5 py-1.5 hover:bg-[var(--panel2)]">
@@ -287,9 +293,10 @@ function TopVideosCard({ videos, rangeLabel }: { videos: Analytics["topVideos"];
             <VideoThumb url={v.url} thumbnailUrl={v.thumbnailUrl} platform={v.platform} w={30} h={42} asLink={false} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-medium">{v.caption || <span className="font-normal text-[var(--faint)]">(no caption)</span>}</span>
-              <span className="block truncate text-[11px] text-[var(--faint)]">{v.creatorName}</span>
+              <span className="block truncate text-[12.5px] text-[var(--faint)]">{v.creatorName}</span>
             </span>
-            <span className="mono shrink-0 text-xs font-semibold">{fmtNum(v[sortBy])}</span>
+            <span className="mono shrink-0 text-xs font-semibold">{fmtNum(sortBy === "engagement" ? v.views : v[sortBy])}</span>
+            <span className="mono w-14 shrink-0 text-right text-xs font-semibold" title="Engagement rate: likes + comments + shares, divided by views">{fmtPct(engagementRate(v))}</span>
           </a>
         ))}
       </div>
@@ -298,10 +305,10 @@ function TopVideosCard({ videos, rangeLabel }: { videos: Analytics["topVideos"];
 }
 
 function TopCreatorsCard({ creators, rangeLabel }: { creators: Analytics["topCreators"]; rangeLabel: string }) {
-  const [sortBy, setSortBy] = useState<"views" | "posts">("views");
+  const [sortBy, setSortBy] = useState<"views" | "posts" | "engagement">("views");
   const [count, setCount] = useState(5);
   const rows = useMemo(
-    () => [...creators].sort((a, b) => b[sortBy] - a[sortBy]).slice(0, count),
+    () => [...creators].sort((a, b) => (b[sortBy] ?? -1) - (a[sortBy] ?? -1)).slice(0, count),
     [creators, sortBy, count]
   );
   return (
@@ -309,7 +316,7 @@ function TopCreatorsCard({ creators, rangeLabel }: { creators: Analytics["topCre
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Top creators <span className="font-normal text-[var(--muted)]">· {rangeLabel}</span></h3>
         <div className="flex items-center gap-1.5">
-          <Select size="sm" align="right" value={sortBy} onChange={(v) => setSortBy(v as "views" | "posts")} options={[["views", "Views"], ["posts", "Posts"]]} />
+          <Select size="sm" align="right" value={sortBy} onChange={(v) => setSortBy(v as "views" | "posts" | "engagement")} options={[["views", "Views"], ["posts", "Posts"], ["engagement", "Engagement"]]} />
           <CountPicker value={count} onChange={setCount} max={creators.length || 1} />
         </div>
       </div>
@@ -320,8 +327,9 @@ function TopCreatorsCard({ creators, rangeLabel }: { creators: Analytics["topCre
             <span className="mono w-4 shrink-0 text-center text-xs text-[var(--faint)]">{i + 1}</span>
             <Avatar name={c.name} creatorId={c.creatorId} size={30} />
             <span className="min-w-0 flex-1 truncate text-sm">{c.name}</span>
-            <span className="mono shrink-0 text-xs text-[var(--muted)]">{c.posts}p</span>
-            <span className="mono w-16 shrink-0 text-right text-xs font-semibold">{sortBy === "posts" ? `${c.posts}` : fmtNum(c.views)}</span>
+            <span className="mono shrink-0 text-xs">{c.posts} {c.posts === 1 ? "post" : "posts"}</span>
+            <span className="mono w-14 shrink-0 text-right text-xs font-semibold" title="Views">{fmtNum(c.views)}</span>
+            <span className="mono w-14 shrink-0 text-right text-xs font-semibold" title="Engagement rate: likes + comments + shares, divided by views">{fmtPct(c.engagement)}</span>
           </Link>
         ))}
       </div>
