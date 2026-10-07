@@ -4,6 +4,7 @@ import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreators } from "@/lib/sync";
 import { dedupePosts } from "@/lib/dedupe";
 import { syncVideoGroups } from "@/lib/videogroups";
+import { syncAppDownloads } from "@/lib/appstore";
 
 export const maxDuration = 300; // allow long-running sync on Vercel
 
@@ -52,6 +53,9 @@ async function run(request: Request) {
   const results = await syncCreators(creators, apiKey, 3);
   // New posts have landed — re-match cross-posts so payouts see originals.
   const groups = await syncVideoGroups(clientId);
+  // App Store downloads for clients linked to an app. Its own try: a bad
+  // Apple key must never take the creator sync down with it.
+  const downloads = await syncAppDownloads({ clientId }).catch((e: Error) => ({ ok: false, error: e.message }));
   const ms = Date.now() - started;
 
   const upserted = results
@@ -67,6 +71,7 @@ async function run(request: Request) {
     durationMs: ms,
     deduped,
     groups,
+    downloads,
   });
 }
 

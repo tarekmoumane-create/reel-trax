@@ -3,6 +3,7 @@ import { ok, bad, serverError } from "@/lib/api";
 import { isDeadLogoUrl, logoFromWebsite } from "@/lib/brand";
 import { sanitizePayRules } from "@/lib/payouts";
 import { syncAutoCampaign } from "@/lib/autocampaign";
+import { cleanAppleAppId } from "@/lib/brand";
 
 export async function GET() {
   try {
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
         logoUrl,
         payMode: body?.payMode === "individual" ? "individual" : "uniform",
         defaultPayRules: defaultPayRules ? JSON.stringify(defaultPayRules) : null,
+        appleAppId: cleanAppleAppId(body?.appleAppId),
       },
     });
     await syncAutoCampaign(client.id);

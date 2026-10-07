@@ -34,6 +34,17 @@ interface SettingsData {
   lightReelKeyFromEnv: boolean;
   timeZone: string;
   invoice: { fromName: string; fromDetails: string; paymentInstructions: string };
+  appStore: AppStoreStatus;
+}
+
+interface AppStoreStatus {
+  connected: boolean;
+  issuerId: string;
+  keyId: string;
+  hasPrivateKey: boolean;
+  vendorNumber: string;
+  lastSync: { at: string; ok: boolean; apps: number; daysFetched: number; daysPending: number; latestDay: string | null; error?: string } | null;
+  linkedApps: { clientId: string; name: string; appleAppId: string | null; days: number }[];
 }
 
 export default function SettingsPage() {
@@ -202,6 +213,9 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* App Store Connect — downloads next to views */}
+      <AppStoreSection key={settings ? "loaded" : "loading"} status={settings?.appStore ?? null} onSaved={loadSettings} />
+
       {/* timezone */}
       <section className="card mb-4 p-5">
         <h2 className="text-sm font-semibold">Timezone</h2>
@@ -281,11 +295,12 @@ function ClientRow({
   client,
   onChange,
 }: {
-  client: { id: string; name: string; color: string; website?: string | null; logoUrl?: string | null; payMode?: string; defaultPayRules?: string | null; _count?: { creators: number } };
+  client: { id: string; name: string; color: string; website?: string | null; logoUrl?: string | null; payMode?: string; defaultPayRules?: string | null; appleAppId?: string | null; _count?: { creators: number } };
   onChange: () => Promise<unknown>;
 }) {
   const [name, setName] = useState(client.name);
   const [website, setWebsite] = useState(client.website ?? "");
+  const [appleAppId, setAppleAppId] = useState(client.appleAppId ?? "");
   const [color, setColor] = useState(client.color);
   const [payOpen, setPayOpen] = useState(false);
   const [payMode, setPayMode] = useState(client.payMode ?? "uniform");
@@ -297,7 +312,7 @@ function ClientRow({
     await fetch(`/api/clients/${client.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, color, website }),
+      body: JSON.stringify({ name, color, website, appleAppId }),
     });
     await onChange();
   }
@@ -319,7 +334,7 @@ function ClientRow({
     await onChange();
   }
 
-  const dirty = name !== client.name || color !== client.color || website !== (client.website ?? "");
+  const dirty = name !== client.name || color !== client.color || website !== (client.website ?? "") || appleAppId !== (client.appleAppId ?? "");
 
   return (
     <div className="rounded-xl border p-2.5">
@@ -327,6 +342,13 @@ function ClientRow({
         <ClientLogo name={name || "?"} logoUrl={client.logoUrl} color={color} size={32} radius={9} />
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" className="min-w-[120px] flex-1 px-2.5 py-1.5 text-sm" />
         <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="website.com" className="min-w-[120px] flex-1 px-2.5 py-1.5 text-sm" />
+        <input
+          value={appleAppId}
+          onChange={(e) => setAppleAppId(e.target.value)}
+          placeholder="App Store app ID"
+          title="The app's numeric Apple ID (or paste its App Store link) — charts its downloads next to views"
+          className="mono w-[150px] px-2.5 py-1.5 text-sm"
+        />
         <input
           type="color"
           value={color}
@@ -387,5 +409,106 @@ function ClientRow({
         </div>
       )}
     </div>
+  );
+}
+
+function AppStoreSection({ status, onSaved }: { status: AppStoreStatus | null; onSaved: () => Promise<void> }) {
+  // Non-secret fields start from what's on file (the parent remounts this
+  // section once settings load); the private key is never sent back down.
+  const [issuerId, setIssuerId] = useState(status?.issuerId ?? "");
+  const [keyId, setKeyId] = useState(status?.keyId ?? "");
+  const [vendorNumber, setVendorNumber] = useState(status?.vendorNumber ?? "");
+  const [privateKey, setPrivateKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setNote(null);
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appStore: { issuerId, keyId, vendorNumber, privateKey } }),
+    });
+    setPrivateKey("");
+    setSaving(false);
+    await onSaved();
+    setNote({ ok: true, text: "Saved. Run a sync to check the key works." });
+  }
+
+  async function syncNow(days?: number) {
+    setSyncing(true);
+    setNote(null);
+    const res = await fetch("/api/appstore/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(days ? { days } : {}) });
+    const r = await res.json().catch(() => ({}));
+    setSyncing(false);
+    await onSaved();
+    if (!res.ok || !r.ok) {
+      setNote({ ok: false, text: r.error || `Sync failed (${res.status})` });
+      return;
+    }
+    if (!r.apps) {
+      setNote({ ok: true, text: "Key accepted, but no client is linked to an app yet — add an App Store app ID on a client below." });
+      return;
+    }
+    setNote({
+      ok: true,
+      text: `Pulled ${r.daysFetched} day${r.daysFetched === 1 ? "" : "s"} for ${r.apps} app${r.apps === 1 ? "" : "s"}${r.latestDay ? ` · latest report ${r.latestDay}` : ""}${r.daysPending ? ` · ${r.daysPending} day${r.daysPending === 1 ? "" : "s"} not reported by Apple yet` : ""}.`,
+    });
+  }
+
+  const field = "w-full px-3 py-2 text-sm";
+  const label = "mb-1 block text-xs font-medium text-[var(--muted)]";
+  const last = status?.lastSync;
+
+  return (
+    <section className="card mb-4 p-5">
+      <h2 className="text-sm font-semibold">App Store Connect <span className="font-normal text-[var(--muted)]">· app downloads on the overview chart</span></h2>
+      <p className="mt-1 text-xs text-[var(--muted)]">
+        Pulls each linked app&apos;s daily first-time downloads from Apple&apos;s Sales and Trends reports, so the Overview can chart downloads next to views and show a conversion rate.
+        Create a key in App Store Connect → Users and Access → Integrations → App Store Connect API (role: <b>Sales and Reports</b>), then link an app to a client with its App Store app ID below.
+        Reports arrive about a day behind, in Pacific time. Updated on every sync.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className={`rounded-full px-2.5 py-1 text-xs ${status?.connected ? "bg-green-500/12 text-green-400" : "bg-red-500/12 text-red-400"}`}>
+          {status?.connected ? `Connected · key ${status.keyId}` : "Not connected"}
+        </span>
+        {status?.linkedApps.length ? (
+          <span className="text-xs text-[var(--muted)]">
+            {status.linkedApps.map((a) => `${a.name} (${a.appleAppId}${a.days ? `, ${a.days} days` : ""})`).join(" · ")}
+          </span>
+        ) : (
+          <span className="text-xs text-[var(--faint)]">No client linked to an app yet.</span>
+        )}
+      </div>
+      {last && (
+        <p className={`mt-2 text-xs ${last.ok ? "text-[var(--muted)]" : "text-[var(--bad)]"}`}>
+          Last sync {new Date(last.at).toLocaleString("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}:{" "}
+          {last.ok ? `${last.daysFetched} days pulled${last.latestDay ? `, latest report ${last.latestDay}` : ""}` : last.error}
+        </p>
+      )}
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div><label className={label}>Issuer ID</label><input className={`${field} mono`} value={issuerId} onChange={(e) => setIssuerId(e.target.value)} placeholder="57246542-96fe-…" /></div>
+        <div><label className={label}>Key ID</label><input className={`${field} mono`} value={keyId} onChange={(e) => setKeyId(e.target.value)} placeholder="2X9R4HXF34" /></div>
+        <div><label className={label}>Vendor number <span className="text-[var(--faint)]">(Payments and Financial Reports)</span></label><input className={`${field} mono`} value={vendorNumber} onChange={(e) => setVendorNumber(e.target.value)} placeholder="8 digits" /></div>
+        <div className="sm:col-span-3">
+          <label className={label}>Private key <span className="text-[var(--faint)]">(paste the whole .p8 file{status?.hasPrivateKey ? " · one is on file, leave blank to keep it" : ""})</span></label>
+          <textarea rows={3} className={`${field} mono`} value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} placeholder={"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"} />
+        </div>
+      </div>
+      {note && <p className={`mt-3 text-xs ${note.ok ? "text-green-400" : "text-[var(--bad)]"}`}>{note.text}</p>}
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        {status?.connected && (
+          <>
+            <button onClick={() => syncNow(366)} disabled={syncing} className="btn text-xs disabled:opacity-50" title="Re-pull the last year of reports">Backfill a year</button>
+            <button onClick={() => syncNow()} disabled={syncing} className="btn disabled:opacity-50">{syncing ? "Syncing…" : "Sync downloads now"}</button>
+          </>
+        )}
+        <button onClick={save} disabled={saving || !issuerId.trim() || !keyId.trim() || !vendorNumber.trim() || (!privateKey.trim() && !status?.hasPrivateKey)} className="btn btn-primary disabled:opacity-50">
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </section>
   );
 }

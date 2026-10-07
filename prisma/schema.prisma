@@ -33,10 +33,36 @@ model Client {
   managementFee      Float?
   managementFeeStart DateTime?
 
+  // App Store Connect: the app this client's creators drive installs for.
+  // The numeric Apple ID (App Store Connect → App Information → Apple ID).
+  // Set = daily downloads get pulled into AppDownload and charted next to
+  // views, so the overview can show a conversion rate. Null = not an app of
+  // ours / no access to its numbers.
+  appleAppId String?
+
   archived  Boolean    @default(false)
   createdAt DateTime   @default(now())
   creators  Creator[]
   campaigns Campaign[]
+  appDownloads AppDownload[]
+}
+
+// One day of App Store downloads for a client's app, from Apple's daily
+// Sales and Trends report (report days are Pacific time). Only days whose
+// report was actually fetched get a row — a missing day means "not reported
+// yet", a 0 means "reported, nobody installed".
+model AppDownload {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  day      String // YYYY-MM-DD
+  units    Int // first-time downloads (product types 1 / 1F / 1T / F1 …)
+  redownloads Int @default(0) // re-downloads (3 / 3F) — not counted as conversions
+  source     String   @default("appstore") // appstore | manual
+  capturedAt DateTime @default(now())
+
+  @@unique([clientId, day])
+  @@index([clientId])
 }
 
 model Creator {

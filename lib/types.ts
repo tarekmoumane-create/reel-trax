@@ -1,4 +1,5 @@
 import type { CadenceResult } from "./cadence";
+import type { ShadowBanFlag } from "./shadowban";
 
 export interface ClientDTO {
   id: string;
@@ -10,6 +11,7 @@ export interface ClientDTO {
   defaultPayRules: string | null; // JSON PayRulesJson
   managementFee: number | null; // monthly, billed on invoices
   managementFeeStart: string | null;
+  appleAppId: string | null; // App Store Connect app → downloads on the overview chart
   archived: boolean;
   createdAt: string;
   _count?: { creators: number };
@@ -44,6 +46,8 @@ export interface OverviewRow {
   engagementTotal: number | null;
   engagement30d: number | null;
   cadence: CadenceResult;
+  // platforms that look shadow banned (under 10 views, 3+ posting days running)
+  shadowBans: ShadowBanFlag[];
 }
 
 export interface OverviewResponse {
@@ -53,6 +57,7 @@ export interface OverviewResponse {
     behind: number;
     quiet: number;
     noData: number;
+    shadowBanned: number;
   };
   rows: OverviewRow[];
   timeZone: string;
@@ -124,4 +129,5 @@ export interface CreatorDetailResponse {
   creator: CreatorDTO;
   cadence: CadenceResult;
   engagement30d: number | null;
+  shadowBans: ShadowBanFlag[];
 }

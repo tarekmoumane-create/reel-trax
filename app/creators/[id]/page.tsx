@@ -7,6 +7,7 @@ import type { CreatorDetailResponse, CreatorDTO, PostDTO } from "@/lib/types";
 import { PostActivity } from "@/components/PostActivity";
 import { Chart } from "@/components/Chart";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ShadowBanBadge, describeShadowBans } from "@/components/ShadowBanBadge";
 import { ContactButton } from "@/components/ContactButton";
 import { VideoThumb } from "@/components/VideoThumb";
 import { Avatar } from "@/components/Avatar";
@@ -109,6 +110,7 @@ export default function CreatorDetail() {
               <div className="flex items-center gap-2.5">
                 <h1 className="font-display text-2xl font-bold">{creator.displayName}</h1>
                 <StatusBadge status={cadence.status} />
+                <ShadowBanBadge flags={data.shadowBans} />
               </div>
               <div className="mono mt-1 flex flex-wrap items-center gap-x-3 text-[13px] text-[var(--muted)]">
                 {creator.tiktokUrl && <a href={creator.tiktokUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">TT @{creator.tiktokHandle}</a>}
@@ -132,6 +134,13 @@ export default function CreatorDetail() {
             </div>
           </div>
         </div>
+
+        {data.shadowBans.length > 0 && (
+          <div className="mb-4 rounded-xl border border-[color:rgba(242,104,95,0.4)] bg-[color:rgba(242,104,95,0.08)] px-3.5 py-2.5 text-sm">
+            <span className="font-medium text-[var(--bad)]">Looks shadow banned.</span>{" "}
+            <span className="text-[var(--muted)]">{describeShadowBans(data.shadowBans)}. Worth checking the account from a logged-out browser.</span>
+          </div>
+        )}
 
         {editing && <EditPanel creator={creator} onSave={patch} onDelete={remove} busy={busy} />}
 
@@ -163,11 +172,8 @@ export default function CreatorDetail() {
         {/* trend */}
         {posts.length > 0 && <CreatorTrendCard posts={posts} range={range} onRange={setRange} />}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="card p-5 lg:col-span-1"><ContactPanel creator={creator} onSave={patch} busy={busy} /></div>
-          <div className="card p-5 lg:col-span-2">
-            <PostsPanel posts={posts} range={range} onRange={setRange} onPay={savePostPay} onGrouped={load} />
-          </div>
+        <div className="card p-5">
+          <PostsPanel posts={posts} range={range} onRange={setRange} onPay={savePostPay} onGrouped={load} />
         </div>
       </div>
     </>
@@ -386,43 +392,6 @@ function PostRow({ post, sort, groupSize, onPay, onGrouped }: { post: PostDTO; s
   );
 }
 
-function ContactPanel({ creator, onSave, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; busy: boolean }) {
-  const [notes, setNotes] = useState(creator.notes ?? "");
-
-  return (
-    <div>
-      <h2 className="mb-3 text-sm font-semibold">Contact</h2>
-      <dl className="space-y-2 text-sm">
-        <Row label="Preferred" value={creator.preferredChannel || "—"} />
-        <Row label="Phone" value={creator.phone || "—"} />
-        <Row label="WhatsApp" value={creator.whatsapp || "—"} />
-        <Row label="Discord" value={creator.discord ? `@${creator.discord.replace(/^@/, "")}` : "—"} />
-        <Row label="Discord channel" value={creator.discordChannel || "—"} href={creator.discordChannel} />
-        <Row label="Email" value={creator.email || "—"} href={creator.email ? `mailto:${creator.email}` : null} />
-      </dl>
-
-      <div className="mt-4">
-        <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Notes</label>
-        <textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full px-2.5 py-2 text-sm" placeholder="Reminders, preferences, deal terms…" />
-        <button onClick={() => onSave({ notes })} disabled={busy || notes === (creator.notes ?? "")} className="btn mt-2 w-full justify-center py-1.5 text-sm disabled:opacity-50">Save notes</button>
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value, href }: { label: string; value: string; href?: string | null }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <dt className="shrink-0 text-[var(--muted)]">{label}</dt>
-      <dd className="min-w-0 truncate text-right">
-        {href && value !== "—" ? (
-          <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className="text-[var(--signal)] hover:underline">{value.replace(/^https?:\/\//, "")}</a>
-        ) : value}
-      </dd>
-    </div>
-  );
-}
-
 function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; onDelete: () => void; busy: boolean }) {
   const [f, setF] = useState({
     displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "", youtubeUrl: creator.youtubeUrl ?? "", threadsUrl: creator.threadsUrl ?? "", facebookUrl: creator.facebookUrl ?? "",
@@ -431,6 +400,7 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
     status: creator.status, phone: creator.phone ?? "", email: creator.email ?? "", contactHandle: creator.contactHandle ?? "",
     discord: creator.discord ?? "", discordChannel: creator.discordChannel ?? "", whatsapp: creator.whatsapp ?? "", preferredChannel: creator.preferredChannel ?? "",
     onboardedAt: creator.onboardedAt ? creator.onboardedAt.slice(0, 10) : "",
+    notes: creator.notes ?? "",
   });
   const field = "w-full px-3 py-2 text-sm";
   const label = "mb-1 block text-xs font-medium text-[var(--muted)]";
@@ -462,6 +432,7 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         <div><label className={label}>Discord channel <span className="text-[var(--faint)]">(link to their creator channel)</span></label><input className={field} value={f.discordChannel} onChange={(e) => set("discordChannel", e.target.value)} placeholder="https://discord.com/channels/…" /></div>
         <div><label className={label}>Contact handle</label><input className={field} value={f.contactHandle} onChange={(e) => set("contactHandle", e.target.value)} /></div>
         <div><label className={label}>Email</label><input className={field} value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
+        <div className="sm:col-span-2 lg:col-span-3"><label className={label}>Notes</label><textarea rows={3} className={field} value={f.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Reminders, preferences, deal terms…" /></div>
       </div>
       <div className="mt-4 flex items-center justify-between">
         <button onClick={onDelete} className="rounded-lg border border-[color:rgba(242,104,95,0.4)] px-3 py-2 text-sm text-[var(--bad)] hover:bg-[color:rgba(242,104,95,0.1)]">Delete creator</button>

@@ -9,11 +9,39 @@ import {
   getTimeZone,
   getInvoiceProfile,
 } from "@/lib/settings";
+import { normalizePem } from "@/lib/appstore";
+import { prisma } from "@/lib/db";
 
 function mask(key: string | null): string | null {
   if (!key) return null;
   if (key.length <= 6) return "••••";
   return `${key.slice(0, 3)}••••${key.slice(-3)}`;
+}
+
+// What the Settings page shows for the App Store Connect connection: which
+// pieces are on file (never the key itself), the linked apps, and how the
+// last downloads sync went.
+async function appStoreStatus() {
+  const issuerId = (await getSetting(SETTING_KEYS.ascIssuerId)) || process.env.ASC_ISSUER_ID || "";
+  const keyId = (await getSetting(SETTING_KEYS.ascKeyId)) || process.env.ASC_KEY_ID || "";
+  const hasPrivateKey = !!((await getSetting(SETTING_KEYS.ascPrivateKey)) || process.env.ASC_PRIVATE_KEY);
+  const vendorNumber = (await getSetting(SETTING_KEYS.ascVendorNumber)) || process.env.ASC_VENDOR_NUMBER || "";
+  const lastSyncRaw = await getSetting(SETTING_KEYS.ascLastSync);
+  let lastSync: Record<string, unknown> | null = null;
+  try { lastSync = lastSyncRaw ? JSON.parse(lastSyncRaw) : null; } catch { lastSync = null; }
+  const linked = await prisma.client.findMany({
+    where: { appleAppId: { not: null }, archived: false },
+    select: { id: true, name: true, appleAppId: true, _count: { select: { appDownloads: true } } },
+  });
+  return {
+    connected: !!(issuerId && keyId && hasPrivateKey && vendorNumber),
+    issuerId,
+    keyId,
+    hasPrivateKey,
+    vendorNumber,
+    lastSync,
+    linkedApps: linked.map((c) => ({ clientId: c.id, name: c.name, appleAppId: c.appleAppId, days: c._count.appDownloads })),
+  };
 }
 
 export async function GET() {
@@ -37,6 +65,7 @@ export async function GET() {
       lightReelKeyFromEnv: !dbLightReel && !!process.env.LIGHTREEL_API_KEY,
       timeZone,
       invoice: await getInvoiceProfile(),
+      appStore: await appStoreStatus(),
     });
   } catch (e) {
     return serverError(e);
@@ -60,6 +89,14 @@ export async function POST(request: Request) {
     }
     if (typeof body.timeZone === "string" && body.timeZone.trim()) {
       await setSetting(SETTING_KEYS.timeZone, body.timeZone.trim());
+    }
+    if (body.appStore && typeof body.appStore === "object") {
+      const a = body.appStore as Record<string, unknown>;
+      if (typeof a.issuerId === "string") await setSetting(SETTING_KEYS.ascIssuerId, a.issuerId.trim());
+      if (typeof a.keyId === "string") await setSetting(SETTING_KEYS.ascKeyId, a.keyId.trim());
+      if (typeof a.vendorNumber === "string") await setSetting(SETTING_KEYS.ascVendorNumber, a.vendorNumber.trim());
+      // blank = keep the key already on file; the field is never prefilled
+      if (typeof a.privateKey === "string" && a.privateKey.trim()) await setSetting(SETTING_KEYS.ascPrivateKey, normalizePem(a.privateKey));
     }
     if (body.invoice && typeof body.invoice === "object") {
       const inv = body.invoice as Record<string, unknown>;

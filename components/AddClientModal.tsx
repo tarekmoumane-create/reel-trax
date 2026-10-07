@@ -24,6 +24,7 @@ export function AddClientModal({
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [appleAppId, setAppleAppId] = useState("");
   const [color, setColor] = useState(COLORS[0]);
   const [payMode, setPayMode] = useState("uniform");
   const [payForm, setPayForm] = useState(emptyPayForm());
@@ -39,7 +40,7 @@ export function AddClientModal({
     const res = await fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, website, logoUrl, color, payMode, defaultPayRules: payFormToRules(payForm) }),
+      body: JSON.stringify({ name, website, logoUrl, color, appleAppId, payMode, defaultPayRules: payFormToRules(payForm) }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -78,6 +79,10 @@ export function AddClientModal({
           <div>
             <label className={label}>Logo image URL <span className="text-[var(--faint)]">(optional override)</span></label>
             <input className={field} value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…/logo.png" />
+          </div>
+          <div>
+            <label className={label}>App Store app ID <span className="text-[var(--faint)]">(optional — charts the app&apos;s downloads next to views)</span></label>
+            <input className={`${field} mono`} value={appleAppId} onChange={(e) => setAppleAppId(e.target.value)} placeholder="1234567890 or an App Store link" />
           </div>
           <div>
             <label className={label}>Fallback color</label>

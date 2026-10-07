@@ -3,6 +3,7 @@ import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 import { avgEngagement } from "@/lib/engagement";
+import { detectShadowBans } from "@/lib/shadowban";
 import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook } from "@/lib/scrapecreators";
 
 export async function GET(
@@ -27,7 +28,8 @@ export async function GET(
     // same 30-day window the Creators list uses, so the two numbers agree
     const cutoff30 = Date.now() - 30 * 86_400_000;
     const engagement30d = avgEngagement(creator.posts.filter((p) => p.postedAt.getTime() >= cutoff30));
-    return ok({ creator, cadence, engagement30d });
+    const shadowBans = detectShadowBans(creator.posts, { timeZone: tz });
+    return ok({ creator, cadence, engagement30d, shadowBans });
   } catch (e) {
     return serverError(e);
   }

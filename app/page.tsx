@@ -4,18 +4,21 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useClients } from "./providers";
 import type { OverviewResponse, OverviewRow } from "@/lib/types";
+import { SHADOW_BAN_RULE } from "@/lib/shadowban";
 import type { CadenceStatus } from "@/lib/cadence";
 import { PostActivity } from "@/components/PostActivity";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ShadowBanBadge } from "@/components/ShadowBanBadge";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
-import { AnalyticsPanel } from "@/components/AnalyticsPanel";
+import { AnalyticsPanel, type AnalyticsTotals } from "@/components/AnalyticsPanel";
 import { Avatar } from "@/components/Avatar";
 import { ContactButton } from "@/components/ContactButton";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
 import { fmtPct } from "@/lib/engagement";
+import { fmtConversion } from "@/lib/conversion";
 
-type Filter = "all" | CadenceStatus;
+type Filter = "all" | "shadow" | CadenceStatus;
 
 /**
  * Runs a sync endpoint and turns whatever comes back into something readable.
@@ -49,7 +52,7 @@ export default function Overview() {
   // spinning and says nothing, which looks identical to "nothing has posted".
   const [syncNote, setSyncNote] = useState<{ ok: boolean; text: string } | null>(null);
   // views and engagement for the analytics chart's current timeline, reported up by AnalyticsPanel
-  const [viewsTotal, setViewsTotal] = useState<{ views: number; engagement: number | null; rangeLabel: string } | null>(null);
+  const [viewsTotal, setViewsTotal] = useState<AnalyticsTotals | null>(null);
 
   const load = useCallback(async () => {
     if (!currentClientId) {
@@ -93,7 +96,8 @@ export default function Overview() {
 
   const rows = useMemo(() => {
     let r = data?.rows ?? [];
-    if (filter !== "all") r = r.filter((x) => x.cadence.status === filter);
+    if (filter === "shadow") r = r.filter((x) => x.shadowBans.length > 0);
+    else if (filter !== "all") r = r.filter((x) => x.cadence.status === filter);
     if (q.trim()) {
       const s = q.toLowerCase();
       r = r.filter(
@@ -159,13 +163,25 @@ export default function Overview() {
           </div>
         )}
 
-        {/* KPI strip — one fused card, hairline-divided */}
+        {/* KPI strip — one fused card, hairline-divided. Download tiles only
+            appear once this client's app has reported numbers. */}
         {s && (
-          <div className="card mb-5 grid grid-cols-2 gap-px overflow-hidden bg-[var(--line)] sm:grid-cols-3 lg:grid-cols-6">
+          <div
+            className="card kpi-grid mb-5 grid grid-cols-2 gap-px overflow-hidden bg-[var(--line)] sm:grid-cols-4"
+            style={{ "--kpi-n": viewsTotal?.downloads != null ? 9 : 7 } as React.CSSProperties}
+          >
             <Kpi label="Creators" value={s.total} active={filter === "all"} onClick={() => setFilter("all")} />
             <Kpi label="On track" value={s.onTrack} tone="var(--ok)" active={filter === "on_track"} onClick={() => setFilter("on_track")} />
             <Kpi label="Behind" value={s.behind} tone="var(--warn)" active={filter === "behind"} onClick={() => setFilter("behind")} />
             <Kpi label="Gone quiet" value={s.quiet} tone="var(--bad)" active={filter === "quiet"} onClick={() => setFilter("quiet")} />
+            <Kpi
+              label="Shadow ban?"
+              value={s.shadowBanned}
+              tone={s.shadowBanned > 0 ? "var(--bad)" : undefined}
+              active={filter === "shadow"}
+              onClick={() => setFilter("shadow")}
+              title={`${SHADOW_BAN_RULE}. Click to see who.`}
+            />
             <Kpi
               label={viewsTotal ? `Views · ${viewsTotal.rangeLabel}` : "Views"}
               value={viewsTotal ? fmtNum(viewsTotal.views) : "—"}
@@ -176,6 +192,21 @@ export default function Overview() {
               value={viewsTotal ? fmtPct(viewsTotal.engagement) : "—"}
               title={`Likes + comments + shares, divided by views, across every video posted in ${viewsTotal ? viewsTotal.rangeLabel.toLowerCase() : "this range"}`}
             />
+            {viewsTotal?.downloads != null && (
+              <>
+                <Kpi
+                  label={`Downloads · ${viewsTotal.rangeLabel}`}
+                  value={fmtNum(viewsTotal.downloads)}
+                  tone="var(--downloads)"
+                  title="First-time App Store downloads reported by Apple for the days in this range"
+                />
+                <Kpi
+                  label="Conversion"
+                  value={fmtConversion(viewsTotal.conversion)}
+                  title={`Downloads divided by the views of every video posted in ${viewsTotal.rangeLabel.toLowerCase()}${viewsTotal.conversion != null ? ` · ${(viewsTotal.conversion * 1000).toFixed(1)} downloads per 1K views` : ""}`}
+                />
+              </>
+            )}
           </div>
         )}
 
@@ -281,7 +312,7 @@ function CreatorRow({ row, busy, onResync }: { row: OverviewRow; busy: boolean; 
       <div className="mono text-[14px]">{daysLabel(c.daysSinceLastPost)}</div>
       <div className="mono text-[14px]">{c.postsLast7d}/{c.expectedPerWeek}</div>
       <div className="mono text-[14px]">{c.currentStreakDays > 0 ? `🔥${c.currentStreakDays}` : "—"}</div>
-      <div><StatusBadge status={c.status} /></div>
+      <div className="flex flex-wrap gap-1"><StatusBadge status={c.status} /><ShadowBanBadge flags={row.shadowBans} compact /></div>
 
       {/* actions */}
       <div className="flex items-center justify-end gap-1.5">

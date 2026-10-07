@@ -46,6 +46,8 @@ export function Chart({
   format = (n) => `${n}`,
   formatX = (s) => s,
   formatHeader,
+  onSelect,
+  selected = null,
 }: {
   labels: string[];
   series: Series[];
@@ -54,6 +56,10 @@ export function Chart({
   formatX?: (s: string) => string;
   /** tooltip title for a label (defaults to formatX) */
   formatHeader?: (s: string) => string;
+  /** a plain click (no drag) on a point — e.g. "show me what was posted that day" */
+  onSelect?: (index: number) => void;
+  /** index to keep highlighted, e.g. the day whose videos are open below */
+  selected?: number | null;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -267,9 +273,27 @@ export function Chart({
     setHover(Math.max(start, Math.min(end, i)));
   }
 
+  function indexAt(e: React.PointerEvent<SVGSVGElement>): number | null {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left - M.left;
+    if (x < 0 || x > plotW) return null;
+    return Math.max(start, Math.min(end, Math.round(start + (x / plotW) * span)));
+  }
+
   function endDrag() {
     drag.current = null;
     setDragging(false);
+  }
+
+  // A press that never turned into a drag is a click on whatever day sits
+  // under the pointer.
+  function onPointerUp(e: React.PointerEvent<SVGSVGElement>) {
+    const wasPress = !!drag.current && drag.current.kind === "pan";
+    const wasDrag = dragging;
+    endDrag();
+    if (!wasPress || wasDrag || !onSelect) return;
+    const i = indexAt(e);
+    if (i != null) onSelect(i);
   }
 
   // tooltip placement — flips to the left of the guide near the right edge
@@ -285,10 +309,10 @@ export function Chart({
         ref={svgRef}
         width={w}
         height={height}
-        style={{ touchAction: "pan-y", cursor: dragging ? "grabbing" : zoomedX ? "grab" : "crosshair" }}
+        style={{ touchAction: "pan-y", cursor: dragging ? "grabbing" : zoomedX ? "grab" : onSelect ? "pointer" : "crosshair" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
+        onPointerUp={onPointerUp}
         onPointerCancel={endDrag}
         onPointerLeave={() => { if (!drag.current) setHover(null); }}
         onDoubleClick={() => setViewState(null)}
@@ -308,6 +332,19 @@ export function Chart({
             </text>
           </g>
         ))}
+        {/* the selected point: a soft column so it stays marked while its
+            videos are open below */}
+        {selected != null && selected >= start && selected <= end && (
+          <rect
+            x={xAt(selected) - Math.max(6, barW / 2 + 4)}
+            y={M.top}
+            width={Math.max(12, barW + 8)}
+            height={plotH}
+            rx={4}
+            fill="var(--signal)"
+            opacity={0.12}
+          />
+        )}
         {/* y-axis grab strip — drag up to stretch the scale, down to relax it */}
         <rect x={0} y={M.top} width={M.left} height={plotH} fill="transparent" style={{ cursor: "ns-resize" }}>
           <title>Drag up or down to stretch the scale</title>
@@ -463,7 +500,7 @@ export function Chart({
         ))}
         <div className="ml-auto flex items-center gap-1">
           <span className="mr-1 hidden text-[11.5px] text-[var(--faint)] md:inline">
-            {zoomedX ? "Scroll sideways or drag to move · double-click to reset" : zoomed ? "Double-click to reset" : "Pinch or ⌘-scroll to zoom · drag the axis to stretch"}
+            {zoomedX ? "Scroll sideways or drag to move · double-click to reset" : zoomed ? "Double-click to reset" : onSelect ? "Click a day to see its videos · pinch or ⌘-scroll to zoom" : "Pinch or ⌘-scroll to zoom · drag the axis to stretch"}
           </span>
           {zoomed && (
             <button onClick={() => setViewState(null)} className={`${btn} text-[var(--signal)]`}>Reset</button>

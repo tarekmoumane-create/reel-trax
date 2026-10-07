@@ -3,6 +3,7 @@ import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence, type CadenceStatus } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 import { avgEngagement } from "@/lib/engagement";
+import { detectShadowBans } from "@/lib/shadowban";
 
 // Ordering so the people you need to chase surface first.
 const STATUS_RANK: Record<CadenceStatus, number> = {
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
     const tz = await getTimeZone();
     const creators = await prisma.creator.findMany({
       where: { clientId },
-      include: { posts: { select: { postedAt: true, views: true, likes: true, comments: true, shares: true }, orderBy: { postedAt: "desc" } } },
+      include: { posts: { select: { platform: true, postedAt: true, views: true, likes: true, comments: true, shares: true }, orderBy: { postedAt: "desc" } } },
     });
 
     const now = new Date();
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
       );
       const engagementTotal = avgEngagement(c.posts);
       const engagement30d = avgEngagement(c.posts.filter((p) => p.postedAt.getTime() >= cutoff30));
+      const shadowBans = detectShadowBans(c.posts, { now, timeZone: tz });
       return {
         id: c.id,
         displayName: c.displayName,
@@ -69,6 +71,7 @@ export async function GET(request: Request) {
         engagementTotal,
         engagement30d,
         cadence,
+        shadowBans,
       };
     });
 
@@ -88,6 +91,7 @@ export async function GET(request: Request) {
       behind: rows.filter((r) => r.cadence.status === "behind").length,
       quiet: rows.filter((r) => r.cadence.status === "quiet").length,
       noData: rows.filter((r) => r.cadence.status === "no_data").length,
+      shadowBanned: rows.filter((r) => r.shadowBans.length > 0).length,
     };
 
     return ok({ summary, rows, timeZone: tz });

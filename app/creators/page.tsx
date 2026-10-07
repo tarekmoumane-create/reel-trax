@@ -6,6 +6,7 @@ import { useClients } from "../providers";
 import type { OverviewResponse, OverviewRow } from "@/lib/types";
 import { TopBar, PageTitle } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ShadowBanBadge } from "@/components/ShadowBanBadge";
 import { PostActivity } from "@/components/PostActivity";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
 import { Avatar } from "@/components/Avatar";
@@ -119,7 +120,7 @@ export default function CreatorsPage() {
                   <Avatar name={r.displayName} creatorId={r.id} size={36} />
                   <span className="truncate text-sm font-medium">{r.displayName}</span>
                 </div>
-                <div><StatusBadge status={r.cadence.status} /></div>
+                <div className="flex flex-wrap gap-1"><StatusBadge status={r.cadence.status} /><ShadowBanBadge flags={r.shadowBans} compact /></div>
                 {/* right-aligned so a narrow window clips the oldest days, never the latest;
                     padded so today's outline ring (drawn outside its dot) isn't clipped */}
                 <div className="flex min-w-0 justify-end overflow-hidden p-1">

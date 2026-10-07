@@ -3,6 +3,7 @@ import { ok, bad, serverError } from "@/lib/api";
 import { dayKey } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 import { avgEngagement } from "@/lib/engagement";
+import { conversionRate } from "@/lib/conversion";
 
 const DAY = 86_400_000;
 const MAX_SPAN_DAYS = 366;
@@ -122,6 +123,16 @@ export async function GET(request: Request) {
     });
     const hasFollowers = followers.some((f) => f.followers != null);
 
+    // App Store downloads, one row per reported day. Days Apple hasn't
+    // reported yet stay null so the line stops rather than dropping to zero.
+    const dlRows = await prisma.appDownload.findMany({
+      where: { clientId, day: { gte: from, lte: to } },
+      select: { day: true, units: true },
+    });
+    const dlByDay = new Map(dlRows.map((r) => [r.day, r.units]));
+    const downloads = dayList.map((d) => ({ date: d, downloads: dlByDay.has(d) ? dlByDay.get(d)! : null }));
+    const hasDownloads = dlRows.length > 0;
+
     // leaderboards — the client's sort/count selectors slice; videos capped
     // to keep the payload sane, creators returned in full so "top N" can be
     // any number up to the roster size
@@ -153,15 +164,21 @@ export async function GET(request: Request) {
       .map(([id, v]) => ({ creatorId: id, name: nameById.get(id) ?? "—", views: v.views, posts: v.posts.length, engagement: avgEngagement(v.posts) }))
       .sort((a, b) => b.views - a.views);
 
+    const viewsTotal = posts.reduce((s, p) => s + p.views, 0);
+    const downloadsTotal = hasDownloads ? dlRows.reduce((s, r) => s + r.units, 0) : null;
     const totals = {
       posts: posts.length,
-      views: posts.reduce((s, p) => s + p.views, 0),
+      views: viewsTotal,
       likes: posts.reduce((s, p) => s + p.likes, 0),
       comments: posts.reduce((s, p) => s + p.comments, 0),
       shares: posts.reduce((s, p) => s + p.shares, 0),
       engagement: avgEngagement(posts),
       viewsGained: hasGained ? viewsGained.reduce((s, g) => s + (g.viewsGained ?? 0), 0) : null,
       followers: hasFollowers ? followers[followers.length - 1].followers : null,
+      downloads: downloadsTotal,
+      // downloads per view of the videos posted in the range — the number the
+      // agency judges a campaign by
+      conversion: conversionRate(downloadsTotal, viewsTotal),
       creators: creators.length,
     };
 
@@ -169,6 +186,7 @@ export async function GET(request: Request) {
       from, to, timeZone: tz, series,
       viewsGained: hasGained ? viewsGained : [],
       followers: hasFollowers ? followers : [],
+      downloads: hasDownloads ? downloads : [],
       topVideos, topCreators, totals,
     });
   } catch (e) {

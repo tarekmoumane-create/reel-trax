@@ -3,6 +3,7 @@ import { ok, serverError } from "@/lib/api";
 import { logoFromWebsite } from "@/lib/brand";
 import { sanitizePayRules } from "@/lib/payouts";
 import { syncAutoCampaign } from "@/lib/autocampaign";
+import { cleanAppleAppId } from "@/lib/brand";
 
 export async function PATCH(
   request: Request,
@@ -27,6 +28,7 @@ export async function PATCH(
       const rules = sanitizePayRules(body.defaultPayRules);
       data.defaultPayRules = rules ? JSON.stringify(rules) : null;
     }
+    if ("appleAppId" in body) data.appleAppId = cleanAppleAppId(body.appleAppId);
     if ("managementFee" in body) {
       const n = Number(body.managementFee);
       data.managementFee =

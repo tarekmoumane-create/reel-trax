@@ -26,3 +26,15 @@ export function logoFromWebsite(website: string): string | null {
 export function isDeadLogoUrl(url: string | null | undefined): boolean {
   return !!url && url.includes("logo.clearbit.com");
 }
+
+/**
+ * The numeric Apple ID of an app, from whatever got pasted: the id itself, or
+ * an App Store link like apps.apple.com/us/app/name/id1234567890. Null when
+ * there's no number in it.
+ */
+export function cleanAppleAppId(raw: unknown): string | null {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const m = s.match(/\bid(\d{6,})\b/) ?? s.match(/^(\d{6,})$/);
+  return m ? m[1] : null;
+}

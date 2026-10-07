@@ -13,6 +13,13 @@ export const SETTING_KEYS = {
   invoiceFromName: "invoice_from_name",
   invoiceFromDetails: "invoice_from_details",
   invoicePaymentInstructions: "invoice_payment_instructions",
+  // App Store Connect API key (Users and Access → Integrations → App Store
+  // Connect API) — pulls daily downloads for clients linked to an app.
+  ascIssuerId: "asc_issuer_id",
+  ascKeyId: "asc_key_id",
+  ascPrivateKey: "asc_private_key",
+  ascVendorNumber: "asc_vendor_number",
+  ascLastSync: "asc_last_sync", // JSON DownloadSyncResult + at
 } as const;
 
 export interface InvoiceProfile {

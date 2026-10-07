@@ -4,6 +4,7 @@ import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreators } from "@/lib/sync";
 import { dedupePosts } from "@/lib/dedupe";
 import { syncVideoGroups } from "@/lib/videogroups";
+import { syncAppDownloads } from "@/lib/appstore";
 
 export const maxDuration = 300;
 
@@ -42,12 +43,13 @@ export async function POST(request: Request) {
     const results = await syncCreators(creators, apiKey, 3);
     // New posts have landed — re-match cross-posts so payouts see originals.
     await syncVideoGroups(clientId);
+    const downloads = await syncAppDownloads({ clientId }).catch((e: Error) => ({ ok: false, error: e.message }));
     const upserted = results
       .flatMap((r) => r.results)
       .reduce((n, r) => n + r.upserted, 0);
     const failed = results.filter((r) => !r.ok).length;
 
-    return ok({ creators: creators.length, postsUpserted: upserted, failed });
+    return ok({ creators: creators.length, postsUpserted: upserted, failed, downloads });
   } catch (e) {
     return serverError(e);
   }
