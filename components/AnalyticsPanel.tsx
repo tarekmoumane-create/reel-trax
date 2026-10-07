@@ -402,8 +402,8 @@ function BucketVideosCard({ clientId, bucket, title, onClose }: { clientId: stri
                 </span>
               </span>
               <span className="mono w-14 shrink-0 text-right text-xs font-semibold" title="Views">{fmtNum(v.views)}</span>
-              <span className="mono hidden w-12 shrink-0 text-right text-xs text-[var(--muted)] sm:inline" title="Likes">♥ {fmtNum(v.likes)}</span>
-              <span className="mono hidden w-12 shrink-0 text-right text-xs text-[var(--muted)] sm:inline" title="Comments">≡ {fmtNum(v.comments)}</span>
+              <span className="mono hidden w-16 shrink-0 text-right text-xs text-[var(--muted)] sm:inline" title="Likes">♥ {fmtNum(v.likes)}</span>
+              <span className="mono hidden w-16 shrink-0 text-right text-xs text-[var(--muted)] sm:inline" title="Comments">≡ {fmtNum(v.comments)}</span>
               <span className="mono w-14 shrink-0 text-right text-xs font-semibold" title="Engagement rate: likes + comments + shares, divided by views">{fmtPct(engagementRate(v))}</span>
             </div>
           ))}
