@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ShadowBanBadge } from "@/components/ShadowBanBadge";
 import { PostActivity } from "@/components/PostActivity";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
+import { ImportCreatorsModal } from "@/components/ImportCreatorsModal";
 import { Avatar } from "@/components/Avatar";
 import { Select } from "@/components/Select";
 import { SOURCE_LABEL, daysLabel, fmtDay, fmtNum, timeAgo } from "@/lib/ui";
@@ -50,6 +51,7 @@ export default function CreatorsPage() {
   const { currentClientId, currentClient, reloadClients } = useClients();
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [sort, setSort] = useState<SortKey>("status");
 
   useEffect(() => {
@@ -76,7 +78,12 @@ export default function CreatorsPage() {
     <>
       <TopBar
         crumbs={["Creator Hub", "Creators"]}
-        right={<button onClick={() => setShowAdd(true)} className="btn btn-primary">+ Add creator</button>}
+        right={
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowImport(true)} className="btn">Import CSV</button>
+            <button onClick={() => setShowAdd(true)} className="btn btn-primary">+ Add creator</button>
+          </div>
+        }
       />
       <div className="px-6 py-6">
         <PageTitle title="Creators" sub={`Manage every creator for ${currentClient?.name ?? "this client"}.`} />
@@ -151,6 +158,17 @@ export default function CreatorsPage() {
         </div>
       </div>
 
+      {showImport && currentClient && (
+        <ImportCreatorsModal
+          clientId={currentClient.id}
+          clientName={currentClient.name}
+          existing={data?.rows ?? []}
+          onClose={() => setShowImport(false)}
+          onDone={async () => {
+            await Promise.all([load(), reloadClients()]);
+          }}
+        />
+      )}
       {showAdd && currentClient && (
         <AddCreatorModal
           clientId={currentClient.id}
