@@ -684,9 +684,13 @@ export async function fetchSnapchat(opts: { handle: string }, apiKey: string): P
     const postedAt = toDate(pick(vm, ["uploadDateMs", "uploadDate", "createdAtMs", "timestampMs"]) ?? pick(it, ["uploadDateMs", "timestampInSec.value"]));
     if (!postedAt) continue;
     seen.add(id);
-    const description = pick(vm, ["description"]);
-    const name = pick(vm, ["name", "title", "embeddedTextCaption"]);
-    const caption = typeof description === "string" && description.trim() ? description : typeof name === "string" ? name : null;
+    // The title is the creator's own text; `description` is usually Snapchat's
+    // share blurb ("Another Spotlight Snap brought to you by @…"), kept only
+    // as a last resort when it isn't that boilerplate.
+    const caption =
+      [pick(vm, ["name", "title"]), pick(vm, ["embeddedTextCaption"]), pick(vm, ["description"]), pick(it, ["description"])]
+        .map((v) => (typeof v === "string" ? v.trim() : ""))
+        .find((v) => v && !/^another spotlight snap brought to you by/i.test(v)) ?? null;
     posts.push({
       platform: "snapchat",
       platformPostId: id,
