@@ -102,6 +102,10 @@ model Creator {
   facebookUrl    String? // canonical page URL, what the API takes
   facebookPageId String? // numeric id, cached from the first profile fetch
 
+  // Snapchat (Spotlight) — a public profile
+  snapchatHandle String?
+  snapchatUrl    String?
+
   // Where this creator came from (Sideshift is the common one)
   source       String  @default("sideshift") // sideshift | referral | outreach | agency | other
   sourceDetail String?
@@ -132,6 +136,12 @@ model Creator {
   // When this creator was onboarded to the client (informational — nothing is
   // filtered by it; syncs still ingest their whole account history).
   onboardedAt DateTime?
+
+  // Last day (inclusive, app timezone) this creator's posts count for the
+  // client. Set when a creator finishes with you and repurposes their account:
+  // anything they post after this day is ignored, while the videos they made
+  // for the client keep their stats refreshed. Null = still tracking.
+  trackUntil DateTime?
 
   notes String?
 

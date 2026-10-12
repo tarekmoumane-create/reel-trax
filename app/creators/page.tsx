@@ -11,7 +11,7 @@ import { PostActivity } from "@/components/PostActivity";
 import { AddCreatorModal } from "@/components/AddCreatorModal";
 import { Avatar } from "@/components/Avatar";
 import { Select } from "@/components/Select";
-import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
+import { SOURCE_LABEL, daysLabel, fmtDay, fmtNum, timeAgo } from "@/lib/ui";
 import { fmtPct } from "@/lib/engagement";
 
 type SortKey = "status" | "views30d" | "viewsTotal" | "engagement30d" | "lastPost" | "cadence7d" | "newest" | "name";
@@ -119,6 +119,11 @@ export default function CreatorsPage() {
                 <div className="flex items-center gap-3">
                   <Avatar name={r.displayName} creatorId={r.id} size={36} />
                   <span className="truncate text-sm font-medium">{r.displayName}</span>
+                  {r.trackUntil && (
+                    <span className="shrink-0 whitespace-nowrap rounded-full bg-[color:rgba(226,161,60,0.14)] px-1.5 py-0.5 text-[11px] text-[var(--warn)]" title={r.ended ? "Finished — stats shown as of their last tracked day" : "Posts after this day won't count"}>
+                      {r.ended ? "left" : "until"} {fmtDay(r.trackUntil, { year: false })}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-1"><StatusBadge status={r.cadence.status} /><ShadowBanBadge flags={r.shadowBans} compact /></div>
                 {/* right-aligned so a narrow window clips the oldest days, never the latest;
@@ -132,7 +137,8 @@ export default function CreatorsPage() {
                   {r.youtubeHandle && <span>YT @{r.youtubeHandle}</span>}
                   {r.threadsHandle && <span>TH @{r.threadsHandle}</span>}
                   {r.facebookHandle && <span>FB {r.facebookHandle}</span>}
-                  {!r.tiktokHandle && !r.instagramHandle && !r.youtubeHandle && !r.threadsHandle && !r.facebookHandle && <span className="text-[var(--faint)]">—</span>}
+                  {r.snapchatHandle && <span>SC @{r.snapchatHandle}</span>}
+                  {!r.tiktokHandle && !r.instagramHandle && !r.youtubeHandle && !r.threadsHandle && !r.facebookHandle && !r.snapchatHandle && <span className="text-[var(--faint)]">—</span>}
                 </div>
                 <div className="mono text-[14px] font-medium">{r.views30d > 0 ? fmtNum(r.views30d) : <span className="text-[var(--faint)]">—</span>}</div>
                 <div className="mono text-[14px] font-medium">{r.engagement30d != null ? fmtPct(r.engagement30d) : <span className="text-[var(--faint)]">—</span>}</div>

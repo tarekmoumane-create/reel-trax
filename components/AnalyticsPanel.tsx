@@ -415,8 +415,8 @@ function BucketVideosCard({ clientId, bucket, title, onClose }: { clientId: stri
 
 // ---------- leaderboards ----------
 
-const PLATFORM_LABEL: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", threads: "Threads", facebook: "Facebook" };
-const PLATFORM_ORDER = ["tiktok", "instagram", "youtube", "threads", "facebook"];
+const PLATFORM_LABEL: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", threads: "Threads", facebook: "Facebook", snapchat: "Snapchat" };
+const PLATFORM_ORDER = ["tiktok", "instagram", "youtube", "threads", "facebook", "snapchat"];
 
 type VideoSort = "views" | "likes" | "comments" | "engagement";
 type TopVideo = Analytics["topVideos"][number];

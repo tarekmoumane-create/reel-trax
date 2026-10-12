@@ -42,6 +42,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   youtube: "YouTube",
   threads: "Threads",
   facebook: "Facebook",
+  snapchat: "Snapchat",
 };
 
 // The page shows this many; an export re-queries for everything that matches.
@@ -60,7 +61,7 @@ export default function VideosPage() {
   const [rows, setRows] = useState<VideoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<"recent" | "views" | "engagement">("recent");
-  const [platform, setPlatform] = useState<"" | "tiktok" | "instagram" | "youtube" | "threads" | "facebook">("");
+  const [platform, setPlatform] = useState<"" | "tiktok" | "instagram" | "youtube" | "threads" | "facebook" | "snapchat">("");
   // null = all time (the default); otherwise videos posted inside the window
   const [range, setRange] = useState<Range | null>(null);
   // Typed value vs. the one the query uses — debounced so each keystroke
@@ -228,7 +229,7 @@ export default function VideosPage() {
         <PageTitle title="Videos" sub={`Every tracked post for ${currentClient?.name ?? "this client"}.`} />
 
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Seg value={platform} onChange={setPlatform} options={[["", "All"], ["tiktok", "TikTok"], ["instagram", "Instagram"], ["youtube", "YouTube"], ["threads", "Threads"], ["facebook", "Facebook"]]} />
+          <Seg value={platform} onChange={setPlatform} options={[["", "All"], ["tiktok", "TikTok"], ["instagram", "Instagram"], ["youtube", "YouTube"], ["threads", "Threads"], ["facebook", "Facebook"], ["snapchat", "Snapchat"]]} />
           <div className="ml-auto flex items-center gap-2">
             <RangePicker
               range={pickerRange}

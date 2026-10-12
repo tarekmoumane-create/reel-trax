@@ -36,6 +36,7 @@ export async function POST(request: Request) {
           { youtubeUrl: { not: null } },
           { threadsHandle: { not: null } },
           { facebookUrl: { not: null } },
+          { snapchatHandle: { not: null } },
         ],
       },
     });

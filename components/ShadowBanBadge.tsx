@@ -3,7 +3,7 @@
 import type { ShadowBanFlag } from "@/lib/shadowban";
 import { SHADOW_BAN_RULE } from "@/lib/shadowban";
 
-const PLATFORM_LABEL: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", threads: "Threads", facebook: "Facebook" };
+const PLATFORM_LABEL: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", threads: "Threads", facebook: "Facebook", snapchat: "Snapchat" };
 
 export function describeShadowBans(flags: ShadowBanFlag[]): string {
   return flags

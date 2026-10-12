@@ -57,6 +57,14 @@ export function timeAgo(iso: string | null | undefined): string {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
+/** A stored calendar day (UTC midnight) as "Oct 3, 2026" — read in UTC so it never shifts a day. */
+export function fmtDay(iso: string | null | undefined, opts: { year?: boolean } = {}): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en", { timeZone: "UTC", month: "short", day: "numeric", ...(opts.year === false ? {} : { year: "numeric" }) });
+}
+
 export function daysLabel(n: number | null): string {
   if (n === null) return "—";
   if (n === 0) return "today";

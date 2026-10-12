@@ -14,7 +14,7 @@ import { AnalyticsPanel, type AnalyticsTotals } from "@/components/AnalyticsPane
 import { Avatar } from "@/components/Avatar";
 import { ContactButton } from "@/components/ContactButton";
 import { TopBar, PageTitle } from "@/components/PageHeader";
-import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
+import { SOURCE_LABEL, daysLabel, fmtDay, fmtNum, timeAgo } from "@/lib/ui";
 import { fmtPct } from "@/lib/engagement";
 import { fmtConversion } from "@/lib/conversion";
 
@@ -107,7 +107,8 @@ export default function Overview() {
           x.instagramHandle?.toLowerCase().includes(s) ||
           x.youtubeHandle?.toLowerCase().includes(s) ||
           x.threadsHandle?.toLowerCase().includes(s) ||
-          x.facebookHandle?.toLowerCase().includes(s)
+          x.facebookHandle?.toLowerCase().includes(s) ||
+          x.snapchatHandle?.toLowerCase().includes(s)
       );
     }
     return r;
@@ -148,7 +149,7 @@ export default function Overview() {
       />
 
       <div className="px-6 py-6">
-        <PageTitle title={currentClient?.name ?? "Overview"} sub={s ? `${s.total} creators tracked · times in ${data?.timeZone}` : "Loading…"} />
+        <PageTitle title={currentClient?.name ?? "Overview"} sub={s ? `${s.total} creators tracked${s.ended ? ` · ${s.ended} finished` : ""} · times in ${data?.timeZone}` : "Loading…"} />
 
         {syncNote && (
           <div
@@ -293,6 +294,11 @@ function CreatorRow({ row, busy, onResync }: { row: OverviewRow; busy: boolean; 
           <div className="flex items-center gap-2">
             <Link href={`/creators/${row.id}`} className="truncate text-sm font-medium hover:text-[var(--signal)]">{row.displayName}</Link>
             {row.status !== "active" && <span className="rounded-full bg-[var(--panel2)] px-1.5 py-0.5 text-[11px] text-[var(--muted)]">{row.status}</span>}
+            {row.trackUntil && (
+              <span className="whitespace-nowrap rounded-full bg-[color:rgba(226,161,60,0.14)] px-1.5 py-0.5 text-[11px] text-[var(--warn)]" title={row.ended ? "Finished — stats shown as of their last tracked day" : "Posts after this day won't count"}>
+                {row.ended ? "left" : "until"} {fmtDay(row.trackUntil, { year: false })}
+              </span>
+            )}
           </div>
           <div className="mono flex flex-wrap items-center gap-x-2 text-[12.5px] text-[var(--muted)]">
             {row.tiktokHandle && <span>TT @{row.tiktokHandle}</span>}
@@ -300,6 +306,7 @@ function CreatorRow({ row, busy, onResync }: { row: OverviewRow; busy: boolean; 
             {row.youtubeHandle && <span>YT @{row.youtubeHandle}</span>}
             {row.threadsHandle && <span>TH @{row.threadsHandle}</span>}
             {row.facebookHandle && <span>FB {row.facebookHandle}</span>}
+            {row.snapchatHandle && <span>SC @{row.snapchatHandle}</span>}
             <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[11px] text-[var(--muted)]">{SOURCE_LABEL[row.source] ?? row.source}</span>
           </div>
         </div>

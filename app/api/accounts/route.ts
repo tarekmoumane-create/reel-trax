@@ -2,8 +2,9 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { computeCadence } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
+import { cadenceNow } from "@/lib/tracking";
 
-// One row per social account (TikTok, Instagram, YouTube, Threads and/or Facebook),
+// One row per social account (TikTok, Instagram, YouTube, Threads, Facebook and/or Snapchat),
 // each with its own post-activity strip and totals.
 export async function GET(request: Request) {
   try {
@@ -17,17 +18,20 @@ export async function GET(request: Request) {
       include: { posts: true },
     });
 
-    const now = new Date();
+    const realNow = new Date();
     const rows: unknown[] = [];
 
     for (const c of creators) {
-      const platforms: { platform: "tiktok" | "instagram" | "youtube" | "threads" | "facebook"; handle: string | null; url: string | null }[] = [];
+      const platforms: { platform: "tiktok" | "instagram" | "youtube" | "threads" | "facebook" | "snapchat"; handle: string | null; url: string | null }[] = [];
+      // finished creators are read as of their last tracked day
+      const now = cadenceNow(c.trackUntil, realNow, tz);
       if (c.tiktokHandle) platforms.push({ platform: "tiktok", handle: c.tiktokHandle, url: c.tiktokUrl });
       if (c.instagramHandle) platforms.push({ platform: "instagram", handle: c.instagramHandle, url: c.instagramUrl });
       if (c.youtubeHandle || c.youtubeChannelId || c.youtubeUrl)
         platforms.push({ platform: "youtube", handle: c.youtubeHandle ?? c.youtubeChannelId ?? "youtube", url: c.youtubeUrl });
       if (c.threadsHandle) platforms.push({ platform: "threads", handle: c.threadsHandle, url: c.threadsUrl ?? `https://www.threads.com/@${c.threadsHandle}` });
       if (c.facebookUrl) platforms.push({ platform: "facebook", handle: c.facebookHandle ?? "facebook", url: c.facebookUrl });
+      if (c.snapchatHandle) platforms.push({ platform: "snapchat", handle: c.snapchatHandle, url: c.snapchatUrl ?? `https://www.snapchat.com/add/${c.snapchatHandle}` });
 
       for (const p of platforms) {
         const posts = c.posts.filter((x) => x.platform === p.platform);

@@ -4,7 +4,8 @@ import { computeCadence } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 import { avgEngagement } from "@/lib/engagement";
 import { detectShadowBans } from "@/lib/shadowban";
-import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook } from "@/lib/scrapecreators";
+import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook, parseSnapchatHandle } from "@/lib/scrapecreators";
+import { cadenceNow, isTracked } from "@/lib/tracking";
 
 export async function GET(
   _request: Request,
@@ -21,14 +22,17 @@ export async function GET(
     });
     if (!creator) return bad("Creator not found", 404);
     const tz = await getTimeZone();
+    // A creator past their tracking cutoff is judged as of their last day.
+    const now = cadenceNow(creator.trackUntil, new Date(), tz);
     const cadence = computeCadence(creator.posts, {
       expectedPerWeek: creator.expectedPerWeek,
+      now,
       timeZone: tz,
     });
     // same 30-day window the Creators list uses, so the two numbers agree
-    const cutoff30 = Date.now() - 30 * 86_400_000;
+    const cutoff30 = now.getTime() - 30 * 86_400_000;
     const engagement30d = avgEngagement(creator.posts.filter((p) => p.postedAt.getTime() >= cutoff30));
-    const shadowBans = detectShadowBans(creator.posts, { timeZone: tz });
+    const shadowBans = detectShadowBans(creator.posts, { now, timeZone: tz });
     return ok({ creator, cadence, engagement30d, shadowBans });
   } catch (e) {
     return serverError(e);
@@ -94,6 +98,11 @@ export async function PATCH(
       data.facebookHandle = fb.handle;
       data.facebookPageId = null; // re-resolved on next sync
     }
+    if ("snapchatUrl" in body) {
+      const u = (body.snapchatUrl ?? "").trim() || null;
+      data.snapchatUrl = u;
+      data.snapchatHandle = u ? parseSnapchatHandle(u) : null;
+    }
     if ("expectedPerWeek" in body) {
       data.expectedPerWeek = Math.max(
         1,
@@ -104,8 +113,32 @@ export async function PATCH(
     if ("onboardedAt" in body)
       data.onboardedAt = body.onboardedAt ? new Date(body.onboardedAt) : null;
 
+    let trackUntil: Date | null | undefined;
+    if ("trackUntil" in body) {
+      const d = body.trackUntil ? new Date(body.trackUntil) : null;
+      trackUntil = d && !isNaN(d.getTime()) ? d : null;
+      data.trackUntil = trackUntil;
+    }
+
     const creator = await prisma.creator.update({ where: { id }, data });
-    return ok(creator);
+
+    // A cutoff was set: whatever the account posted after it belongs to what
+    // the account became, not to this client, so those synced posts go.
+    // Manual entries stay — someone typed those in on purpose.
+    let droppedPosts = 0;
+    if (trackUntil) {
+      const tz = await getTimeZone();
+      const later = await prisma.post.findMany({
+        where: { creatorId: id, source: "auto", postedAt: { gte: new Date(trackUntil.getTime() - 86_400_000) } },
+        select: { id: true, postedAt: true },
+      });
+      const ids = later.filter((p) => !isTracked(p.postedAt, trackUntil, tz)).map((p) => p.id);
+      if (ids.length) {
+        await prisma.post.deleteMany({ where: { id: { in: ids } } });
+        droppedPosts = ids.length;
+      }
+    }
+    return ok({ ...creator, droppedPosts });
   } catch (e) {
     return serverError(e);
   }

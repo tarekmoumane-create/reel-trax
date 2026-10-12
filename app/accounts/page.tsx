@@ -12,7 +12,7 @@ import { daysLabel, fmtNum } from "@/lib/ui";
 interface AccountRow {
   creatorId: string;
   creatorName: string;
-  platform: "tiktok" | "instagram" | "youtube" | "threads" | "facebook";
+  platform: "tiktok" | "instagram" | "youtube" | "threads" | "facebook" | "snapchat";
   handle: string;
   url: string | null;
   postsCount: number;
@@ -28,6 +28,7 @@ const PLATFORM_CHIP: Record<AccountRow["platform"], { label: string; bg: string;
   youtube: { label: "YT", bg: "rgba(224,60,60,0.12)", color: "var(--yt)" },
   threads: { label: "TH", bg: "var(--chip-tt)", color: "var(--ink)" },
   facebook: { label: "FB", bg: "rgba(24,119,242,0.12)", color: "var(--fb)" },
+  snapchat: { label: "SC", bg: "rgba(255,225,0,0.14)", color: "var(--sc)" },
 };
 
 export default function AccountsPage() {
@@ -60,7 +61,7 @@ export default function AccountsPage() {
           {loading ? (
             <div className="py-16 text-center text-sm text-[var(--muted)]">Loading…</div>
           ) : rows.length === 0 ? (
-            <div className="py-16 text-center text-sm text-[var(--muted)]">No accounts tracked yet. Add a creator with a TikTok, Instagram, YouTube, Threads or Facebook URL.</div>
+            <div className="py-16 text-center text-sm text-[var(--muted)]">No accounts tracked yet. Add a creator with a TikTok, Instagram, YouTube, Threads, Facebook or Snapchat URL.</div>
           ) : (
             rows.map((a) => (
               <div key={`${a.creatorId}-${a.platform}`} className="grid grid-cols-1 items-center gap-3 border-b border-[var(--line2)] px-4 py-3 last:border-0 lg:grid-cols-[52px_minmax(200px,1.4fr)_auto_90px_90px_100px_104px] lg:gap-4">

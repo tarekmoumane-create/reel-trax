@@ -28,6 +28,10 @@ export interface OverviewRow {
   youtubeHandle: string | null;
   threadsHandle: string | null;
   facebookHandle: string | null;
+  snapchatHandle: string | null;
+  // tracking cutoff (YYYY-MM-DD at UTC midnight); ended = today is past it
+  trackUntil: string | null;
+  ended: boolean;
   expectedPerWeek: number;
   lastSyncedAt: string | null;
   lastSyncStatus: string | null;
@@ -53,6 +57,7 @@ export interface OverviewRow {
 export interface OverviewResponse {
   summary: {
     total: number;
+    ended: number; // finished creators, left out of the cadence tallies
     onTrack: number;
     behind: number;
     quiet: number;
@@ -80,6 +85,8 @@ export interface CreatorDTO {
   facebookHandle: string | null;
   facebookUrl: string | null;
   facebookPageId: string | null;
+  snapchatHandle: string | null;
+  snapchatUrl: string | null;
   source: string;
   sourceDetail: string | null;
   sideshiftUrl: string | null;
@@ -96,6 +103,7 @@ export interface CreatorDTO {
   expectedPerWeek: number;
   status: string;
   onboardedAt: string | null;
+  trackUntil: string | null; // last tracked day; posts after it are ignored
   notes: string | null;
   lastSyncedAt: string | null;
   lastSyncStatus: string | null;

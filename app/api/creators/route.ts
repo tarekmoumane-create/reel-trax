@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { sanitizePayRules } from "@/lib/payouts";
 import { syncAutoCampaign } from "@/lib/autocampaign";
-import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook } from "@/lib/scrapecreators";
+import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook, parseSnapchatHandle } from "@/lib/scrapecreators";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreator } from "@/lib/sync";
 
@@ -42,6 +42,8 @@ export async function POST(request: Request) {
     const threadsUrl = (body?.threadsUrl ?? "").trim() || null;
     const threadsHandle = parseThreadsHandle(threadsUrl ?? (body?.threadsHandle ?? "").trim());
     const fb = parseFacebook((body?.facebookUrl ?? "").trim() || (body?.facebookHandle ?? "").trim());
+    const snapchatUrl = (body?.snapchatUrl ?? "").trim() || null;
+    const snapchatHandle = parseSnapchatHandle(snapchatUrl ?? (body?.snapchatHandle ?? "").trim());
 
     const creator = await prisma.creator.create({
       data: {
@@ -58,6 +60,8 @@ export async function POST(request: Request) {
         threadsHandle,
         facebookUrl: fb.url,
         facebookHandle: fb.handle,
+        snapchatUrl,
+        snapchatHandle,
         source: body?.source || "sideshift",
         sourceDetail: body?.sourceDetail || null,
         sideshiftUrl: body?.sideshiftUrl || null,
@@ -93,7 +97,7 @@ export async function POST(request: Request) {
     // Best-effort immediate first sync so the creator isn't blank on arrival.
     let firstSync: unknown = null;
     const apiKey = await getScrapeCreatorsKey();
-    if (apiKey && (tiktokHandle || instagramHandle || youtubeUrl || threadsHandle || fb.url)) {
+    if (apiKey && (tiktokHandle || instagramHandle || youtubeUrl || threadsHandle || fb.url || snapchatHandle)) {
       try {
         firstSync = await syncCreator(creator, apiKey);
       } catch {

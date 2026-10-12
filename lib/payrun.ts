@@ -281,7 +281,7 @@ export function loadCampaigns(clientId: string, creatorId?: string) {
           creator: {
             select: {
               id: true, displayName: true, onboardedAt: true,
-              tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true, facebookHandle: true,
+              tiktokHandle: true, instagramHandle: true, youtubeHandle: true, threadsHandle: true, facebookHandle: true, snapchatHandle: true,
               sideshiftUrl: true, paymentMethod: true, paymentHandle: true,
               posts: {
                 select: {

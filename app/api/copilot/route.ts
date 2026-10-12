@@ -30,6 +30,8 @@ async function buildSnapshot(clientId: string) {
       youtube: c.youtubeHandle,
       threads: c.threadsHandle,
       facebook: c.facebookHandle,
+      snapchat: c.snapchatHandle,
+      trackedUntil: c.trackUntil ? c.trackUntil.toISOString().slice(0, 10) : null,
       cadenceStatus: cad.status,
       postsLast7d: cad.postsLast7d,
       target: c.expectedPerWeek,

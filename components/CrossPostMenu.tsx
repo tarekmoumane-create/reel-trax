@@ -17,6 +17,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   youtube: "YouTube",
   threads: "Threads",
   facebook: "Facebook",
+  snapchat: "Snapchat",
 };
 
 interface GroupInfo {

@@ -85,7 +85,7 @@ export async function GET(request: Request) {
 
         const line = lines.get(cr.id) ?? {
           creatorId: cr.id, creatorName: cr.displayName,
-          handles: [cr.tiktokHandle && `TT @${cr.tiktokHandle}`, cr.instagramHandle && `IG @${cr.instagramHandle}`, cr.youtubeHandle && `YT @${cr.youtubeHandle}`, cr.threadsHandle && `TH @${cr.threadsHandle}`, cr.facebookHandle && `FB ${cr.facebookHandle}`].filter(Boolean) as string[],
+          handles: [cr.tiktokHandle && `TT @${cr.tiktokHandle}`, cr.instagramHandle && `IG @${cr.instagramHandle}`, cr.youtubeHandle && `YT @${cr.youtubeHandle}`, cr.threadsHandle && `TH @${cr.threadsHandle}`, cr.facebookHandle && `FB ${cr.facebookHandle}`, cr.snapchatHandle && `SC @${cr.snapchatHandle}`].filter(Boolean) as string[],
           campaigns: [], posts: 0, views: 0, amount: 0, breakdown: [], videos: [],
           owed: 0, paid: 0, late: 0, records: [],
           pay: { sideshiftUrl: cr.sideshiftUrl, paymentMethod: cr.paymentMethod, paymentHandle: cr.paymentHandle },

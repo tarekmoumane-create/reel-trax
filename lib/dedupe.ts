@@ -11,7 +11,7 @@ import { canonicalPostKey } from "./scrapecreators";
 // call it every run.
 export async function dedupePosts(): Promise<{ merged: number; rekeyed: number }> {
   const rows = await prisma.post.findMany({
-    where: { platform: { in: ["instagram", "threads", "facebook"] }, url: { not: null } },
+    where: { platform: { in: ["instagram", "threads", "facebook", "snapchat"] }, url: { not: null } },
     select: {
       id: true, creatorId: true, platform: true, platformPostId: true, url: true, fetchedAt: true,
       views: true, likes: true, comments: true, shares: true, postedAt: true, caption: true, thumbnailUrl: true,

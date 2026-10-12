@@ -4,6 +4,7 @@ import { computeCadence, type CadenceStatus } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 import { avgEngagement } from "@/lib/engagement";
 import { detectShadowBans } from "@/lib/shadowban";
+import { cadenceNow, trackingEnded } from "@/lib/tracking";
 
 // Ordering so the people you need to chase surface first.
 const STATUS_RANK: Record<CadenceStatus, number> = {
@@ -25,8 +26,12 @@ export async function GET(request: Request) {
       include: { posts: { select: { platform: true, postedAt: true, views: true, likes: true, comments: true, shares: true }, orderBy: { postedAt: "desc" } } },
     });
 
-    const now = new Date();
+    const realNow = new Date();
     const rows = creators.map((c) => {
+      // A creator past their tracking cutoff is read as of their last day
+      // with the client, so they don't sit on the roster as "gone quiet".
+      const ended = trackingEnded(c.trackUntil, realNow, tz);
+      const now = cadenceNow(c.trackUntil, realNow, tz);
       const cadence = computeCadence(c.posts, {
         expectedPerWeek: c.expectedPerWeek,
         now,
@@ -53,6 +58,9 @@ export async function GET(request: Request) {
         youtubeHandle: c.youtubeHandle,
         threadsHandle: c.threadsHandle,
         facebookHandle: c.facebookHandle,
+        snapchatHandle: c.snapchatHandle,
+        trackUntil: c.trackUntil,
+        ended,
         expectedPerWeek: c.expectedPerWeek,
         lastSyncedAt: c.lastSyncedAt,
         lastSyncStatus: c.lastSyncStatus,
@@ -75,23 +83,28 @@ export async function GET(request: Request) {
       };
     });
 
-    // active first, then by cadence severity, then most-overdue
+    // active first (finished creators count as inactive here), then by
+    // cadence severity, then most-overdue
     rows.sort((a, b) => {
-      const aActive = a.status === "active" ? 0 : 1;
-      const bActive = b.status === "active" ? 0 : 1;
+      const aActive = a.status === "active" && !a.ended ? 0 : 1;
+      const bActive = b.status === "active" && !b.ended ? 0 : 1;
       if (aActive !== bActive) return aActive - bActive;
       const r = STATUS_RANK[a.cadence.status] - STATUS_RANK[b.cadence.status];
       if (r !== 0) return r;
       return (b.cadence.daysSinceLastPost ?? -1) - (a.cadence.daysSinceLastPost ?? -1);
     });
 
+    // Cadence tallies cover creators still being tracked — someone who
+    // finished last month isn't "on track" or "behind" today.
+    const live = rows.filter((r) => !r.ended);
     const summary = {
       total: rows.length,
-      onTrack: rows.filter((r) => r.cadence.status === "on_track").length,
-      behind: rows.filter((r) => r.cadence.status === "behind").length,
-      quiet: rows.filter((r) => r.cadence.status === "quiet").length,
-      noData: rows.filter((r) => r.cadence.status === "no_data").length,
-      shadowBanned: rows.filter((r) => r.shadowBans.length > 0).length,
+      ended: rows.length - live.length,
+      onTrack: live.filter((r) => r.cadence.status === "on_track").length,
+      behind: live.filter((r) => r.cadence.status === "behind").length,
+      quiet: live.filter((r) => r.cadence.status === "quiet").length,
+      noData: live.filter((r) => r.cadence.status === "no_data").length,
+      shadowBanned: live.filter((r) => r.shadowBans.length > 0).length,
     };
 
     return ok({ summary, rows, timeZone: tz });

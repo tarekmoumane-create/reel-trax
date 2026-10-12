@@ -5,7 +5,7 @@
 
 const BASE = "https://api.scrapecreators.com";
 
-export type Platform = "tiktok" | "instagram" | "youtube" | "threads" | "facebook";
+export type Platform = "tiktok" | "instagram" | "youtube" | "threads" | "facebook" | "snapchat";
 
 /**
  * The key a post is stored under, derived from its public URL. Instagram and
@@ -23,6 +23,7 @@ export function canonicalPostKey(platform: string, url: string | null | undefine
     : platform === "tiktok" ? url.match(/tiktok\.com\/@[^/]+\/(?:video|photo)\/(\d+)/i)
     : platform === "youtube" ? url.match(/(?:youtube\.com\/(?:shorts\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i)
     : platform === "facebook" ? url.match(/facebook\.com\/(?:reel|[^/]+\/videos)\/(\d+)/i)
+    : platform === "snapchat" ? url.match(/snapchat\.com\/(?:@[^/]+\/)?spotlight\/([A-Za-z0-9_-]+)/i)
     : null;
   return m ? m[1] : null;
 }
@@ -134,6 +135,21 @@ export function parseFacebook(input: string): { handle: string | null; url: stri
   const bare = s.startsWith("@") ? s.slice(1) : s;
   if (/^[A-Za-z0-9.\-_]+$/.test(bare)) return { handle: bare, url: `https://www.facebook.com/${bare}` };
   return none;
+}
+
+/**
+ * Snapchat username from whatever got pasted: snapchat.com/add/<user>,
+ * snapchat.com/@<user>, "@user" or a bare username.
+ */
+export function parseSnapchatHandle(input: string): string | null {
+  if (!input) return null;
+  const s = input.trim();
+  const m = s.match(/snapchat\.com\/(?:add\/|@)([A-Za-z0-9._-]+)/i);
+  if (m) return m[1];
+  if (/snapchat\.com/i.test(s)) return null; // a spotlight/story link, not a profile
+  const bare = s.startsWith("@") ? s.slice(1) : s;
+  if (/^[A-Za-z0-9._-]+$/.test(bare)) return bare;
+  return null;
 }
 
 export function parseYouTubeHandle(input: string): string | null {
@@ -567,7 +583,7 @@ export async function fetchInstagram(
     "user.profile_pic_url",
     "data.user.profile_pic_url",
   ]);
-  return { posts, followers, avatarUrls, rawCount: Array.isArray(list) ? list.length : 0 };
+  return { posts, followers, avatarUrls, rawCount: list.length };
 }
 
 // ---------- Facebook (Reels) ----------
@@ -637,4 +653,54 @@ export async function fetchFacebookReels(
     if (!cursor && !nextPageId) break;
   }
   return { posts, avatarUrls, rawCount };
+}
+
+// ---------- Snapchat (Spotlight) ----------
+
+/**
+ * A creator's public Snapchat profile: their Spotlight videos with view
+ * counts, plus subscriber count and profile picture — all from one call.
+ * Snapchat exposes no like counts, so likes stay 0; the id that keys a
+ * Spotlight is only present inside its deeplink, which is where the public
+ * URL is rebuilt from.
+ */
+export async function fetchSnapchat(opts: { handle: string }, apiKey: string): Promise<FetchResult> {
+  const data = await scGet("/v1/snapchat/profile", { handle: opts.handle }, apiKey);
+  const raw = pick(data, ["spotlightStoryMetadata", "data.spotlightStoryMetadata", "spotlights"]);
+  const list: unknown[] = Array.isArray(raw) ? raw : [];
+  const posts: NormalizedPost[] = [];
+  const seen = new Set<string>();
+  const user = (pick(data, ["userProfile.username", "username"]) as string) || opts.handle;
+
+  for (const it of list) {
+    const vm = pick(it, ["videoMetadata"]) ?? it;
+    const link =
+      (pick(it, ["deeplink", "oneLinkParams.deepLinkUrl", "url", "shareUrl"]) as string) ??
+      (pick(vm, ["url", "shareUrl"]) as string);
+    const id =
+      canonicalPostKey("snapchat", link) ||
+      String(pick(it, ["snapId", "storyId.value", "storyId", "id"]) ?? pick(vm, ["snapId", "storyId", "id"]) ?? "");
+    if (!id || seen.has(id)) continue;
+    const postedAt = toDate(pick(vm, ["uploadDateMs", "uploadDate", "createdAtMs", "timestampMs"]) ?? pick(it, ["uploadDateMs", "timestampInSec.value"]));
+    if (!postedAt) continue;
+    seen.add(id);
+    const description = pick(vm, ["description"]);
+    const name = pick(vm, ["name", "title", "embeddedTextCaption"]);
+    const caption = typeof description === "string" && description.trim() ? description : typeof name === "string" ? name : null;
+    posts.push({
+      platform: "snapchat",
+      platformPostId: id,
+      url: `https://www.snapchat.com/@${user}/spotlight/${id}`,
+      caption,
+      thumbnailUrl: (pick(vm, ["thumbnailUrl", "thumbnail", "posterUrl"]) as string) ?? null,
+      postedAt,
+      views: num(pick(vm, ["viewCount", "views"])) || num(pick(it, ["engagementStats.viewCount"])),
+      likes: num(pick(it, ["engagementStats.likeCount"])) || num(pick(vm, ["likeCount"])),
+      comments: num(pick(it, ["engagementStats.commentCount"])) || num(pick(vm, ["commentCount"])),
+      shares: num(pick(it, ["engagementStats.shareCount"])) || num(pick(vm, ["shareCount"])),
+    });
+  }
+  const followers = num(pick(data, ["userProfile.subscriberCount", "subscriberCount", "userProfile.followerCount"])) || null;
+  const avatarUrls = pickAll(data, ["userProfile.profilePictureUrl", "userProfile.squareHeroImageUrl", "profilePictureUrl"]);
+  return { posts, followers, avatarUrls, rawCount: list.length };
 }

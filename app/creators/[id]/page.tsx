@@ -12,7 +12,7 @@ import { ContactButton } from "@/components/ContactButton";
 import { VideoThumb } from "@/components/VideoThumb";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/PageHeader";
-import { SOURCE_LABEL, daysLabel, fmtNum, timeAgo } from "@/lib/ui";
+import { SOURCE_LABEL, daysLabel, fmtDay, fmtNum, timeAgo } from "@/lib/ui";
 import { avgEngagement, engagementRate, fmtPct } from "@/lib/engagement";
 import { PAYMENT_METHODS, PAYMENT_LABEL, payLink } from "@/lib/pay";
 import { Select } from "@/components/Select";
@@ -118,11 +118,17 @@ export default function CreatorDetail() {
                 {creator.youtubeUrl && <a href={creator.youtubeUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">YT {creator.youtubeHandle ? `@${creator.youtubeHandle}` : "channel"}</a>}
                 {creator.threadsHandle && <a href={creator.threadsUrl ?? `https://www.threads.com/@${creator.threadsHandle}`} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">TH @{creator.threadsHandle}</a>}
                 {creator.facebookUrl && <a href={creator.facebookUrl} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">FB {creator.facebookHandle ?? "page"}</a>}
+                {creator.snapchatHandle && <a href={creator.snapchatUrl ?? `https://www.snapchat.com/add/${creator.snapchatHandle}`} target="_blank" rel="noreferrer" className="hover:text-[var(--signal)]">SC @{creator.snapchatHandle}</a>}
                 <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[11.5px]">from {SOURCE_LABEL[creator.source] ?? creator.source}{creator.sourceDetail ? ` · ${creator.sourceDetail}` : ""}</span>
                 <span className="rounded bg-[color:rgba(124,92,255,0.15)] px-1.5 py-0.5 text-[11.5px] text-[var(--signal)]">pay via {PAYMENT_LABEL[creator.paymentMethod] ?? creator.paymentMethod}</span>
                 {creator.onboardedAt && (
                   <span className="rounded bg-[var(--panel2)] px-1.5 py-0.5 text-[11.5px]">
-                    onboarded {new Date(creator.onboardedAt).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })}
+                    onboarded {fmtDay(creator.onboardedAt)}
+                  </span>
+                )}
+                {creator.trackUntil && (
+                  <span className="rounded bg-[color:rgba(226,161,60,0.14)] px-1.5 py-0.5 text-[11.5px] text-[var(--warn)]" title="Posts after this day are ignored; earlier ones keep their stats refreshed">
+                    tracked until {fmtDay(creator.trackUntil)}
                   </span>
                 )}
                 {posts.length > 0 && (
@@ -221,6 +227,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   youtube: "YouTube",
   threads: "Threads",
   facebook: "Facebook",
+  snapchat: "Snapchat",
 };
 
 const postedMs = (p: PostDTO) => new Date(p.postedAt).getTime();
@@ -394,12 +401,13 @@ function PostRow({ post, sort, groupSize, onPay, onGrouped }: { post: PostDTO; s
 
 function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; onSave: (b: Record<string, unknown>) => Promise<void>; onDelete: () => void; busy: boolean }) {
   const [f, setF] = useState({
-    displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "", youtubeUrl: creator.youtubeUrl ?? "", threadsUrl: creator.threadsUrl ?? "", facebookUrl: creator.facebookUrl ?? "",
+    displayName: creator.displayName, tiktokUrl: creator.tiktokUrl ?? "", instagramUrl: creator.instagramUrl ?? "", youtubeUrl: creator.youtubeUrl ?? "", threadsUrl: creator.threadsUrl ?? "", facebookUrl: creator.facebookUrl ?? "", snapchatUrl: creator.snapchatUrl ?? "",
     source: creator.source, sourceDetail: creator.sourceDetail ?? "", sideshiftUrl: creator.sideshiftUrl ?? "",
     paymentMethod: creator.paymentMethod ?? "sideshift", paymentHandle: creator.paymentHandle ?? "", expectedPerWeek: creator.expectedPerWeek,
     status: creator.status, phone: creator.phone ?? "", email: creator.email ?? "", contactHandle: creator.contactHandle ?? "",
     discord: creator.discord ?? "", discordChannel: creator.discordChannel ?? "", whatsapp: creator.whatsapp ?? "", preferredChannel: creator.preferredChannel ?? "",
     onboardedAt: creator.onboardedAt ? creator.onboardedAt.slice(0, 10) : "",
+    trackUntil: creator.trackUntil ? creator.trackUntil.slice(0, 10) : "",
     notes: creator.notes ?? "",
   });
   const field = "w-full px-3 py-2 text-sm";
@@ -415,6 +423,7 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         <div><label className={label}>YouTube channel URL <span className="text-[var(--faint)]">(Shorts)</span></label><input className={field} value={f.youtubeUrl} onChange={(e) => set("youtubeUrl", e.target.value)} placeholder="youtube.com/@handle" /></div>
         <div><label className={label}>Threads URL</label><input className={field} value={f.threadsUrl} onChange={(e) => set("threadsUrl", e.target.value)} placeholder="threads.com/@handle" /></div>
         <div><label className={label}>Facebook page URL <span className="text-[var(--faint)]">(Reels)</span></label><input className={field} value={f.facebookUrl} onChange={(e) => set("facebookUrl", e.target.value)} placeholder="facebook.com/pagename" /></div>
+        <div><label className={label}>Snapchat profile URL <span className="text-[var(--faint)]">(Spotlight)</span></label><input className={field} value={f.snapchatUrl} onChange={(e) => set("snapchatUrl", e.target.value)} placeholder="snapchat.com/add/username" /></div>
         <div><label className={label}>Source</label><Select className="w-full" value={f.source} onChange={(v) => set("source", v)} options={["sideshift", "referral", "outreach", "agency", "other"].map((s) => [s, SOURCE_LABEL[s] ?? s] as [string, string])} /></div>
         <div><label className={label}>Source detail</label><input className={field} value={f.sourceDetail} onChange={(e) => set("sourceDetail", e.target.value)} /></div>
         <div className="sm:col-span-2 lg:col-span-3"><label className={label}>Sideshift chat URL <span className="text-[var(--faint)]">(pay them here)</span></label><input className={field} value={f.sideshiftUrl} onChange={(e) => set("sideshiftUrl", e.target.value)} placeholder="link to their Sideshift chat" /></div>
@@ -424,6 +433,11 @@ function EditPanel({ creator, onSave, onDelete, busy }: { creator: CreatorDTO; o
         )}
         <div><label className={label}>Target posts / week</label><input type="number" min={1} max={21} className={field} value={f.expectedPerWeek} onChange={(e) => set("expectedPerWeek", Number(e.target.value) || 7)} /></div>
         <div><label className={label}>Onboarded on</label><input type="date" className={field} value={f.onboardedAt} onChange={(e) => set("onboardedAt", e.target.value)} /></div>
+        <div>
+          <label className={label}>Track until <span className="text-[var(--faint)]">(last day their posts count)</span></label>
+          <input type="date" className={field} value={f.trackUntil} onChange={(e) => set("trackUntil", e.target.value)} />
+          <p className="mt-1 text-[11.5px] leading-snug text-[var(--faint)]">For creators who finish and repurpose their account. Posts after this day are dropped and never pulled again; everything before it keeps its views updated. Clear it to track them again.</p>
+        </div>
         <div><label className={label}>Status</label><Select className="w-full" value={f.status} onChange={(v) => set("status", v)} options={["active", "paused", "inactive"].map((s) => [s, s] as [string, string])} /></div>
         <div><label className={label}>Preferred channel</label><Select className="w-full" value={f.preferredChannel} onChange={(v) => set("preferredChannel", v)} options={["", "imessage", "instagram", "whatsapp", "discord", "email", "other"].map((s) => [s, s || "—"] as [string, string])} /></div>
         <div><label className={label}>Phone (iMessage/SMS)</label><input className={field} value={f.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+1…" /></div>

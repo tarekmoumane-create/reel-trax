@@ -2,7 +2,7 @@
 
 Your creator-tracking OS — every creator, across every client, in one place.
 Inspired by viral.app, built for an agency workflow: **automatic posting-cadence
-tracking** across TikTok, Instagram Reels, YouTube Shorts and Threads, a **client
+tracking** across TikTok, Instagram Reels, YouTube Shorts, Threads, Facebook Reels and Snapchat Spotlight, a **client
 switcher**, **sourcing tags** (Sideshift & others), payout tracking with
 per-video pay controls, and client invoices for any date range.
 
@@ -10,7 +10,7 @@ per-video pay controls, and client invoices for any date range.
 
 - **Client switcher** (top-left) — toggle between all your clients; everything
   scopes to the selected one.
-- **Automatic posting cadence** — add a creator's TikTok / Instagram / YouTube / Threads
+- **Automatic posting cadence** — add a creator's TikTok / Instagram / YouTube / Threads / Facebook / Snapchat
   profile URL once and a scheduled job tracks their posts for you. Calendars,
   streaks, and "on track / behind / gone quiet" flags update themselves.
 - **Roster dashboard** — the people you need to chase float to the top.

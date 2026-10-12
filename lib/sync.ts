@@ -15,11 +15,14 @@ import {
   parseFacebook,
   fetchFacebookProfile,
   fetchFacebookReels,
+  parseSnapchatHandle,
+  fetchSnapchat,
   type NormalizedPost,
 } from "./scrapecreators";
 import { downloadFirstWebSafe, isWebSafeMime, type StoredImage } from "./avatar";
 import { dayKey } from "./cadence";
 import { getTimeZone } from "./settings";
+import { isTracked, trackingEnded } from "./tracking";
 import type { Creator } from "@prisma/client";
 
 async function snapshotFollowers(
@@ -38,7 +41,7 @@ async function snapshotFollowers(
 }
 
 export interface PlatformSyncResult {
-  platform: "tiktok" | "instagram" | "youtube" | "threads" | "facebook";
+  platform: "tiktok" | "instagram" | "youtube" | "threads" | "facebook" | "snapchat";
   ok: boolean;
   fetched: number;
   upserted: number;
@@ -123,11 +126,16 @@ const POST_SNAPSHOT_MAX_AGE_DAYS = 60;
 const FB_FIRST_SYNC_PAGES = 8; // up to 80 reels of history on first sync
 const FB_SYNC_PAGES = 2; // the 20 newest get fresh view counts after that
 
-async function upsertPosts(creatorId: string, posts: NormalizedPost[], tz: string): Promise<number> {
+async function upsertPosts(creator: SyncableCreator, posts: NormalizedPost[], tz: string): Promise<number> {
   let count = 0;
+  const creatorId = creator.id;
   const day = dayKey(new Date(), tz);
   const snapshotCutoff = Date.now() - POST_SNAPSHOT_MAX_AGE_DAYS * 86_400_000;
   for (const p of posts) {
+    // Posted after the creator's cutoff day: the account has moved on from
+    // this client, so the post is not ours to track. Earlier posts still
+    // land here and keep getting their stats refreshed.
+    if (!isTracked(p.postedAt, creator.trackUntil, tz)) continue;
     const row = await prisma.post.upsert({
       where: {
         platform_platformPostId: {
@@ -185,6 +193,11 @@ export async function syncCreator(
   const tz = await getTimeZone();
   // Avatar candidates found on post payloads — the weakest source, a backstop.
   const postsAvatars: string[] = [];
+  // Past their cutoff the account isn't theirs-for-us any more: its follower
+  // count stops being recorded (the chart carries the last value forward).
+  const ended = trackingEnded(creator.trackUntil, new Date(), tz);
+  const snapFollowers = (platform: string, followers: number | null | undefined) =>
+    ended ? Promise.resolve() : snapshotFollowers(creator.id, platform, followers, tz);
 
   // ---- TikTok ----
   const tiktokHandle =
@@ -197,8 +210,8 @@ export async function syncCreator(
         { handle: tiktokHandle, userId: creator.tiktokUserId },
         apiKey
       );
-      const upserted = await upsertPosts(creator.id, r.posts, tz);
-      await snapshotFollowers(creator.id, "tiktok", r.followers, tz);
+      const upserted = await upsertPosts(creator, r.posts, tz);
+      await snapFollowers("tiktok", r.followers);
       if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
       // cache discovered user id for faster future calls
       if (r.userId && r.userId !== creator.tiktokUserId) {
@@ -232,8 +245,8 @@ export async function syncCreator(
   if (igHandle) {
     try {
       const r = await fetchInstagram({ handle: igHandle }, apiKey);
-      const upserted = await upsertPosts(creator.id, r.posts, tz);
-      await snapshotFollowers(creator.id, "instagram", r.followers, tz);
+      const upserted = await upsertPosts(creator, r.posts, tz);
+      await snapFollowers("instagram", r.followers);
       if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
       results.push({
         platform: "instagram",
@@ -272,8 +285,8 @@ export async function syncCreator(
       }
       if (prof.avatarUrls.length) postsAvatars.push(...prof.avatarUrls);
       const r = await fetchYouTubeShorts(yt, apiKey);
-      const upserted = await upsertPosts(creator.id, r.posts, tz);
-      await snapshotFollowers(creator.id, "youtube", prof.followers, tz);
+      const upserted = await upsertPosts(creator, r.posts, tz);
+      await snapFollowers("youtube", prof.followers);
       results.push({ platform: "youtube", ok: true, fetched: r.rawCount, upserted });
     } catch (e) {
       results.push({ platform: "youtube", ok: false, fetched: 0, upserted: 0, error: (e as Error).message });
@@ -285,12 +298,12 @@ export async function syncCreator(
   if (threadsHandle) {
     try {
       const r = await fetchThreads({ handle: threadsHandle }, apiKey);
-      const upserted = await upsertPosts(creator.id, r.posts, tz);
+      const upserted = await upsertPosts(creator, r.posts, tz);
       if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
       // Follower count only lives on the profile endpoint (1 credit).
       try {
         const prof = await fetchThreadsProfile(threadsHandle, apiKey);
-        await snapshotFollowers(creator.id, "threads", prof.followers, tz);
+        await snapFollowers("threads", prof.followers);
         if (prof.avatarUrls.length) postsAvatars.unshift(...prof.avatarUrls);
       } catch (e) {
         console.warn(`threads profile @${threadsHandle}:`, (e as Error).message);
@@ -321,12 +334,26 @@ export async function syncCreator(
       // pass for history, after that just the newest pages get refreshed.
       const known = await prisma.post.count({ where: { creatorId: creator.id, platform: "facebook" } });
       const r = await fetchFacebookReels({ url: fb.url, maxPages: known === 0 ? FB_FIRST_SYNC_PAGES : FB_SYNC_PAGES }, apiKey);
-      const upserted = await upsertPosts(creator.id, r.posts, tz);
-      await snapshotFollowers(creator.id, "facebook", followers, tz);
+      const upserted = await upsertPosts(creator, r.posts, tz);
+      await snapFollowers("facebook", followers);
       if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
       results.push({ platform: "facebook", ok: true, fetched: r.rawCount, upserted });
     } catch (e) {
       results.push({ platform: "facebook", ok: false, fetched: 0, upserted: 0, error: (e as Error).message });
+    }
+  }
+
+  // ---- Snapchat Spotlight ----
+  const snapHandle = creator.snapchatHandle || parseSnapchatHandle(creator.snapchatUrl || "") || null;
+  if (snapHandle) {
+    try {
+      const r = await fetchSnapchat({ handle: snapHandle }, apiKey);
+      const upserted = await upsertPosts(creator, r.posts, tz);
+      await snapFollowers("snapchat", r.followers);
+      if (r.avatarUrls?.length) postsAvatars.push(...r.avatarUrls);
+      results.push({ platform: "snapchat", ok: true, fetched: r.rawCount, upserted });
+    } catch (e) {
+      results.push({ platform: "snapchat", ok: false, fetched: 0, upserted: 0, error: (e as Error).message });
     }
   }
 

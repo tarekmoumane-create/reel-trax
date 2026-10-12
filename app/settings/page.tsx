@@ -281,7 +281,8 @@ export default function SettingsPage() {
       <section className="card p-5">
         <h2 className="text-sm font-semibold">How automatic tracking works</h2>
         <ul className="mt-2 space-y-1.5 text-xs text-[var(--muted)]">
-          <li>• Add a creator with their TikTok, Instagram, YouTube (Shorts), Threads or Facebook (Reels) profile URL.</li>
+          <li>• Add a creator with their TikTok, Instagram, YouTube (Shorts), Threads, Facebook (Reels) or Snapchat (Spotlight) profile URL.</li>
+          <li>• A creator who finishes with a client can be given a &quot;Track until&quot; day on their Edit panel: posts after it are ignored, earlier ones keep their views updated.</li>
           <li>• A scheduled job checks each active creator&apos;s public posts and updates their cadence — no action needed from you.</li>
           <li>• Set the schedule in <code className="rounded bg-[var(--panel2)] px-1">vercel.json</code> (default: every 6 hours). &quot;Sync now&quot; forces an immediate refresh.</li>
           <li>• &quot;Gone quiet&quot; / &quot;Behind&quot; flags are driven by each creator&apos;s target posts-per-week.</li>

@@ -58,6 +58,7 @@ export function AddCreatorModal({
     youtubeUrl: "",
     threadsUrl: "",
     facebookUrl: "",
+    snapchatUrl: "",
     source: "sideshift",
     sourceDetail: "",
     onboardedAt: todayStr(),
@@ -86,8 +87,8 @@ export function AddCreatorModal({
       setError("Creator name is required");
       return;
     }
-    if (!form.tiktokUrl.trim() && !form.instagramUrl.trim() && !form.youtubeUrl.trim() && !form.threadsUrl.trim() && !form.facebookUrl.trim()) {
-      setError("Add at least one profile URL (TikTok, Instagram, YouTube, Threads or Facebook) to track");
+    if (!form.tiktokUrl.trim() && !form.instagramUrl.trim() && !form.youtubeUrl.trim() && !form.threadsUrl.trim() && !form.facebookUrl.trim() && !form.snapchatUrl.trim()) {
+      setError("Add at least one profile URL (TikTok, Instagram, YouTube, Threads, Facebook or Snapchat) to track");
       return;
     }
     setSaving(true);
@@ -192,6 +193,15 @@ export function AddCreatorModal({
                 value={form.facebookUrl}
                 onChange={(e) => set("facebookUrl", e.target.value)}
                 placeholder="facebook.com/pagename"
+              />
+            </div>
+            <div>
+              <label className={label}>Snapchat profile URL <span className="text-[var(--faint)]">(Spotlight)</span></label>
+              <input
+                className={field}
+                value={form.snapchatUrl}
+                onChange={(e) => set("snapchatUrl", e.target.value)}
+                placeholder="snapchat.com/add/username"
               />
             </div>
           </div>
