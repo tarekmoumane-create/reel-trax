@@ -16,6 +16,8 @@ import {
   fetchFacebookProfile,
   fetchFacebookReels,
   parseSnapchatHandle,
+  isSnapchatShareLink,
+  resolveSnapchat,
   fetchSnapchat,
   type NormalizedPost,
 } from "./scrapecreators";
@@ -344,7 +346,20 @@ export async function syncCreator(
   }
 
   // ---- Snapchat Spotlight ----
-  const snapHandle = creator.snapchatHandle || parseSnapchatHandle(creator.snapchatUrl || "") || null;
+  let snapHandle = creator.snapchatHandle || parseSnapchatHandle(creator.snapchatUrl || "") || null;
+  // A share link (snapchat.com/t/…) only names the profile after a redirect.
+  // Resolve it here and store the real profile so it never has to be followed
+  // again — and so the roster links to the profile, not the short code.
+  let snapResolved: { url: string | null; handle: string | null } | null = null;
+  if (!snapHandle && creator.snapchatUrl && isSnapchatShareLink(creator.snapchatUrl)) {
+    const r = await resolveSnapchat(creator.snapchatUrl);
+    if (r.handle) {
+      snapHandle = r.handle;
+      snapResolved = r;
+    } else {
+      results.push({ platform: "snapchat", ok: false, fetched: 0, upserted: 0, error: `share link ${creator.snapchatUrl} didn't open a profile` });
+    }
+  }
   if (snapHandle) {
     try {
       const r = await fetchSnapchat({ handle: snapHandle }, apiKey);
@@ -405,6 +420,7 @@ export async function syncCreator(
       lastSyncedAt: new Date(),
       lastSyncStatus: !anyTried ? "never" : anyOk && !errors.length ? "ok" : anyOk ? "partial" : "error",
       lastSyncError: errors.length ? errors.join(" | ") : null,
+      ...(snapResolved ? { snapchatHandle: snapResolved.handle, snapchatUrl: snapResolved.url } : {}),
       // resolveAvatar only returns once the bytes are downloaded and renderable,
       // so storing and stamping avatarAt happen together — or not at all, in
       // which case the next sync simply tries again.

@@ -4,7 +4,7 @@ import { computeCadence } from "@/lib/cadence";
 import { getTimeZone } from "@/lib/settings";
 import { avgEngagement } from "@/lib/engagement";
 import { detectShadowBans } from "@/lib/shadowban";
-import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook, parseSnapchatHandle } from "@/lib/scrapecreators";
+import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook, resolveSnapchat } from "@/lib/scrapecreators";
 import { cadenceNow, isTracked } from "@/lib/tracking";
 
 export async function GET(
@@ -99,9 +99,9 @@ export async function PATCH(
       data.facebookPageId = null; // re-resolved on next sync
     }
     if ("snapchatUrl" in body) {
-      const u = (body.snapchatUrl ?? "").trim() || null;
-      data.snapchatUrl = u;
-      data.snapchatHandle = u ? parseSnapchatHandle(u) : null;
+      const snap = await resolveSnapchat((body.snapchatUrl ?? "").trim());
+      data.snapchatUrl = snap.url;
+      data.snapchatHandle = snap.handle;
     }
     if ("expectedPerWeek" in body) {
       data.expectedPerWeek = Math.max(

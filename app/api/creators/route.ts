@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ok, bad, serverError } from "@/lib/api";
 import { sanitizePayRules } from "@/lib/payouts";
 import { syncAutoCampaign } from "@/lib/autocampaign";
-import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook, parseSnapchatHandle } from "@/lib/scrapecreators";
+import { parseTikTokHandle, parseInstagramHandle, parseYouTube, parseThreadsHandle, parseFacebook, resolveSnapchat } from "@/lib/scrapecreators";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreator } from "@/lib/sync";
 
@@ -42,8 +42,9 @@ export async function POST(request: Request) {
     const threadsUrl = (body?.threadsUrl ?? "").trim() || null;
     const threadsHandle = parseThreadsHandle(threadsUrl ?? (body?.threadsHandle ?? "").trim());
     const fb = parseFacebook((body?.facebookUrl ?? "").trim() || (body?.facebookHandle ?? "").trim());
-    const snapchatUrl = (body?.snapchatUrl ?? "").trim() || null;
-    const snapchatHandle = parseSnapchatHandle(snapchatUrl ?? (body?.snapchatHandle ?? "").trim());
+    const snap = await resolveSnapchat((body?.snapchatUrl ?? "").trim() || (body?.snapchatHandle ?? "").trim());
+    const snapchatUrl = snap.url;
+    const snapchatHandle = snap.handle;
 
     const creator = await prisma.creator.create({
       data: {

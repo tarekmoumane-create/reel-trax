@@ -201,7 +201,7 @@ export function AddCreatorModal({
                 className={field}
                 value={form.snapchatUrl}
                 onChange={(e) => set("snapchatUrl", e.target.value)}
-                placeholder="snapchat.com/add/username"
+                placeholder="snapchat.com/add/username or a share link"
               />
             </div>
           </div>

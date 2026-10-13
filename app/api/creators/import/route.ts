@@ -7,7 +7,7 @@ import {
   parseYouTube,
   parseThreadsHandle,
   parseFacebook,
-  parseSnapchatHandle,
+  resolveSnapchat,
 } from "@/lib/scrapecreators";
 import { getScrapeCreatorsKey } from "@/lib/settings";
 import { syncCreators, type SyncableCreator } from "@/lib/sync";
@@ -95,13 +95,14 @@ export async function POST(request: Request) {
       const instagramUrl = str(d.instagramUrl);
       const youtubeUrl = str(d.youtubeUrl);
       const threadsUrl = str(d.threadsUrl);
-      const snapchatUrl = str(d.snapchatUrl);
+      const snap = await resolveSnapchat(str(d.snapchatUrl));
+      const snapchatUrl = snap.url;
       const tiktokHandle = tiktokUrl ? parseTikTokHandle(tiktokUrl) : null;
       const instagramHandle = instagramUrl ? parseInstagramHandle(instagramUrl) : null;
       const yt = parseYouTube(youtubeUrl ?? "");
       const threadsHandle = threadsUrl ? parseThreadsHandle(threadsUrl) : null;
       const fb = parseFacebook(str(d.facebookUrl) ?? "");
-      const snapchatHandle = snapchatUrl ? parseSnapchatHandle(snapchatUrl) : null;
+      const snapchatHandle = snap.handle;
 
       if (!tiktokHandle && !instagramHandle && !youtubeUrl && !threadsHandle && !fb.url && !snapchatHandle) {
         results.push({ index: i, displayName, status: "failed", reason: "No profile URL on a tracked platform" });

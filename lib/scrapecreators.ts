@@ -152,6 +152,61 @@ export function parseSnapchatHandle(input: string): string | null {
   return null;
 }
 
+/**
+ * A snapchat.com/t/<code> share link — what the Snapchat app's Share sheet
+ * copies for a profile. It only says whose profile it is after a redirect,
+ * so the username has to be resolved over the network (resolveSnapchat).
+ */
+export function isSnapchatShareLink(input: string): boolean {
+  return /snapchat\.com\/t\/[A-Za-z0-9_-]+/i.test(input.trim());
+}
+
+const SNAP_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+/** Follow a share link to the profile it opens; null when it goes nowhere. */
+async function followSnapchatShareLink(input: string): Promise<string | null> {
+  const m = input.trim().match(/(?:https?:\/\/)?(?:www\.)?snapchat\.com\/t\/[A-Za-z0-9_-]+/i);
+  if (!m) return null;
+  const url = m[0].startsWith("http") ? m[0] : `https://${m[0]}`;
+  try {
+    const res = await fetch(url, {
+      redirect: "follow",
+      headers: { "user-agent": SNAP_UA },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    const fromUrl = parseSnapchatHandle(res.url || "");
+    if (fromUrl) return fromUrl;
+    // Some share links land on a page whose address is still the short code;
+    // the page itself names the profile it belongs to.
+    const html = await res.text().catch(() => "");
+    const canon = html.match(/<link[^>]+rel="canonical"[^>]+href="([^"]+)"/i)?.[1] ?? html.match(/"username":"([A-Za-z0-9._-]+)"/)?.[1];
+    return canon ? parseSnapchatHandle(canon) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Snapchat profile URL + username for anything a user might paste: a profile
+ * URL, "@user", a bare username, or a share link (followed to the profile it
+ * opens, and stored as that profile's URL). A share link that can't be
+ * resolved right now keeps its URL with no handle, so the next sync retries.
+ */
+export async function resolveSnapchat(input: string | null | undefined): Promise<{ url: string | null; handle: string | null }> {
+  const s = (input ?? "").trim();
+  if (!s) return { url: null, handle: null };
+  const isUrl = /snapchat\.com/i.test(s);
+  const direct = parseSnapchatHandle(s);
+  if (direct) return { url: isUrl ? s : `https://www.snapchat.com/add/${direct}`, handle: direct };
+  if (isSnapchatShareLink(s)) {
+    const handle = await followSnapchatShareLink(s);
+    if (handle) return { url: `https://www.snapchat.com/@${handle}`, handle };
+  }
+  return { url: isUrl ? s : null, handle: null };
+}
+
 export function parseYouTubeHandle(input: string): string | null {
   return parseYouTube(input).handle;
 }

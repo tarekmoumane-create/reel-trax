@@ -10,6 +10,7 @@ import {
   parseFacebook,
   parseInstagramHandle,
   parseSnapchatHandle,
+  isSnapchatShareLink,
   parseThreadsHandle,
   parseTikTokHandle,
   parseYouTube,
@@ -318,7 +319,13 @@ function profileFor(platform: Platform, raw: string | null): { url: string | nul
     }
     case "snapchatUrl": {
       const h = parseSnapchatHandle(s);
-      return h ? { url: /snapchat\.com/i.test(s) ? s : `https://www.snapchat.com/add/${h}`, handle: h } : { url: null, handle: null };
+      if (h) return { url: /snapchat\.com/i.test(s) ? s : `https://www.snapchat.com/add/${h}`, handle: h };
+      // Share links (snapchat.com/t/…) resolve to a profile on the server.
+      if (isSnapchatShareLink(s)) {
+        const url = /^https?:/i.test(s) ? s : `https://${s}`;
+        return { url, handle: url.toLowerCase() };
+      }
+      return { url: null, handle: null };
     }
   }
 }
