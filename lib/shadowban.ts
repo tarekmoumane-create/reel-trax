@@ -53,6 +53,9 @@ export function detectShadowBans(posts: ShadowBanPost[], opts: ShadowBanOptions 
   const byPlatform = new Map<string, Map<string, number[]>>();
   for (const p of posts) {
     if (NO_VIEW_COUNTS.has(p.platform)) continue;
+    // Snapchat hides low Spotlight counts (stored as 0) — a hidden count
+    // says nothing about throttling, so those posts aren't judged either.
+    if (p.platform === "snapchat" && p.views === 0) continue;
     const at = p.postedAt instanceof Date ? p.postedAt : new Date(p.postedAt);
     if (isNaN(at.getTime()) || now.getTime() - at.getTime() < minAgeMs) continue;
     const day = dayKey(at, tz);

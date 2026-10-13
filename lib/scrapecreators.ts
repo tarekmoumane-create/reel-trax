@@ -754,7 +754,9 @@ export async function fetchSnapchat(opts: { handle: string }, apiKey: string): P
       caption,
       thumbnailUrl: (pick(vm, ["thumbnailUrl", "thumbnail", "posterUrl"]) as string) ?? null,
       postedAt,
-      views: num(pick(vm, ["viewCount", "views"])) || num(pick(it, ["engagementStats.viewCount"])),
+      // Snapchat hides a Spotlight's view count on small accounts and sends
+      // -1 in its place; that's "unknown", not a count, so it's stored as 0.
+      views: Math.max(0, num(pick(vm, ["viewCount", "views"])) || num(pick(it, ["engagementStats.viewCount"]))),
       likes: num(pick(it, ["engagementStats.likeCount"])) || num(pick(vm, ["likeCount"])),
       comments: num(pick(it, ["engagementStats.commentCount"])) || num(pick(vm, ["commentCount"])),
       shares: num(pick(it, ["engagementStats.shareCount"])) || num(pick(vm, ["shareCount"])),
