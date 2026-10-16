@@ -126,7 +126,8 @@ function Invoice() {
   };
   // While the PDF is drawn the sheet loses its edit buttons, so it looks like paper.
   const [exporting, setExporting] = useState(false);
-  const editable = !exporting;
+  const [editMode, setEditMode] = useState(false);
+  const editable = editMode && !exporting;
   const [profile, setProfile] = useState({ fromName: "", fromDetails: "", paymentInstructions: "" });
   const [profileDirty, setProfileDirty] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -253,6 +254,12 @@ function Invoice() {
           <Link href="/payouts" className="rounded-md border border-[#d9dce4] bg-white px-3 py-1.5 text-[12.5px] font-medium hover:bg-[#f0f1f6]">← Payouts</Link>
           <span className="text-[13px] text-[#5c6270]">Invoice for <b className="text-[#1a1d27]">{data.client.name}</b> · {fmtShort(periodFrom)} – {fmtShort(periodTo)}</span>
           <div className="ml-auto flex items-center gap-1.5">
+            <button
+              onClick={() => setEditMode((v) => !v)}
+              className={editMode
+                ? "rounded-md bg-[#1a1d27] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:brightness-125"
+                : "rounded-md border border-[#6553d6] bg-[#f0edff] px-3 py-1.5 text-[12.5px] font-semibold text-[#6553d6] hover:bg-[#e4dfff]"}
+            >{editMode ? "✓ Done editing" : "✎ Edit invoice"}</button>
             <button onClick={downloadCsv} className="rounded-md border border-[#d9dce4] bg-white px-3 py-1.5 text-[12.5px] font-medium hover:bg-[#f0f1f6]">CSV</button>
             {pdfState === "error" && <span className="text-[12px] text-[#d64545]">Couldn&apos;t build the PDF — try again.</span>}
             <button onClick={downloadPdf} disabled={pdfState === "working"} className="rounded-md bg-[#6553d6] px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
@@ -376,7 +383,7 @@ function Invoice() {
                     {editable && (
                       <button
                         onClick={() => setAdj((a) => ({ ...a, hidden: [...a.hidden, l.creatorId] }))}
-                        className="ml-2 rounded px-1.5 text-[11px] font-normal text-[#979dab] opacity-0 hover:bg-[#f0f1f6] hover:text-[#d64545] group-hover:opacity-100"
+                        className="ml-2 rounded px-1.5 text-[11px] font-normal text-[#979dab] border border-[#d9dce4] hover:bg-[#f0f1f6] hover:text-[#d64545]"
                         title="Leave this creator off the invoice"
                       >Hide</button>
                     )}
@@ -426,7 +433,7 @@ function Invoice() {
                   {editable && (
                     <button
                       onClick={() => setAdj((a) => ({ ...a, custom: a.custom.filter((x) => x.id !== c.id) }))}
-                      className="ml-2 rounded px-1.5 text-[11px] font-normal text-[#979dab] opacity-0 hover:bg-[#f0f1f6] hover:text-[#d64545] group-hover:opacity-100"
+                      className="ml-2 rounded px-1.5 text-[11px] font-normal text-[#979dab] border border-[#d9dce4] hover:bg-[#f0f1f6] hover:text-[#d64545]"
                     >Remove</button>
                   )}
                 </td>
@@ -452,7 +459,7 @@ function Invoice() {
               onClick={() => setAdj((a) => ({ ...a, custom: [...a.custom, { id: `c${Date.now().toString(36)}`, label: "", amount: 0 }] }))}
               className="rounded-md border border-[#d9dce4] bg-white px-2.5 py-1 font-medium text-[#1a1d27] hover:bg-[#f0f1f6]"
             >+ Add a line</button>
-            <span className="text-[#979dab]">Click any amount to change it. Use a minus sign for a credit. These buttons never show up in the PDF.</span>
+            <span className="text-[#979dab]">Click any boxed amount to change it. Use a minus sign for a credit. Click Done editing when finished.</span>
             {hiddenLines.length > 0 && (
               <span className="flex flex-wrap items-center gap-1.5">
                 Hidden:
@@ -594,7 +601,7 @@ function Editable({ kind, value, display, editable, onSave, startEditing = false
   return (
     <button
       onClick={() => { setDraft(value); setEditing(true); }}
-      className={`-mx-1 rounded px-1 underline decoration-dotted decoration-[#c4c8d4] underline-offset-4 hover:bg-[#f0edff] ${kind === "amount" ? "text-right" : "text-left"}`}
+      className={`rounded border border-dashed border-[#b9b0f0] bg-[#f7f5ff] px-1.5 py-0.5 hover:border-[#6553d6] hover:bg-[#f0edff] ${kind === "amount" ? "text-right" : "text-left"}`}
       title="Click to edit"
     >{display}</button>
   );
