@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { money } from "@/lib/payouts";
 import { fmtNum } from "@/lib/ui";
-import { invoiceCsv, PLATFORM_SHORT, type InvoiceData } from "@/lib/invoice";
+import { invoiceCsv, PLATFORM_SHORT, type InvoiceCustomLine, type InvoiceData } from "@/lib/invoice";
 import { downloadInvoicePdf } from "@/lib/invoicePdf";
 
 // Client invoice for a date range, downloadable as a PDF that matches what's on
@@ -24,6 +24,18 @@ interface Meta {
   /** Management-fee months (YYYY-MM) left off this particular invoice. */
   skipFees: string[];
 }
+
+/** Hand edits to the creator-pay lines. Saved per client *and* period, so a
+ *  fix on one invoice never leaks into next month's. */
+interface Adjustments {
+  /** creatorId → amount typed in place of the calculated one */
+  amounts: Record<string, number>;
+  /** creatorIds left off this invoice */
+  hidden: string[];
+  /** extra lines (bonuses, credits as negatives, anything else) */
+  custom: InvoiceCustomLine[];
+}
+const NO_ADJ: Adjustments = { amounts: {}, hidden: [], custom: [] };
 
 const dstr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const fmtLong = (iso: string) => {
@@ -68,6 +80,7 @@ function Invoice() {
   // resolves the dates and hands them back on the response.
   const all = sp.get("all") === "1";
   const lsKey = `rt.invoice.${clientId}`;
+  const adjKey = `rt.invoice.adj.${clientId}.${all ? "all" : `${from}_${to}`}`;
 
   const [data, setData] = useState<InvoiceData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +103,30 @@ function Invoice() {
     } catch {}
     return base;
   });
+  const [adj, setAdjState] = useState<Adjustments>(() => {
+    if (typeof window === "undefined") return NO_ADJ;
+    try {
+      const saved = JSON.parse(localStorage.getItem(adjKey) ?? "null");
+      if (saved && typeof saved === "object") {
+        return {
+          amounts: saved.amounts && typeof saved.amounts === "object" ? saved.amounts : {},
+          hidden: Array.isArray(saved.hidden) ? saved.hidden : [],
+          custom: Array.isArray(saved.custom) ? saved.custom : [],
+        };
+      }
+    } catch {}
+    return NO_ADJ;
+  });
+  const setAdj = (f: (a: Adjustments) => Adjustments) => {
+    setAdjState((a) => {
+      const next = f(a);
+      try { localStorage.setItem(adjKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  // While the PDF is drawn the sheet loses its edit buttons, so it looks like paper.
+  const [exporting, setExporting] = useState(false);
+  const editable = !exporting;
   const [profile, setProfile] = useState({ fromName: "", fromDetails: "", paymentInstructions: "" });
   const [profileDirty, setProfileDirty] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -147,7 +184,24 @@ function Invoice() {
   const periodTo = data?.to ?? to;
   const cur = data?.currency ?? "USD";
   const feePct = Number(meta.feePct) || 0;
-  const subtotal = data?.totals.amount ?? 0;
+  // The lines as billed: hidden ones dropped, typed amounts in place of calculated ones.
+  const lines = useMemo(
+    () => (data?.lines ?? []).filter((l) => !adj.hidden.includes(l.creatorId)).map((l) => {
+      const typed = adj.amounts[l.creatorId];
+      return { ...l, calculated: l.amount, amount: typed ?? l.amount, edited: typed != null && typed !== l.amount };
+    }),
+    [data, adj],
+  );
+  const hiddenLines = (data?.lines ?? []).filter((l) => adj.hidden.includes(l.creatorId));
+  const customTotal = adj.custom.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const subtotal = Math.round((lines.reduce((s, l) => s + l.amount, 0) + customTotal) * 100) / 100;
+  const shown = {
+    creators: lines.length,
+    posts: lines.reduce((s, l) => s + l.posts, 0),
+    views: lines.reduce((s, l) => s + l.views, 0),
+    videos: lines.reduce((s, l) => s + l.videos.length, 0),
+  };
+  const anyEdits = hiddenLines.length > 0 || adj.custom.length > 0 || lines.some((l) => l.edited);
   const fee = Math.round(subtotal * feePct) / 100;
   const fees = (data?.fees ?? []).filter((f) => !meta.skipFees.includes(f.month));
   const feesTotal = fees.reduce((s, f) => s + f.amount, 0);
@@ -159,19 +213,25 @@ function Invoice() {
     const sheet = document.querySelector<HTMLElement>(".invoice-sheet");
     if (!sheet || !data) return;
     setPdfState("working");
+    setExporting(true);
     try {
+      // Let the sheet re-render without its edit buttons before it's measured.
+      // A timer, not an animation frame: a background tab never gets frames.
+      await new Promise((r) => setTimeout(r, 50));
       const name = `${data.client.name} ${meta.number}`.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-");
       await downloadInvoicePdf(sheet, `${name || "invoice"}.pdf`);
       setPdfState("idle");
     } catch (e) {
       console.error("[invoice pdf]", e);
       setPdfState("error");
+    } finally {
+      setExporting(false);
     }
   }
 
   function downloadCsv() {
     if (!data) return;
-    const blob = new Blob([invoiceCsv(data, meta.skipFees)], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([invoiceCsv({ ...data, lines }, meta.skipFees, adj.custom)], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `${meta.number}.csv`;
@@ -210,7 +270,7 @@ function Invoice() {
             <div className="col-span-2 sm:col-span-4"><label className={label}>Notes to client</label><input className={field} value={meta.notes} onChange={(e) => setM({ notes: e.target.value })} placeholder="Thanks for your business — reach out with any questions." /></div>
             <label className="col-span-2 flex items-center gap-2 text-[12px] text-[#5c6270] sm:col-span-4">
               <input type="checkbox" checked={meta.includeAppendix} onChange={(e) => setM({ includeAppendix: e.target.checked })} />
-              Include the per-video appendix ({data.totals.videos} videos)
+              Include the per-video appendix ({shown.videos} videos)
             </label>
           </div>
           <div className="mt-3 rounded-md border border-[#d9dce4] bg-white p-3">
@@ -288,7 +348,7 @@ function Invoice() {
           <div className="text-right">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#979dab]">Amount due</div>
             <div className="mono mt-1.5 text-[28px] font-bold leading-none text-[#6553d6]">{money(total, cur)}</div>
-            <div className="mt-1 text-[12px] text-[#5c6270]">{data.totals.creators} creators · {data.totals.posts} qualifying posts · {fmtNum(data.totals.views)} views</div>
+            <div className="mt-1 text-[12px] text-[#5c6270]">{shown.creators} creators · {shown.posts} qualifying posts · {fmtNum(shown.views)} views</div>
           </div>
         </div>
 
@@ -308,16 +368,77 @@ function Invoice() {
             </tr>
           </thead>
           <tbody>
-            {data.lines.map((l) => (
-              <tr key={l.creatorId} className="invoice-avoid-break border-b border-[#e4e6ee] align-top">
+            {lines.map((l) => (
+              <tr key={l.creatorId} className="invoice-avoid-break group border-b border-[#e4e6ee] align-top">
                 <td className="py-2.5 pr-3">
-                  <div className="font-medium">{l.creatorName}</div>
+                  <div className="font-medium">
+                    {l.creatorName}
+                    {editable && (
+                      <button
+                        onClick={() => setAdj((a) => ({ ...a, hidden: [...a.hidden, l.creatorId] }))}
+                        className="ml-2 rounded px-1.5 text-[11px] font-normal text-[#979dab] opacity-0 hover:bg-[#f0f1f6] hover:text-[#d64545] group-hover:opacity-100"
+                        title="Leave this creator off the invoice"
+                      >Hide</button>
+                    )}
+                  </div>
                   <div className="mono text-[11px] text-[#979dab]">{l.handles.join(" · ")}</div>
                 </td>
                 <td className="py-2.5 pr-3 text-[#5c6270]">{l.campaigns.join(", ")}</td>
                 <td className="mono py-2.5 pr-3 text-right">{l.posts}</td>
                 <td className="mono py-2.5 pr-3 text-right">{fmtNum(l.views)}</td>
-                <td className="mono py-2.5 text-right font-semibold">{money(l.amount, cur)}</td>
+                <td className="mono py-2.5 text-right font-semibold">
+                  <Editable
+                    kind="amount"
+                    editable={editable}
+                    value={String(l.amount)}
+                    display={money(l.amount, cur)}
+                    onSave={(v) => setAdj((a) => {
+                      const amounts = { ...a.amounts };
+                      const n = Number(v);
+                      if (v.trim() === "" || !Number.isFinite(n) || n === l.calculated) delete amounts[l.creatorId];
+                      else amounts[l.creatorId] = Math.round(n * 100) / 100;
+                      return { ...a, amounts };
+                    })}
+                  />
+                  {editable && l.edited && (
+                    <div className="text-[10.5px] font-normal text-[#979dab]">
+                      was {money(l.calculated, cur)} ·{" "}
+                      <button
+                        className="underline hover:text-[#1a1d27]"
+                        onClick={() => setAdj((a) => { const amounts = { ...a.amounts }; delete amounts[l.creatorId]; return { ...a, amounts }; })}
+                      >reset</button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {adj.custom.map((c) => (
+              <tr key={c.id} className="invoice-avoid-break group border-b border-[#e4e6ee] align-top">
+                <td colSpan={4} className="py-2.5 pr-3 font-medium">
+                  <Editable
+                    kind="text"
+                    editable={editable}
+                    startEditing={!c.label}
+                    value={c.label}
+                    display={c.label || <span className="italic text-[#979dab]">Description</span>}
+                    onSave={(v) => setAdj((a) => ({ ...a, custom: a.custom.map((x) => (x.id === c.id ? { ...x, label: v } : x)) }))}
+                  />
+                  {editable && (
+                    <button
+                      onClick={() => setAdj((a) => ({ ...a, custom: a.custom.filter((x) => x.id !== c.id) }))}
+                      className="ml-2 rounded px-1.5 text-[11px] font-normal text-[#979dab] opacity-0 hover:bg-[#f0f1f6] hover:text-[#d64545] group-hover:opacity-100"
+                    >Remove</button>
+                  )}
+                </td>
+                <td className="mono py-2.5 text-right font-semibold">
+                  <Editable
+                    kind="amount"
+                    editable={editable}
+                    value={String(c.amount)}
+                    display={money(Number(c.amount) || 0, cur)}
+                    onSave={(v) => setAdj((a) => ({ ...a, custom: a.custom.map((x) => (x.id === c.id ? { ...x, amount: Math.round((Number(v) || 0) * 100) / 100 } : x)) }))}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -325,6 +446,34 @@ function Invoice() {
             <tr className="font-semibold"><td colSpan={4} className="pt-3 text-right">Creator pay subtotal</td><td className="mono pt-3 text-right">{money(subtotal, cur)}</td></tr>
           </tfoot>
         </table>
+        {editable && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border border-dashed border-[#d9dce4] bg-[#fafbfc] px-3 py-2 text-[12px] text-[#5c6270]">
+            <button
+              onClick={() => setAdj((a) => ({ ...a, custom: [...a.custom, { id: `c${Date.now().toString(36)}`, label: "", amount: 0 }] }))}
+              className="rounded-md border border-[#d9dce4] bg-white px-2.5 py-1 font-medium text-[#1a1d27] hover:bg-[#f0f1f6]"
+            >+ Add a line</button>
+            <span className="text-[#979dab]">Click any amount to change it. Use a minus sign for a credit. These buttons never show up in the PDF.</span>
+            {hiddenLines.length > 0 && (
+              <span className="flex flex-wrap items-center gap-1.5">
+                Hidden:
+                {hiddenLines.map((l) => (
+                  <button
+                    key={l.creatorId}
+                    onClick={() => setAdj((a) => ({ ...a, hidden: a.hidden.filter((id) => id !== l.creatorId) }))}
+                    className="rounded-full border border-[#d9dce4] bg-white px-2 py-0.5 hover:bg-[#f0f1f6]"
+                    title="Put back on the invoice"
+                  >{l.creatorName} ↩</button>
+                ))}
+              </span>
+            )}
+            {anyEdits && (
+              <button
+                onClick={() => { if (confirm("Undo every edit to this invoice's lines?")) setAdj(() => NO_ADJ); }}
+                className="ml-auto text-[11.5px] underline hover:text-[#1a1d27]"
+              >Undo all edits</button>
+            )}
+          </div>
+        )}
 
         {/* 2 · management fee — the agency's own fee, kept apart from creator costs */}
         {fees.length > 0 && (
@@ -377,10 +526,10 @@ function Invoice() {
         )}
 
         {/* per-video appendix */}
-        {meta.includeAppendix && data.totals.videos > 0 && (
+        {meta.includeAppendix && shown.videos > 0 && (
           <div className="mt-12 border-t border-[#e4e6ee] pt-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#979dab]">Appendix · videos posted {fmtShort(periodFrom)} – {fmtShort(periodTo)}</div>
-            {data.lines.filter((l) => l.videos.length).map((l) => (
+            {lines.filter((l) => l.videos.length).map((l) => (
               <div key={l.creatorId} className="invoice-avoid-break mt-5">
                 <div className="text-[13px] font-semibold">{l.creatorName} <span className="font-normal text-[#979dab]">· {l.videos.length} videos</span></div>
                 <table className="mt-1.5 w-full border-collapse text-[11.5px]">
@@ -409,5 +558,44 @@ function Invoice() {
         <div className="mt-12 text-center text-[10.5px] text-[#979dab]">Generated by Reel Trax · {fmtLong(dstr(new Date()))}</div>
       </div>
     </div>
+  );
+}
+
+/** Looks like plain text on the sheet; click it to type a new value. */
+function Editable({ kind, value, display, editable, onSave, startEditing = false }: {
+  kind: "amount" | "text";
+  startEditing?: boolean;
+  value: string;
+  display: React.ReactNode;
+  editable: boolean;
+  onSave: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(startEditing);
+  const [draft, setDraft] = useState(value);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (editing) ref.current?.select(); }, [editing]);
+  if (!editable) return <>{display}</>;
+  if (editing) {
+    const done = (save: boolean) => { if (save) onSave(draft); setEditing(false); };
+    return (
+      <input
+        ref={ref}
+        type={kind === "amount" ? "number" : "text"}
+        step={kind === "amount" ? "0.01" : undefined}
+        value={draft}
+        placeholder={kind === "text" ? "Description, e.g. Bonus for top video" : undefined}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => done(true)}
+        onKeyDown={(e) => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); }}
+        className={`rounded border border-[#6553d6] px-1.5 py-0.5 text-[12.5px] outline-none ${kind === "amount" ? "w-28 text-right" : "w-full max-w-[420px]"}`}
+      />
+    );
+  }
+  return (
+    <button
+      onClick={() => { setDraft(value); setEditing(true); }}
+      className={`-mx-1 rounded px-1 underline decoration-dotted decoration-[#c4c8d4] underline-offset-4 hover:bg-[#f0edff] ${kind === "amount" ? "text-right" : "text-left"}`}
+      title="Click to edit"
+    >{display}</button>
   );
 }

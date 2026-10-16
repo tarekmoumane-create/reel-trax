@@ -32,6 +32,12 @@ export interface InvoiceFee {
   label: string;
   amount: number;
 }
+/** A line typed by hand onto an invoice (a bonus, a credit as a negative, …). */
+export interface InvoiceCustomLine {
+  id: string;
+  label: string;
+  amount: number;
+}
 export interface InvoiceData {
   client: {
     id: string; name: string; website: string | null; logoUrl: string | null;
@@ -56,10 +62,12 @@ const csvCell = (v: unknown) => {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-/** Creator totals, management fees, then every video in the range. `skipFees` = months left off this invoice. */
-export function invoiceCsv(d: InvoiceData, skipFees: string[] = []): string {
+/** Creator totals, management fees, then every video in the range. `skipFees` = months left off this invoice.
+ *  `d.lines` is what's billed (hidden lines dropped, edited amounts in place); `custom` = hand-typed lines. */
+export function invoiceCsv(d: InvoiceData, skipFees: string[] = [], custom: InvoiceCustomLine[] = []): string {
   const fees = (d.fees ?? []).filter((f) => !skipFees.includes(f.month));
   const feeTotal = fees.reduce((s, f) => s + f.amount, 0);
+  const creatorTotal = d.lines.reduce((s, l) => s + l.amount, 0) + custom.reduce((s, c) => s + (Number(c.amount) || 0), 0);
   const rows: unknown[][] = [
     ["Client", d.client.name], ["From", d.from], ["To", d.to], ["Currency", d.currency], [],
     ["Creator", "Accounts", "Campaigns", "Qualifying posts", "Views", "Breakdown", "Amount"],
@@ -67,9 +75,10 @@ export function invoiceCsv(d: InvoiceData, skipFees: string[] = []): string {
       l.creatorName, l.handles.join(" | "), l.campaigns.join(" | "), l.posts, l.views,
       l.breakdown.map((b) => `${b.label}: ${b.amount.toFixed(2)}`).join(" + "), l.amount.toFixed(2),
     ]),
-    ["Total", "", "", d.totals.posts, d.totals.views, "", d.totals.amount.toFixed(2)],
+    ...custom.map((c) => [c.label || "Adjustment", "", "", "", "", "", (Number(c.amount) || 0).toFixed(2)]),
+    ["Total", "", "", d.lines.reduce((s, l) => s + l.posts, 0), d.lines.reduce((s, l) => s + l.views, 0), "", creatorTotal.toFixed(2)],
     ...(fees.length
-      ? [[], ["Management fee"], ...fees.map((f) => [f.label, "", "", "", "", "", f.amount.toFixed(2)]), ["Total due", "", "", "", "", "", (d.totals.amount + feeTotal).toFixed(2)]]
+      ? [[], ["Management fee"], ...fees.map((f) => [f.label, "", "", "", "", "", f.amount.toFixed(2)]), ["Total due", "", "", "", "", "", (creatorTotal + feeTotal).toFixed(2)]]
       : []),
     [],
     ["Creator", "Platform", "Posted", "Title", "Views", "Pay status", "URL"],
